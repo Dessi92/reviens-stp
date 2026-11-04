@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="5">
+<meta name="app-version" content="6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -78,6 +78,24 @@
   .grille label{font-size:15px}
   .resume{background:var(--orclair);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:15px;line-height:1.45}
   .btn small{display:block;font-size:13px;font-weight:600;opacity:.85;margin-top:2px}
+  /* Thèmes par commerce */
+  .themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+  .themes button{border:2px solid var(--bord);background:#fff;border-radius:12px;padding:8px 4px;cursor:pointer;font-size:13px;color:var(--texte)}
+  .themes button span{display:block;font-size:26px;line-height:1.2}
+  .themes button.choisi{border-color:var(--accent);background:var(--orclair);font-weight:700}
+  #deco{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+  #deco span{position:absolute;opacity:.16;user-select:none}
+  #app main, #app header{position:relative;z-index:1}
+  #app header{z-index:5}
+  /* Animation de fête */
+  #fete{position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden}
+  #fete span{position:absolute;bottom:-70px;font-size:var(--t);animation:envol var(--d) cubic-bezier(.2,.6,.4,1) var(--w) forwards;opacity:0}
+  @keyframes envol{
+    0%{transform:translate(0,0) rotate(0);opacity:1}
+    25%{transform:translate(calc(var(--x) * -.4),-30vh) rotate(calc(var(--r) * .3))}
+    85%{opacity:1}
+    100%{transform:translate(var(--x),-118vh) rotate(var(--r));opacity:0}}
+  @media (prefers-reduced-motion:reduce){#fete{display:none}}
   .logo{text-align:center;margin:20px 0 10px}
   .logo img{width:72px;height:72px}
   .logo h1{font-size:24px;margin:10px 0 0}
@@ -110,12 +128,14 @@
 </main>
 
 <!-- ============ APPLICATION ============ -->
+<div id="fete" aria-hidden="true"></div>
 <div id="app" class="cache">
+<div id="deco" aria-hidden="true"></div>
 <header>
   <h1 id="titreCommerce">Reviens STP</h1>
   <button id="bAccueil" title="Accueil">🏠</button>
-  <button id="bListe">Clients</button>
-  <button id="bGerant" class="cache">Gérant</button>
+  <button id="bListe" title="Mes clients">👥</button>
+  <button id="bGerant" class="cache" title="Espace gérant">📊</button>
   <button id="bReglages" title="Réglages">⚙️</button>
 </header>
 
@@ -181,6 +201,8 @@
       <label for="rNom">Nom du commerce</label>
       <input id="rNom" type="text">
     </div>
+    <label>Thème de votre commerce</label>
+    <div class="themes" id="rThemes"></div>
     <div class="grille">
       <div><label for="rPoints">Points par passage</label>
         <input id="rPoints" type="number" min="1" step="1" inputmode="numeric"></div>
@@ -304,7 +326,7 @@ function apiDemo(){
   const CLE = "fidelite_demo_v1";
   let D;
   try{ D = JSON.parse(localStorage.getItem(CLE)); }catch(e){}
-  if (!D || !D.commerce) D = {connecte:false, email:"", commerce:{id:"demo", nom:"Terrine", points_par_passage:10, seuil:100, remise:10, montant_bonus:null, points_bonus:null, programme_choisi:false, cree_le:new Date().toISOString()}, clients:[], mouvements:[], suivant:1};
+  if (!D || !D.commerce) D = {connecte:false, email:"", commerce:{id:"demo", nom:"Terrine", points_par_passage:10, seuil:100, remise:10, montant_bonus:null, points_bonus:null, programme_choisi:false, theme:"defaut", cree_le:new Date().toISOString()}, clients:[], mouvements:[], suivant:1};
   const sauver = ()=>{ try{ localStorage.setItem(CLE, JSON.stringify(D)); }catch(e){} };
   const client = id => { const c = D.clients.find(c=>c.id===id); if (!c) throw new Error("Client introuvable"); return c; };
   const copie = o => JSON.parse(JSON.stringify(o));
@@ -381,6 +403,7 @@ function montrer(ecran){
   window.scrollTo(0,0);
   if (ecran==="ecranListe") afficherListe();
   if (ecran==="ecranReglages") remplirReglages();
+  else if (SESSION) appliquerTheme(SESSION.commerce.theme);   // annule un aperçu de thème non enregistré
   if (ecran==="ecranGerant") afficherGerant();
 }
 
@@ -455,7 +478,7 @@ $("bOubli").onclick = async ()=>{
 async function entrer(){
   $("ecranConnexion").classList.add("cache");
   $("app").classList.remove("cache");
-  $("titreCommerce").textContent = SESSION.commerce.nom;
+  appliquerTheme(SESSION.commerce.theme);
   let admin = false;
   try{ admin = await API.estAdmin(); }catch(e){}
   $("bGerant").classList.toggle("cache", !admin);
@@ -472,6 +495,62 @@ function boutonsPoints(normal, gros, prefixe){
   normal.innerHTML = aBonus() ? `${prefixe}+${c.points_par_passage} points<small>panier normal</small>` : `${prefixe}+${c.points_par_passage} points`;
   gros.classList.toggle("cache", !aBonus());
   if (aBonus()) gros.innerHTML = `${prefixe}+${c.points_bonus} points<small>panier dès ${euros(c.montant_bonus)}</small>`;
+}
+
+// ---------- Thèmes et animation ----------
+const THEMES = {
+  defaut:      {nom:"Classique",   e:["🎈","🎉","⭐","🎁"],      a:"#9b2c2c", b:"#c0392b"},
+  charcuterie: {nom:"Charcuterie", e:["🐷","🐖","🥓","🍖","🐽"], a:"#a8324f", b:"#d9577a"},
+  pizzeria:    {nom:"Pizzeria",    e:["🍕","🍅","🧀","🌿"],      a:"#c62828", b:"#2e7d32"},
+  boulangerie: {nom:"Boulangerie", e:["🥖","🥐","🍞","🥨"],      a:"#8a5220", b:"#c98a3d"},
+  fromagerie:  {nom:"Fromagerie",  e:["🧀","🐄","🍇","🥖"],      a:"#8a6400", b:"#d4a017"},
+  boucherie:   {nom:"Boucherie",   e:["🥩","🐄","🍖","🐓"],      a:"#8e1b1b", b:"#b83232"},
+  fleuriste:   {nom:"Fleuriste",   e:["🌸","💐","🌷","🌻"],      a:"#a8396a", b:"#e07aa0"},
+  cafe:        {nom:"Café",        e:["☕","🥐","🍰","🍪"],      a:"#5d4037", b:"#8d6e63"},
+  coiffeur:    {nom:"Coiffeur",    e:["✂️","💈","💇","💅"],      a:"#37474f", b:"#607d8b"},
+  epicerie:    {nom:"Épicerie",    e:["🍎","🥕","🛒","🧺"],      a:"#33691e", b:"#689f38"},
+};
+const leTheme = cle => THEMES[cle] || THEMES.defaut;
+let themeActif = "defaut";
+function appliquerTheme(cle){
+  themeActif = THEMES[cle] ? cle : "defaut";
+  const t = leTheme(themeActif);
+  document.documentElement.style.setProperty("--accent", t.a);
+  document.documentElement.style.setProperty("--accent2", t.b);
+  document.querySelector('meta[name="theme-color"]').content = t.a;
+  if (SESSION) $("titreCommerce").textContent = t.e[0] + " " + SESSION.commerce.nom;
+  // Décor de fond : petits émojis discrets, toujours aux mêmes places
+  let g = 7, html = "";
+  const hasard = () => (g = (g * 9301 + 49297) % 233280) / 233280;
+  for (let i = 0; i < 26; i++){
+    html += `<span style="left:${(hasard()*96).toFixed(1)}%;top:${(hasard()*96).toFixed(1)}%;font-size:${Math.round(26+hasard()*26)}px;transform:rotate(${Math.round(hasard()*60-30)}deg)">${t.e[i % t.e.length]}</span>`;
+  }
+  $("deco").innerHTML = html;
+}
+// Petits émojis qui s'envolent comme des ballons ; « grand » = pluie de fête (palier atteint)
+function fete(grand){
+  const t = leTheme(themeActif), zone = $("fete"), n = grand ? 45 : 16;
+  for (let i = 0; i < n; i++){
+    const s = document.createElement("span");
+    s.textContent = t.e[Math.floor(Math.random() * t.e.length)];
+    s.style.left = (Math.random() * 100) + "%";
+    s.style.setProperty("--t", Math.round((grand ? 30 : 26) + Math.random() * 22) + "px");
+    s.style.setProperty("--d", (2.2 + Math.random() * 1.8).toFixed(2) + "s");
+    s.style.setProperty("--w", (Math.random() * (grand ? 1.2 : .5)).toFixed(2) + "s");
+    s.style.setProperty("--x", Math.round(Math.random() * 160 - 80) + "px");
+    s.style.setProperty("--r", Math.round(Math.random() * 120 - 60) + "deg");
+    zone.appendChild(s);
+    setTimeout(() => s.remove(), 5500);
+  }
+}
+// Choix du thème dans les réglages (aperçu immédiat)
+let themeChoisi = "defaut";
+function afficherThemes(){
+  $("rThemes").innerHTML = Object.entries(THEMES).map(([k,t]) =>
+    `<button type="button" data-k="${k}" class="${k===themeChoisi?"choisi":""}"><span>${t.e[0]}</span>${t.nom}</button>`).join("");
+  for (const b of $("rThemes").querySelectorAll("button")) b.onclick = () => {
+    themeChoisi = b.dataset.k; appliquerTheme(themeChoisi); afficherThemes(); fete(false);
+  };
 }
 
 // ---------- Navigation ----------
@@ -513,6 +592,7 @@ function creer(gros){
       message("msgAccueil","");
       await ouvrirClient(c, true);
       message("msgClient", `Carte créée, +${c.points} points.`, "ok");
+      fete(c.points >= SESSION.commerce.seuil);
     }catch(e){ message("msgAccueil", e.message, "err"); }
   });
 }
@@ -566,6 +646,7 @@ function ajouter(gros){
       const gagne = c.points - avant;
       message("msgClient", avant < SESSION.commerce.seuil && c.points >= SESSION.commerce.seuil
         ? `+${gagne} points — palier atteint ! 🎉` : `+${gagne} points ajoutés.`, "ok");
+      fete(avant < SESSION.commerce.seuil && c.points >= SESSION.commerce.seuil);
     }catch(e){ message("msgClient", e.message, "err"); }
   });
 }
@@ -595,7 +676,7 @@ $("bFermer").onclick = ()=> retourAccueil("");
 $("bUtiliser").onclick = ()=> occupe($("bUtiliser"), async ()=>{
   if (!courant) return;
   if (!confirm(`Confirmer : la réduction de ${SESSION.commerce.remise} % a été appliquée ? Les points repartent à 0.`)) return;
-  try{ await ouvrirClient(await API.utiliserReduction(courant.id), ajouteCeTour); message("msgClient","Réduction enregistrée. Points remis à 0.","ok"); }
+  try{ await ouvrirClient(await API.utiliserReduction(courant.id), ajouteCeTour); message("msgClient","Réduction enregistrée. Points remis à 0.","ok"); fete(true); }
   catch(e){ message("msgClient", e.message, "err"); }
 });
 $("bAccord").onclick = async ()=>{
@@ -663,6 +744,8 @@ function remplirReglages(){
   $("rMontant").value = c.montant_bonus ?? 70;
   $("rPointsBonus").value = c.points_bonus ?? c.points_par_passage * 2;
   $("rEmail").textContent = SESSION.email;
+  themeChoisi = THEMES[c.theme] ? c.theme : "defaut";
+  afficherThemes();
   message("msgReglages","");
   majResume();
 }
@@ -695,8 +778,8 @@ $("bEnregistrer").onclick = ()=> occupe($("bEnregistrer"), async ()=>{
   try{
     SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {
       nom, points_par_passage:x.p, seuil:x.s, remise:x.r,
-      montant_bonus: x.bonus ? x.m : null, points_bonus: x.bonus ? x.pb : null, programme_choisi:true});
-    $("titreCommerce").textContent = SESSION.commerce.nom;
+      montant_bonus: x.bonus ? x.m : null, points_bonus: x.bonus ? x.pb : null, programme_choisi:true, theme:themeChoisi});
+    appliquerTheme(SESSION.commerce.theme);
     if (premier){ montrer("ecranAccueil"); message("msgAccueil","Votre programme est prêt ! Tapez le numéro d'un client pour commencer.","ok"); $("tel").focus(); return; }
     message("msgReglages","Réglages enregistrés.","ok");
   }catch(e){ message("msgReglages", e.message, "err"); }
@@ -712,7 +795,7 @@ $("bExporterCsv").onclick = ()=> occupe($("bExporterCsv"), async ()=>{
   document.body.appendChild(a); a.click(); a.remove();
 });
 $("bDeconnexion").onclick = async ()=>{
-  await API.deconnexion(); SESSION = null; courant = null;
+  await API.deconnexion(); SESSION = null; courant = null; appliquerTheme("defaut");
   $("tel").value = ""; $("blocClient").classList.add("cache");
   afficherConnexion();
 };
