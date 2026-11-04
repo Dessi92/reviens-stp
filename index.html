@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="7">
+<meta name="app-version" content="8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -349,6 +349,8 @@ function apiDemo(){
     },
     async ajouterPoints(id, gros){
       const c = client(id), now = new Date().toISOString();
+      if (D.mouvements.some(m=>m.client_id===id && m.type==="points" && Date.now()-new Date(m.le) < DELAI_DOUBLE))
+        throw new Error("Points déjà donnés à ce client il y a moins de 2 minutes");
       gros = !!gros && D.commerce.points_bonus != null;
       const p = gros ? D.commerce.points_bonus : D.commerce.points_par_passage;
       c.points += p; c.visites++; c.derniere_visite = now;
@@ -393,6 +395,7 @@ function apiDemo(){
   return api;
 }
 
+const DELAI_DOUBLE = 2 * 60 * 1000;   // anti double appui : 2 minutes
 function adresseApp(){ return location.origin + location.pathname; }
 
 // ======================================================================
@@ -634,6 +637,11 @@ async function ouvrirClient(c, ajoute = false){
   $("blocClient").classList.remove("cache");
   try{
     const h = await API.historique(c.id);
+    const recent = h.find(m => m.type === "points" && Date.now() - new Date(m.le) < DELAI_DOUBLE);
+    if (!ajoute && recent && courant && courant.id === c.id){
+      $("zoneAjout").classList.add("cache");
+      message("msgClient", `⚠️ Ce client a déjà reçu +${recent.points} points à ${new Date(recent.le).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}. Pas de nouveaux points avant 2 minutes.`, "info");
+    }
     $("cHisto").innerHTML = h.map(m=>`<div>${dateFr(m.le)} — ${m.type==="points" ? "+"+m.points+" points"+(m.gros_panier?" (gros panier)":"") : `Réduction -${m.remise} % utilisée, points remis à 0`}</div>`).join("");
   }catch(e){ $("cHisto").textContent = ""; }
 }
