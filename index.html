@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="8">
+<meta name="app-version" content="9">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -96,6 +96,20 @@
     85%{opacity:1}
     100%{transform:translate(var(--x),-118vh) rotate(var(--r));opacity:0}}
   @media (prefers-reduced-motion:reduce){#fete{display:none}}
+  /* Support */
+  header button{position:relative}
+  .badge{position:absolute;top:-6px;right:-6px;background:#ffd84d;color:#3a2a00;border-radius:99px;min-width:20px;height:20px;padding:0 5px;font-size:12px;font-weight:800;line-height:20px;text-align:center}
+  textarea{width:100%;min-height:110px;font:inherit;font-size:17px;padding:11px 13px;border:2px solid var(--bord);border-radius:12px;background:#fff;color:var(--texte);resize:vertical}
+  textarea:focus{outline:none;border-color:var(--accent)}
+  .msgsup{border-bottom:1px solid var(--bord);padding:10px 0}
+  .msgsup:last-child{border-bottom:0}
+  .msgsup .quand{font-size:13px;color:var(--doux)}
+  .msgsup .texte{white-space:pre-wrap;margin:4px 0;overflow-wrap:anywhere}
+  .msgsup .rep{background:var(--vertclair);color:#1d4d31;border-radius:10px;padding:8px 10px;margin-top:6px;white-space:pre-wrap;font-size:15px;overflow-wrap:anywhere}
+  .msgsup.nonlu{background:var(--orclair);border-radius:10px;padding:10px;margin:4px 0}
+  .msgsup .actions{display:flex;gap:8px;margin-top:6px}
+  .msgsup .actions button{border:0;border-radius:10px;padding:8px 12px;font-size:15px;font-weight:600;cursor:pointer;background:var(--gris);color:var(--texte)}
+  .alerte{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:60;background:#2b2118;color:#fff;border-radius:14px;padding:12px 16px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:92vw;cursor:pointer}
   .logo{text-align:center;margin:20px 0 10px}
   .logo img{width:72px;height:72px}
   .logo h1{font-size:24px;margin:10px 0 0}
@@ -135,7 +149,8 @@
   <h1 id="titreCommerce">Reviens STP</h1>
   <button id="bAccueil" title="Accueil">🏠</button>
   <button id="bListe" title="Mes clients">👥</button>
-  <button id="bGerant" class="cache" title="Espace gérant">📊</button>
+  <button id="bSupport" title="Support">💬<b class="badge cache" id="badgeSupport"></b></button>
+  <button id="bGerant" class="cache" title="Espace gérant">📊<b class="badge cache" id="badgeGerant"></b></button>
   <button id="bReglages" title="Réglages">⚙️</button>
 </header>
 
@@ -237,7 +252,25 @@
   </div>
 </main>
 
+<main id="ecranSupport" class="cache">
+  <div class="carte">
+    <h2>💬 Besoin d'aide ?</h2>
+    <p class="note" style="margin-top:-6px">Un souci avec l'application ? Écrivez-nous ici : le message arrive directement à l'équipe Reviens STP, et la réponse s'affichera juste en dessous.</p>
+    <textarea id="supTexte" maxlength="2000" placeholder="Décrivez le problème : ce que vous faisiez, ce qui s'est affiché…"></textarea>
+    <button class="btn principal" id="bSupEnvoyer">Envoyer</button>
+    <div id="msgSupport"></div>
+  </div>
+  <div class="carte">
+    <h2>Mes messages</h2>
+    <div id="supListe"></div>
+  </div>
+</main>
+
 <main id="ecranGerant" class="cache large">
+  <div class="carte">
+    <h2>🔔 Messages du support <span id="gNonLus"></span></h2>
+    <div id="gSupport"></div>
+  </div>
   <div class="chiffres" id="gChiffres"></div>
   <div class="carte">
     <h2>Les commerces inscrits</h2>
@@ -320,6 +353,15 @@ function apiSupabase(sb){
     async historique(id){ return v(await sb.from("mouvements").select("*").eq("client_id", id).order("le", {ascending:false}).order("id", {ascending:false}).limit(30)); },
     async estAdmin(){ return v(await sb.rpc("est_admin")) === true; },
     async stats(){ return v(await sb.rpc("stats_commerces")); },
+    // Support
+    async supEnvoyer(texte){ v(await sb.from("messages_support").insert({texte})); },
+    async supMesMessages(){ return v(await sb.from("messages_support").select("*").order("cree_le", {ascending:false}).limit(50)); },
+    async supReponsesNonVues(){ const r = await sb.from("messages_support").select("id", {count:"exact", head:true}).eq("reponse_vue", false); if (r.error) throw traduire(r.error); return r.count || 0; },
+    async supMarquerVues(){ v(await sb.from("messages_support").update({reponse_vue:true}).eq("reponse_vue", false)); },
+    async adminSupListe(){ return v(await sb.rpc("support_liste")); },
+    async adminSupNonLus(){ return v(await sb.rpc("support_non_lus")); },
+    async adminSupLu(id){ v(await sb.rpc("support_marquer_lu", {p_id:id})); },
+    async adminSupRepondre(id, texte){ v(await sb.rpc("support_repondre", {p_id:id, p_texte:texte})); },
   };
 }
 
@@ -391,6 +433,15 @@ function apiDemo(){
         {commerce:"Boulangerie (exemple)", email:"exemple1@demo", inscrit_le:j(40), nb_clients:128, nb_accord_sms:74, passages_30j:312, nb_reductions:21, derniere_activite:j(0)},
         {commerce:"Fleuriste (exemple)", email:"exemple2@demo", inscrit_le:j(12), nb_clients:9, nb_accord_sms:3, passages_30j:11, nb_reductions:0, derniere_activite:j(6)}];
     },
+    // Support (démo : les messages arrivent au gérant sur le même appareil)
+    async supEnvoyer(texte){ D.support = D.support || []; D.support.unshift({id:D.suivant++, texte, cree_le:new Date().toISOString(), lu:false, reponse:null, repondu_le:null, reponse_vue:true}); sauver(); },
+    async supMesMessages(){ return copie(D.support || []); },
+    async supReponsesNonVues(){ return (D.support || []).filter(m=>!m.reponse_vue).length; },
+    async supMarquerVues(){ (D.support || []).forEach(m=>m.reponse_vue = true); sauver(); },
+    async adminSupListe(){ return copie(D.support || []).map(m=>({...m, commerce:D.commerce.nom, email:D.email})); },
+    async adminSupNonLus(){ return (D.support || []).filter(m=>!m.lu).length; },
+    async adminSupLu(id){ const m = (D.support||[]).find(m=>m.id===id); if (m){ m.lu = true; sauver(); } },
+    async adminSupRepondre(id, texte){ const m = (D.support||[]).find(m=>m.id===id); if (m){ Object.assign(m, {reponse:texte, repondu_le:new Date().toISOString(), lu:true, reponse_vue:false}); sauver(); } },
   };
   return api;
 }
@@ -404,12 +455,13 @@ function adresseApp(){ return location.origin + location.pathname; }
 let API, SESSION = null, courant = null, enAttente = null, modeInscription = false;
 
 function montrer(ecran){
-  for (const e of ["ecranAccueil","ecranListe","ecranReglages","ecranGerant"]) $(e).classList.toggle("cache", e!==ecran);
+  for (const e of ["ecranAccueil","ecranListe","ecranReglages","ecranGerant","ecranSupport"]) $(e).classList.toggle("cache", e!==ecran);
   window.scrollTo(0,0);
   if (ecran==="ecranListe") afficherListe();
   if (ecran==="ecranReglages") remplirReglages();
   else if (SESSION) appliquerTheme(SESSION.commerce.theme);   // annule un aperçu de thème non enregistré
   if (ecran==="ecranGerant") afficherGerant();
+  if (ecran==="ecranSupport") afficherSupport();
 }
 
 async function demarrer(){
@@ -487,6 +539,8 @@ async function entrer(){
   let admin = false;
   try{ admin = await API.estAdmin(); }catch(e){}
   $("bGerant").classList.toggle("cache", !admin);
+  ADMIN = admin; dernierNonLus = null;
+  verifierNotifs();
   if (!SESSION.commerce.programme_choisi) return montrer("ecranReglages");   // premier passage : choisir son programme
   montrer("ecranAccueil");
   $("tel").focus();
@@ -563,6 +617,7 @@ $("bAccueil").onclick = ()=>montrer("ecranAccueil");
 $("bListe").onclick = ()=>montrer("ecranListe");
 $("bReglages").onclick = ()=>montrer("ecranReglages");
 $("bGerant").onclick = ()=>montrer("ecranGerant");
+$("bSupport").onclick = ()=>montrer("ecranSupport");
 
 // ---------- Accueil : chercher un client ----------
 async function chercher(){
@@ -817,6 +872,7 @@ $("bDeconnexion").onclick = async ()=>{
 
 // ---------- Espace gérant ----------
 async function afficherGerant(){
+  afficherSupportGerant();
   $("gListe").innerHTML = `<tr><td colspan="7" class="note">Chargement…</td></tr>`;
   let s;
   try{ s = await API.stats(); }
@@ -852,6 +908,86 @@ async function verifierMiseAJour(){
 }
 document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState === "visible") verifierMiseAJour(); });
 verifierMiseAJour();
+
+// ---------- Support ----------
+let ADMIN = false, dernierNonLus = null;
+async function afficherSupport(){
+  message("msgSupport","");
+  $("supListe").innerHTML = `<p class="note">Chargement…</p>`;
+  try{
+    const l = await API.supMesMessages();
+    $("supListe").innerHTML = l.map(m=>`<div class="msgsup">
+        <div class="quand">${dateFr(m.cree_le)} · ${m.reponse ? "✅ Répondu" : (m.lu ? "👀 Lu par le support" : "📨 Envoyé")}</div>
+        <div class="texte">${echapper(m.texte)}</div>
+        ${m.reponse ? `<div class="rep"><b>Réponse du support</b> (${dateFr(m.repondu_le)}) :<br>${echapper(m.reponse)}</div>` : ""}
+      </div>`).join("") || `<p class="note">Aucun message pour l'instant.</p>`;
+    if (l.some(m=>!m.reponse_vue)) await API.supMarquerVues();
+    badge("badgeSupport", 0);
+  }catch(e){ $("supListe").innerHTML = `<p class="note">${echapper(e.message)}</p>`; }
+}
+$("bSupEnvoyer").onclick = ()=> occupe($("bSupEnvoyer"), async ()=>{
+  const t = $("supTexte").value.trim();
+  if (!t) return message("msgSupport","Écrivez votre message avant d'envoyer.","err");
+  try{
+    await API.supEnvoyer(t);
+    $("supTexte").value = "";
+    await afficherSupport();
+    message("msgSupport","✓ Message envoyé. Nous vous répondons au plus vite.","ok");
+    verifierNotifs();
+  }catch(e){ message("msgSupport", e.message, "err"); }
+});
+
+async function afficherSupportGerant(){
+  let l;
+  try{ l = await API.adminSupListe(); }
+  catch(e){ $("gSupport").innerHTML = `<p class="note">${echapper(e.message)}</p>`; return; }
+  const nonLus = l.filter(m=>!m.lu).length;
+  $("gNonLus").textContent = nonLus ? `(${nonLus} non lu${nonLus>1?"s":""})` : "";
+  $("gSupport").innerHTML = l.map(m=>`<div class="msgsup ${m.lu?"":"nonlu"}" data-id="${m.id}">
+      <div class="quand"><b>${echapper(m.commerce)}</b> · ${echapper(m.email)} · ${dateFr(m.cree_le)}</div>
+      <div class="texte">${echapper(m.texte)}</div>
+      ${m.reponse ? `<div class="rep"><b>Ta réponse</b> (${dateFr(m.repondu_le)}) :<br>${echapper(m.reponse)}</div>` : ""}
+      <div class="actions">${m.lu ? "" : `<button data-a="lu">✓ Lu</button>`}<button data-a="rep">${m.reponse ? "Modifier la réponse" : "Répondre"}</button></div>
+    </div>`).join("") || `<p class="note">Aucun message reçu.</p>`;
+  for (const b of $("gSupport").querySelectorAll("button")) b.onclick = async ()=>{
+    const id = Number(b.closest(".msgsup").dataset.id);
+    try{
+      if (b.dataset.a === "lu") await API.adminSupLu(id);
+      else {
+        const m = l.find(x=>x.id===id);
+        const t = prompt(`Réponse à ${m.commerce} :`, m.reponse || "");
+        if (t === null || !t.trim()) return;
+        await API.adminSupRepondre(id, t.trim());
+      }
+      await afficherSupportGerant(); verifierNotifs();
+    }catch(e){ alert(e.message); }
+  };
+}
+
+// Compteurs : messages non lus (gérant) et réponses non vues (commerce)
+function badge(id, n){ $(id).textContent = n > 9 ? "9+" : n; $(id).classList.toggle("cache", !n); }
+function alerte(texte, action){
+  const d = document.createElement("div"); d.className = "alerte"; d.textContent = texte;
+  d.onclick = ()=>{ d.remove(); action && action(); };
+  document.body.appendChild(d); setTimeout(()=>d.remove(), 7000);
+}
+async function verifierNotifs(){
+  if (!SESSION || !API) return;
+  try{ badge("badgeSupport", await API.supReponsesNonVues()); }catch(e){}
+  if (!ADMIN) return;
+  try{
+    const n = await API.adminSupNonLus();
+    badge("badgeGerant", n);
+    if (dernierNonLus !== null && n > dernierNonLus){
+      const l = await API.adminSupListe(), m = l.find(x=>!x.lu);
+      alerte(`🔔 Nouveau message${m ? " de " + m.commerce : ""} : touchez pour lire`, ()=>montrer("ecranGerant"));
+      if (!$("ecranGerant").classList.contains("cache")) afficherSupportGerant();
+    }
+    dernierNonLus = n;
+  }catch(e){}
+}
+setInterval(verifierNotifs, 60000);
+document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState === "visible") verifierNotifs(); });
 
 demarrer();
 </script>
