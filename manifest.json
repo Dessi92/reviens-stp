@@ -1,6 +1,6 @@
 {
-  "name": "Carte de fidélité",
-  "short_name": "Fidélité",
+  "name": "Reviens STP",
+  "short_name": "Reviens STP",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#faf6f1",
