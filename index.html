@@ -146,13 +146,15 @@
     <div class="barre"><div id="cBarre" style="width:0%"></div></div>
     <div class="reste" id="cReste"></div>
     <div class="recompense cache" id="cRecompense"></div>
-    <div class="ligne">
+    <button class="btn vert cache" id="bUtiliser">Réduction appliquée → remettre à 0</button>
+    <div class="ligne" id="zoneAjout">
       <button class="btn principal" id="bAjouter">+10 points</button>
       <button class="btn principal cache" id="bAjouterGros">+20 points</button>
     </div>
-    <button class="btn gris" id="bRetirer">Annuler le dernier ajout</button>
-    <button class="btn vert cache" id="bUtiliser">Réduction appliquée → remettre à 0</button>
     <div id="msgClient"></div>
+    <button class="btn vert cache" id="bValider" style="font-size:20px;padding:16px">✓ Valider</button>
+    <button class="btn gris" id="bFermer">Retour à l'accueil sans ajouter de points</button>
+    <p class="note cache" id="zoneErreur" style="text-align:center">Erreur ? <a class="lien" id="bRetirer">Annuler ces points</a></p>
     <div class="histo" id="cHisto"></div>
     <p class="note"><span id="cAccord"></span> · <a class="lien" id="bAccord">modifier</a></p>
     <p class="note"><a class="lien" id="bRenommer">Modifier le nom</a> · <a class="lien" id="bSupprimer">Supprimer ce client</a></p>
@@ -508,7 +510,7 @@ function creer(gros){
       enAttente = null;
       $("blocNouveau").classList.add("cache");
       message("msgAccueil","");
-      await ouvrirClient(c);
+      await ouvrirClient(c, true);
       message("msgClient", `Carte créée, +${c.points} points.`, "ok");
     }catch(e){ message("msgAccueil", e.message, "err"); }
   });
@@ -517,8 +519,15 @@ $("bCreer").onclick = ()=> creer(false);
 $("bCreerGros").onclick = ()=> creer(true);
 $("bAnnulerNouveau").onclick = ()=>{ enAttente=null; $("blocNouveau").classList.add("cache"); message("msgAccueil",""); };
 
-async function ouvrirClient(c){
+// ajoute = true : les points de ce passage sont déjà donnés → plus de boutons de points, seulement « Valider »
+let ajouteCeTour = false;
+async function ouvrirClient(c, ajoute = false){
   courant = c;
+  ajouteCeTour = ajoute;
+  $("zoneAjout").classList.toggle("cache", ajoute);
+  $("bValider").classList.toggle("cache", !ajoute);
+  $("zoneErreur").classList.toggle("cache", !ajoute);
+  $("bFermer").classList.toggle("cache", ajoute);
   const r = SESSION.commerce;
   $("cNom").textContent = c.nom || "Client";
   $("cTel").textContent = joli(c.telephone) + " · " + pluriel(c.visites, "passage") +
@@ -541,7 +550,6 @@ async function ouvrirClient(c){
   $("blocClient").classList.remove("cache");
   try{
     const h = await API.historique(c.id);
-    $("bRetirer").disabled = !h.length || h[0].type !== "points";
     $("cHisto").innerHTML = h.map(m=>`<div>${dateFr(m.le)} — ${m.type==="points" ? "+"+m.points+" points"+(m.gros_panier?" (gros panier)":"") : `Réduction -${m.remise} % utilisée, points remis à 0`}</div>`).join("");
   }catch(e){ $("cHisto").textContent = ""; }
 }
@@ -553,7 +561,7 @@ function ajouter(gros){
     try{
       const avant = courant.points;
       const c = await API.ajouterPoints(courant.id, gros);
-      await ouvrirClient(c);
+      await ouvrirClient(c, true);
       const gagne = c.points - avant;
       message("msgClient", avant < SESSION.commerce.seuil && c.points >= SESSION.commerce.seuil
         ? `+${gagne} points — palier atteint ! 🎉` : `+${gagne} points ajoutés.`, "ok");
@@ -562,29 +570,45 @@ function ajouter(gros){
 }
 $("bAjouter").onclick = ()=> ajouter(false);
 $("bAjouterGros").onclick = ()=> ajouter(true);
-$("bRetirer").onclick = ()=> occupe($("bRetirer"), async ()=>{
-  if (!courant || !confirm("Annuler le dernier ajout de points ?")) return;
-  try{ await ouvrirClient(await API.annulerDernier(courant.id)); message("msgClient","Dernier ajout annulé.","info"); }
+$("bRetirer").onclick = async ()=>{
+  if (!courant || !confirm("Annuler les points de ce passage ?")) return;
+  try{ await ouvrirClient(await API.annulerDernier(courant.id), false); message("msgClient","Points annulés. Choisissez le bon bouton.","info"); }
   catch(e){ message("msgClient", e.message, "err"); }
-});
+};
+// Retour à l'écran d'accueil vide : la fiche du client ne reste pas affichée
+function retourAccueil(texte){
+  courant = null; enAttente = null; ajouteCeTour = false;
+  $("blocClient").classList.add("cache");
+  $("blocNouveau").classList.add("cache");
+  $("tel").value = "";
+  $("cHisto").innerHTML = "";
+  message("msgClient", "");
+  message("msgAccueil", texte || "", "ok");
+  window.scrollTo(0,0);
+  $("tel").focus();
+  clearTimeout(retourAccueil.t);
+  if (texte) retourAccueil.t = setTimeout(()=>message("msgAccueil",""), 4000);
+}
+$("bValider").onclick = ()=> retourAccueil("✓ Passage enregistré");
+$("bFermer").onclick = ()=> retourAccueil("");
 $("bUtiliser").onclick = ()=> occupe($("bUtiliser"), async ()=>{
   if (!courant) return;
   if (!confirm(`Confirmer : la réduction de ${SESSION.commerce.remise} % a été appliquée ? Les points repartent à 0.`)) return;
-  try{ await ouvrirClient(await API.utiliserReduction(courant.id)); message("msgClient","Réduction enregistrée. Points remis à 0.","ok"); }
+  try{ await ouvrirClient(await API.utiliserReduction(courant.id), ajouteCeTour); message("msgClient","Réduction enregistrée. Points remis à 0.","ok"); }
   catch(e){ message("msgClient", e.message, "err"); }
 });
 $("bAccord").onclick = async ()=>{
   if (!courant) return;
   const oui = !courant.accord_sms;
   if (!confirm(oui ? "Le client accepte de recevoir des SMS ?" : "Le client ne veut plus recevoir de SMS ?")) return;
-  try{ await ouvrirClient(await API.majClient(courant.id, {accord_sms:oui, accord_sms_le: oui ? new Date().toISOString() : null})); }
+  try{ await ouvrirClient(await API.majClient(courant.id, {accord_sms:oui, accord_sms_le: oui ? new Date().toISOString() : null}), ajouteCeTour); }
   catch(e){ message("msgClient", e.message, "err"); }
 };
 $("bRenommer").onclick = async ()=>{
   if (!courant) return;
   const nom = prompt("Nom du client :", courant.nom || "");
   if (nom === null) return;
-  try{ await ouvrirClient(await API.majClient(courant.id, {nom:nom.trim()})); }
+  try{ await ouvrirClient(await API.majClient(courant.id, {nom:nom.trim()}), ajouteCeTour); }
   catch(e){ message("msgClient", e.message, "err"); }
 };
 $("bSupprimer").onclick = async ()=>{
