@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="6">
+<meta name="app-version" content="7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -167,7 +167,8 @@
     <div class="barre"><div id="cBarre" style="width:0%"></div></div>
     <div class="reste" id="cReste"></div>
     <div class="recompense cache" id="cRecompense"></div>
-    <button class="btn vert cache" id="bUtiliser">Réduction appliquée → remettre à 0</button>
+    <button class="btn vert cache" id="bUtiliser" style="font-size:20px;padding:16px">✓ Réduction faite · remettre à 0</button>
+    <p class="note cache" id="zoneErreurReduc" style="text-align:center">Erreur ? <a class="lien" id="bAnnulerReduc">Annuler la réduction</a></p>
     <div class="ligne" id="zoneAjout">
       <button class="btn principal" id="bAjouter">+10 points</button>
       <button class="btn principal cache" id="bAjouterGros">+20 points</button>
@@ -358,9 +359,10 @@ function apiDemo(){
       const c = client(id);
       const ms = D.mouvements.filter(m=>m.client_id===id);
       const m = ms[ms.length-1];
-      if (!m || m.type!=="points") throw new Error("Rien à annuler");
+      if (!m) throw new Error("Rien à annuler");
       D.mouvements.splice(D.mouvements.indexOf(m),1);
-      c.points = Math.max(0, c.points - m.points); c.visites = Math.max(0, c.visites-1);
+      if (m.type === "reduction"){ c.points += -m.points; c.recompenses = Math.max(0, c.recompenses-1); }
+      else { c.points = Math.max(0, c.points - m.points); c.visites = Math.max(0, c.visites-1); }
       sauver(); return copie(c);
     },
     async utiliserReduction(id){
@@ -609,6 +611,7 @@ async function ouvrirClient(c, ajoute = false){
   $("bValider").classList.toggle("cache", !ajoute);
   $("zoneErreur").classList.toggle("cache", !ajoute);
   $("bFermer").classList.toggle("cache", ajoute);
+  $("zoneErreurReduc").classList.add("cache");
   const r = SESSION.commerce;
   $("cNom").textContent = c.nom || "Client";
   $("cTel").textContent = joli(c.telephone) + " · " + pluriel(c.visites, "passage") +
@@ -672,11 +675,15 @@ function retourAccueil(texte){
   if (texte) retourAccueil.t = setTimeout(()=>message("msgAccueil",""), 4000);
 }
 $("bValider").onclick = ()=> retourAccueil("✓ Passage enregistré");
+$("bAnnulerReduc").onclick = async ()=>{
+  if (!courant) return;
+  try{ await ouvrirClient(await API.annulerDernier(courant.id), ajouteCeTour); message("msgClient","Réduction annulée, points rendus.","info"); }
+  catch(e){ message("msgClient", e.message, "err"); }
+};
 $("bFermer").onclick = ()=> retourAccueil("");
 $("bUtiliser").onclick = ()=> occupe($("bUtiliser"), async ()=>{
   if (!courant) return;
-  if (!confirm(`Confirmer : la réduction de ${SESSION.commerce.remise} % a été appliquée ? Les points repartent à 0.`)) return;
-  try{ await ouvrirClient(await API.utiliserReduction(courant.id), ajouteCeTour); message("msgClient","Réduction enregistrée. Points remis à 0.","ok"); fete(true); }
+  try{ await ouvrirClient(await API.utiliserReduction(courant.id), ajouteCeTour); message("msgClient","Réduction enregistrée. Points remis à 0.","ok"); $("zoneErreurReduc").classList.remove("cache"); fete(true); }
   catch(e){ message("msgClient", e.message, "err"); }
 });
 $("bAccord").onclick = async ()=>{
