@@ -1,0 +1,12 @@
+{
+  "name": "Carte de fidélité",
+  "short_name": "Fidélité",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#faf6f1",
+  "theme_color": "#9b2c2c",
+  "lang": "fr",
+  "icons": [
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

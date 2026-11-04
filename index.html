@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#9b2c2c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Fidélité">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<title>Carte de fidélité</title>
+<style>
+  :root{
+    --bg:#faf6f1; --carte:#ffffff; --texte:#2b2118; --doux:#7a6a5c;
+    --accent:#9b2c2c; --accent2:#c0392b; --vert:#2e7d4f; --vertclair:#e3f3e9;
+    --bord:#e6dccf; --or:#b7791f; --orclair:#fdf3e1; --gris:#efe7dc;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--texte);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:17px}
+  header{background:var(--accent);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:5}
+  header h1{font-size:19px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  header button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:10px;padding:8px 11px;font-size:15px;cursor:pointer}
+  .demo{background:var(--orclair);color:var(--or);text-align:center;font-size:14px;padding:6px 12px;font-weight:600}
+  main{max-width:640px;margin:0 auto;padding:16px}
+  main.large{max-width:960px}
+  .carte{background:var(--carte);border:1px solid var(--bord);border-radius:16px;padding:16px;margin-bottom:16px}
+  label{display:block;font-weight:600;margin:12px 0 6px}
+  label:first-child{margin-top:0}
+  input[type=tel],input[type=text],input[type=email],input[type=password],input[type=number]{
+    width:100%;font-size:17px;padding:11px 13px;border:2px solid var(--bord);border-radius:12px;background:#fff;color:var(--texte)}
+  input.grand{font-size:22px;padding:12px 14px}
+  input:focus{outline:none;border-color:var(--accent)}
+  .case{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:15px;margin-top:14px;cursor:pointer}
+  .case input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--vert)}
+  .btn{display:block;width:100%;border:0;border-radius:12px;padding:14px;font-size:18px;font-weight:700;cursor:pointer;margin-top:10px}
+  .btn.principal{background:var(--accent);color:#fff}
+  .btn.vert{background:var(--vert);color:#fff}
+  .btn.gris{background:var(--gris);color:var(--texte)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .ligne{display:flex;gap:10px}
+  .ligne > *{flex:1}
+  .nom{font-size:22px;font-weight:700;margin:0}
+  .tel{color:var(--doux);margin:2px 0 12px}
+  .points{font-size:44px;font-weight:800;line-height:1}
+  .points small{font-size:18px;font-weight:600;color:var(--doux)}
+  .barre{height:14px;background:var(--gris);border-radius:99px;overflow:hidden;margin:12px 0 6px}
+  .barre div{height:100%;background:var(--accent2);border-radius:99px;transition:width .3s}
+  .reste{color:var(--doux);font-size:15px}
+  .recompense{background:var(--vertclair);border:2px solid var(--vert);color:var(--vert);border-radius:14px;padding:14px;margin-top:14px;text-align:center;font-weight:700;font-size:19px}
+  .msg{padding:10px 14px;border-radius:10px;margin-top:10px;font-weight:600}
+  .msg.ok{background:var(--vertclair);color:var(--vert)}
+  .msg.info{background:var(--orclair);color:var(--or)}
+  .msg.err{background:#fde8e8;color:var(--accent)}
+  .cache{display:none !important}
+  .tableau{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  td,th{padding:8px 6px;border-bottom:1px solid var(--bord);text-align:left;vertical-align:top}
+  th{color:var(--doux);font-weight:600;font-size:13px}
+  td.n,th.n{text-align:right;white-space:nowrap}
+  tr.clic{cursor:pointer}
+  tr.clic:hover{background:#fbf7f2}
+  .pastille{display:inline-block;background:var(--vert);color:#fff;border-radius:99px;padding:1px 8px;font-size:12px;font-weight:700}
+  .histo{max-height:220px;overflow:auto;font-size:14px;color:var(--doux);margin-top:10px}
+  .histo div{padding:4px 0;border-bottom:1px dashed var(--bord)}
+  h2{font-size:18px;margin:0 0 12px}
+  .note{font-size:13px;color:var(--doux);margin-top:8px;line-height:1.4}
+  a.lien{color:var(--accent);cursor:pointer;text-decoration:underline;font-size:14px}
+  .onglets{display:flex;gap:6px;margin-bottom:14px}
+  .onglets button{flex:1;border:0;border-radius:10px;padding:10px;font-size:16px;font-weight:600;background:var(--gris);color:var(--texte);cursor:pointer}
+  .onglets button.actif{background:var(--accent);color:#fff}
+  .chiffres{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+  .chiffre{background:var(--carte);border:1px solid var(--bord);border-radius:14px;padding:12px 14px}
+  .chiffre b{display:block;font-size:28px}
+  .chiffre span{color:var(--doux);font-size:13px}
+  .grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 10px}
+  .grille label{font-size:15px}
+  .resume{background:var(--orclair);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:15px;line-height:1.45}
+  .btn small{display:block;font-size:13px;font-weight:600;opacity:.85;margin-top:2px}
+  .logo{text-align:center;margin:20px 0 10px}
+  .logo img{width:72px;height:72px}
+  .logo h1{font-size:24px;margin:10px 0 0}
+  .logo p{color:var(--doux);margin:4px 0 0}
+</style>
+</head>
+<body>
+<div class="demo cache" id="bandeauDemo">Mode démonstration : les données restent sur cet appareil</div>
+
+<!-- ============ CONNEXION ============ -->
+<main id="ecranConnexion" class="cache">
+  <div class="logo"><img src="icone.svg" alt=""><h1>Carte de fidélité</h1><p>Le programme de fidélité de votre commerce</p></div>
+  <div class="carte">
+    <div class="onglets">
+      <button id="ongConnexion" class="actif">Se connecter</button>
+      <button id="ongInscription">Créer un compte</button>
+    </div>
+    <div id="champNomCommerce" class="cache">
+      <label for="cxNom">Nom du commerce</label>
+      <input id="cxNom" type="text" placeholder="ex. Terrine" autocomplete="organization">
+    </div>
+    <label for="cxEmail">Adresse e-mail</label>
+    <input id="cxEmail" type="email" autocomplete="username" placeholder="contact@moncommerce.fr">
+    <label for="cxMdp">Mot de passe</label>
+    <input id="cxMdp" type="password" autocomplete="current-password" placeholder="8 caractères minimum">
+    <button class="btn principal" id="bConnexion">Se connecter</button>
+    <p class="note" id="lienOubli"><a class="lien" id="bOubli">Mot de passe oublié ?</a></p>
+    <div id="msgConnexion"></div>
+  </div>
+</main>
+
+<!-- ============ APPLICATION ============ -->
+<div id="app" class="cache">
+<header>
+  <h1 id="titreCommerce">Carte de fidélité</h1>
+  <button id="bAccueil" title="Accueil">🏠</button>
+  <button id="bListe">Clients</button>
+  <button id="bGerant" class="cache">Gérant</button>
+  <button id="bReglages" title="Réglages">⚙️</button>
+</header>
+
+<main id="ecranAccueil">
+  <div class="carte">
+    <label for="tel">Numéro de téléphone du client</label>
+    <input id="tel" class="grand" type="tel" inputmode="numeric" autocomplete="off" placeholder="06 12 34 56 78">
+    <button class="btn principal" id="bChercher">Valider</button>
+    <div id="msgAccueil"></div>
+  </div>
+
+  <div class="carte cache" id="blocNouveau">
+    <h2>Nouveau client</h2>
+    <label for="nomNouveau">Prénom / nom (facultatif)</label>
+    <input id="nomNouveau" type="text" placeholder="ex. Mme Dupont">
+    <label class="case"><input type="checkbox" id="accordNouveau">
+      <span>Le client accepte de recevoir des SMS du commerce (offres, réduction disponible). Il pourra se désinscrire à tout moment.</span></label>
+    <div class="ligne">
+      <button class="btn vert" id="bCreer">Créer la carte</button>
+      <button class="btn vert cache" id="bCreerGros">Créer la carte</button>
+    </div>
+    <button class="btn gris" id="bAnnulerNouveau">Annuler</button>
+  </div>
+
+  <div class="carte cache" id="blocClient">
+    <p class="nom" id="cNom"></p>
+    <p class="tel" id="cTel"></p>
+    <div class="points"><span id="cPoints">0</span> <small>/ <span id="cSeuil">100</span> points</small></div>
+    <div class="barre"><div id="cBarre" style="width:0%"></div></div>
+    <div class="reste" id="cReste"></div>
+    <div class="recompense cache" id="cRecompense"></div>
+    <div class="ligne">
+      <button class="btn principal" id="bAjouter">+10 points</button>
+      <button class="btn principal cache" id="bAjouterGros">+20 points</button>
+    </div>
+    <button class="btn gris" id="bRetirer">Annuler le dernier ajout</button>
+    <button class="btn vert cache" id="bUtiliser">Réduction appliquée → remettre à 0</button>
+    <div id="msgClient"></div>
+    <div class="histo" id="cHisto"></div>
+    <p class="note"><span id="cAccord"></span> · <a class="lien" id="bAccord">modifier</a></p>
+    <p class="note"><a class="lien" id="bRenommer">Modifier le nom</a> · <a class="lien" id="bSupprimer">Supprimer ce client</a></p>
+  </div>
+</main>
+
+<main id="ecranListe" class="cache">
+  <div class="carte">
+    <h2>Mes clients (<span id="nbClients">0</span>)</h2>
+    <input id="filtre" type="text" placeholder="Chercher un nom ou un numéro">
+    <div class="tableau"><table>
+      <thead><tr><th>Client</th><th class="n">Points</th><th class="n">Dernière visite</th></tr></thead>
+      <tbody id="tListe"></tbody>
+    </table></div>
+  </div>
+</main>
+
+<main id="ecranReglages" class="cache">
+  <div class="carte">
+    <h2 id="rTitre">Mon programme de fidélité</h2>
+    <p class="note cache" id="rIntro" style="margin-top:-6px">Vérifiez les réglages proposés et ajustez-les si besoin. Vous pourrez les changer à tout moment dans ⚙️.</p>
+    <div id="rBlocNom">
+      <label for="rNom">Nom du commerce</label>
+      <input id="rNom" type="text">
+    </div>
+    <div class="grille">
+      <div><label for="rPoints">Points par passage</label>
+        <input id="rPoints" type="number" min="1" step="1" inputmode="numeric"></div>
+      <div><label for="rSeuil">Réduction à (points)</label>
+        <input id="rSeuil" type="number" min="1" step="1" inputmode="numeric"></div>
+      <div><label for="rRemise">Réduction (%)</label>
+        <input id="rRemise" type="number" min="1" max="100" step="1" inputmode="numeric"></div>
+    </div>
+    <label class="case"><input type="checkbox" id="rBonusActif">
+      <span><b>Récompenser les gros paniers</b> : plus de points au-delà d'un certain montant</span></label>
+    <div class="grille" id="rBlocBonus">
+      <div><label for="rMontant">À partir de (€)</label>
+        <input id="rMontant" type="number" min="1" step="1" inputmode="decimal"></div>
+      <div><label for="rPointsBonus">Points gagnés</label>
+        <input id="rPointsBonus" type="number" min="1" step="1" inputmode="numeric"></div>
+    </div>
+    <div class="resume" id="rResume"></div>
+    <button class="btn principal" id="bEnregistrer">Enregistrer</button>
+    <div id="msgReglages"></div>
+  </div>
+  <div id="rAutres">
+  <div class="carte">
+    <h2>Mes données</h2>
+    <p class="note" style="margin-top:0">Vos clients sont enregistrés en ligne, dans votre compte. Vous seul y avez accès. Vous pouvez télécharger la liste à tout moment.</p>
+    <button class="btn gris" id="bExporterCsv">Télécharger ma liste de clients (Excel)</button>
+  </div>
+  <div class="carte">
+    <p class="note" style="margin-top:0">Connecté avec <b id="rEmail"></b></p>
+    <button class="btn gris" id="bDeconnexion">Se déconnecter</button>
+  </div>
+  </div>
+</main>
+
+<main id="ecranGerant" class="cache large">
+  <div class="chiffres" id="gChiffres"></div>
+  <div class="carte">
+    <h2>Les commerces inscrits</h2>
+    <div class="tableau"><table>
+      <thead><tr><th>Commerce</th><th class="n">Clients</th><th class="n">Accord SMS</th><th class="n">Passages 30 j</th><th class="n">Réductions</th><th class="n">Dernière activité</th><th class="n">Inscrit le</th></tr></thead>
+      <tbody id="gListe"></tbody>
+    </table></div>
+    <p class="note">Espace gérant : seulement des chiffres. Les numéros et les noms des clients restent visibles par leur commerce uniquement.</p>
+  </div>
+</main>
+</div>
+
+<script src="config.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const CFG = window.CONFIG || {};
+const DEMO = !CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY || new URLSearchParams(location.search).has("demo");
+
+// ---------- Outils ----------
+function normaliser(t){
+  let n = (t||"").replace(/[^\d+]/g,"");
+  if (n.startsWith("+33")) n = "0" + n.slice(3);
+  else if (n.startsWith("0033")) n = "0" + n.slice(4);
+  return n.replace(/\D/g,"");
+}
+const joli = n => n.length===10 ? n.replace(/(\d{2})(?=\d)/g,"$1 ") : n;
+const dateFr = iso => { const d=new Date(iso); return d.toLocaleDateString("fr-FR")+" "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}); };
+const jourFr = iso => iso ? new Date(iso).toLocaleDateString("fr-FR") : "—";
+const echapper = s => String(s ?? "").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pluriel = (n, mot) => n + " " + mot + (n>1 ? "s" : "");
+function message(id, texte, type){ $(id).innerHTML = texte ? `<div class="msg ${type}">${echapper(texte)}</div>` : ""; }
+async function occupe(btn, fn){
+  btn.disabled = true;
+  try{ return await fn(); } finally { btn.disabled = false; }
+}
+
+// ======================================================================
+// Accès aux données : Supabase (vrai) ou démo (sur l'appareil)
+// ======================================================================
+function traduire(err){
+  const m = (err && (err.message || err.error_description)) || String(err);
+  const t = {
+    "Invalid login credentials":"E-mail ou mot de passe incorrect.",
+    "Email not confirmed":"Adresse e-mail pas encore confirmée : cliquez sur le lien reçu par e-mail.",
+    "User already registered":"Un compte existe déjà avec cette adresse.",
+    "Password should be at least 6 characters.":"Mot de passe trop court.",
+    "Failed to fetch":"Pas de connexion internet.",
+  };
+  for (const k in t) if (m.includes(k)) return new Error(t[k]);
+  return new Error(m);
+}
+function v({data, error}){ if (error) throw traduire(error); return data; }
+
+function apiSupabase(sb){
+  return {
+    async session(){
+      const {data:{session}} = await sb.auth.getSession();
+      if (!session) return null;
+      const commerce = v(await sb.from("commerces").select("*").eq("id", session.user.id).maybeSingle());
+      if (!commerce) throw new Error("Commerce introuvable pour ce compte.");
+      return {email: session.user.email, commerce};
+    },
+    async connexion(email, mdp){ v(await sb.auth.signInWithPassword({email, password:mdp})); },
+    async inscription(email, mdp, nom){
+      const d = v(await sb.auth.signUp({email, password:mdp, options:{data:{nom_commerce:nom}, emailRedirectTo: adresseApp()}}));
+      return {aConfirmer: !d.session};
+    },
+    async oubli(email){ v(await sb.auth.resetPasswordForEmail(email, {redirectTo: adresseApp()})); },
+    async nouveauMdp(mdp){ v(await sb.auth.updateUser({password:mdp})); },
+    async deconnexion(){ await sb.auth.signOut(); },
+    async majCommerce(id, champs){ return v(await sb.from("commerces").update(champs).eq("id", id).select().single()); },
+    async trouverClient(tel){ return v(await sb.from("clients").select("*").eq("telephone", tel).maybeSingle()); },
+    async creerClient(tel, nom, accord, gros){ return v(await sb.rpc("creer_client", {p_tel:tel, p_nom:nom, p_accord:accord, p_gros:!!gros})); },
+    async ajouterPoints(id, gros){ return v(await sb.rpc("ajouter_points", {p_client:id, p_gros:!!gros})); },
+    async annulerDernier(id){ return v(await sb.rpc("annuler_dernier", {p_client:id})); },
+    async utiliserReduction(id){ return v(await sb.rpc("utiliser_reduction", {p_client:id})); },
+    async majClient(id, champs){ return v(await sb.from("clients").update(champs).eq("id", id).select().single()); },
+    async supprimerClient(id){ v(await sb.from("clients").delete().eq("id", id)); },
+    async liste(){ return v(await sb.from("clients").select("*").order("derniere_visite", {ascending:false, nullsFirst:false}).limit(5000)); },
+    async historique(id){ return v(await sb.from("mouvements").select("*").eq("client_id", id).order("le", {ascending:false}).order("id", {ascending:false}).limit(30)); },
+    async estAdmin(){ return v(await sb.rpc("est_admin")) === true; },
+    async stats(){ return v(await sb.rpc("stats_commerces")); },
+  };
+}
+
+function apiDemo(){
+  const CLE = "fidelite_demo_v1";
+  let D;
+  try{ D = JSON.parse(localStorage.getItem(CLE)); }catch(e){}
+  if (!D || !D.commerce) D = {connecte:false, email:"", commerce:{id:"demo", nom:"Terrine", points_par_passage:10, seuil:100, remise:10, montant_bonus:null, points_bonus:null, programme_choisi:false, cree_le:new Date().toISOString()}, clients:[], mouvements:[], suivant:1};
+  const sauver = ()=>{ try{ localStorage.setItem(CLE, JSON.stringify(D)); }catch(e){} };
+  const client = id => { const c = D.clients.find(c=>c.id===id); if (!c) throw new Error("Client introuvable"); return c; };
+  const copie = o => JSON.parse(JSON.stringify(o));
+  const api = {
+    async session(){ return D.connecte ? {email:D.email, commerce:copie(D.commerce)} : null; },
+    async connexion(email){ D.connecte = true; D.email = email; sauver(); },
+    async inscription(email, mdp, nom){ D.connecte = true; D.email = email; if (nom) D.commerce.nom = nom; sauver(); return {aConfirmer:false}; },
+    async oubli(){ },
+    async nouveauMdp(){ },
+    async deconnexion(){ D.connecte = false; sauver(); },
+    async majCommerce(id, champs){ Object.assign(D.commerce, champs); sauver(); return copie(D.commerce); },
+    async trouverClient(tel){ const c = D.clients.find(c=>c.telephone===tel); return c ? copie(c) : null; },
+    async creerClient(tel, nom, accord, gros){
+      if (D.clients.some(c=>c.telephone===tel)) throw new Error("Ce numéro a déjà une carte");
+      const now = new Date().toISOString(), id = D.suivant++;
+      D.clients.push({id, telephone:tel, nom:(nom||"").trim(), points:0, visites:0, recompenses:0,
+        accord_sms:!!accord, accord_sms_le: accord ? now : null, cree_le:now, derniere_visite:null});
+      return api.ajouterPoints(id, gros);
+    },
+    async ajouterPoints(id, gros){
+      const c = client(id), now = new Date().toISOString();
+      gros = !!gros && D.commerce.points_bonus != null;
+      const p = gros ? D.commerce.points_bonus : D.commerce.points_par_passage;
+      c.points += p; c.visites++; c.derniere_visite = now;
+      D.mouvements.push({id:D.suivant++, client_id:id, type:"points", points:p, gros_panier:gros, le:now});
+      sauver(); return copie(c);
+    },
+    async annulerDernier(id){
+      const c = client(id);
+      const ms = D.mouvements.filter(m=>m.client_id===id);
+      const m = ms[ms.length-1];
+      if (!m || m.type!=="points") throw new Error("Rien à annuler");
+      D.mouvements.splice(D.mouvements.indexOf(m),1);
+      c.points = Math.max(0, c.points - m.points); c.visites = Math.max(0, c.visites-1);
+      sauver(); return copie(c);
+    },
+    async utiliserReduction(id){
+      const c = client(id);
+      if (c.points < D.commerce.seuil) throw new Error("Pas encore assez de points");
+      D.mouvements.push({id:D.suivant++, client_id:id, type:"reduction", points:-c.points, remise:D.commerce.remise, le:new Date().toISOString()});
+      c.points = 0; c.recompenses++;
+      sauver(); return copie(c);
+    },
+    async majClient(id, champs){ Object.assign(client(id), champs); sauver(); return copie(client(id)); },
+    async supprimerClient(id){ D.clients = D.clients.filter(c=>c.id!==id); D.mouvements = D.mouvements.filter(m=>m.client_id!==id); sauver(); },
+    async liste(){ return copie(D.clients).sort((a,b)=>(b.derniere_visite||"").localeCompare(a.derniere_visite||"")); },
+    async historique(id){ return copie(D.mouvements.filter(m=>m.client_id===id)).reverse().slice(0,30); },
+    async estAdmin(){ return true; },
+    async stats(){
+      const il30 = Date.now() - 30*864e5;
+      const moi = {commerce:D.commerce.nom, email:D.email, inscrit_le:D.commerce.cree_le,
+        nb_clients:D.clients.length, nb_accord_sms:D.clients.filter(c=>c.accord_sms).length,
+        passages_30j:D.mouvements.filter(m=>m.type==="points" && new Date(m.le)>il30).length,
+        nb_reductions:D.mouvements.filter(m=>m.type==="reduction").length,
+        derniere_activite:D.mouvements.length ? D.mouvements[D.mouvements.length-1].le : null};
+      const j = n => new Date(Date.now()-n*864e5).toISOString();
+      return [moi,
+        {commerce:"Boulangerie (exemple)", email:"exemple1@demo", inscrit_le:j(40), nb_clients:128, nb_accord_sms:74, passages_30j:312, nb_reductions:21, derniere_activite:j(0)},
+        {commerce:"Fleuriste (exemple)", email:"exemple2@demo", inscrit_le:j(12), nb_clients:9, nb_accord_sms:3, passages_30j:11, nb_reductions:0, derniere_activite:j(6)}];
+    },
+  };
+  return api;
+}
+
+function adresseApp(){ return location.origin + location.pathname; }
+
+// ======================================================================
+// Interface
+// ======================================================================
+let API, SESSION = null, courant = null, enAttente = null, modeInscription = false;
+
+function montrer(ecran){
+  for (const e of ["ecranAccueil","ecranListe","ecranReglages","ecranGerant"]) $(e).classList.toggle("cache", e!==ecran);
+  window.scrollTo(0,0);
+  if (ecran==="ecranListe") afficherListe();
+  if (ecran==="ecranReglages") remplirReglages();
+  if (ecran==="ecranGerant") afficherGerant();
+}
+
+async function demarrer(){
+  if (DEMO){
+    $("bandeauDemo").classList.remove("cache");
+    API = apiDemo();
+  } else {
+    await chargerScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js");
+    const sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+    API = apiSupabase(sb);
+    sb.auth.onAuthStateChange(async (evt)=>{
+      if (evt === "PASSWORD_RECOVERY"){
+        const mdp = prompt("Choisissez votre nouveau mot de passe (8 caractères minimum) :");
+        if (mdp && mdp.length >= 8){
+          try{ await API.nouveauMdp(mdp); alert("Mot de passe modifié."); }
+          catch(e){ alert(e.message); }
+        }
+      }
+    });
+  }
+  try{ SESSION = await API.session(); }
+  catch(e){ SESSION = null; message("msgConnexion", e.message, "err"); }
+  SESSION ? entrer() : afficherConnexion();
+}
+function chargerScript(src){
+  return new Promise((ok, ko)=>{ const s=document.createElement("script"); s.src=src; s.onload=ok; s.onerror=()=>ko(new Error("Impossible de charger la page (connexion internet ?)")); document.head.appendChild(s); });
+}
+
+// ---------- Connexion ----------
+function afficherConnexion(){
+  $("app").classList.add("cache");
+  $("ecranConnexion").classList.remove("cache");
+  ongletConnexion(false);
+}
+function ongletConnexion(inscr){
+  modeInscription = inscr;
+  $("ongConnexion").classList.toggle("actif", !inscr);
+  $("ongInscription").classList.toggle("actif", inscr);
+  $("champNomCommerce").classList.toggle("cache", !inscr);
+  $("lienOubli").classList.toggle("cache", inscr);
+  $("bConnexion").textContent = inscr ? "Créer mon compte" : "Se connecter";
+  $("cxMdp").autocomplete = inscr ? "new-password" : "current-password";
+}
+$("ongConnexion").onclick = ()=>{ ongletConnexion(false); message("msgConnexion",""); };
+$("ongInscription").onclick = ()=>{ ongletConnexion(true); message("msgConnexion",""); };
+$("bConnexion").onclick = ()=> occupe($("bConnexion"), async ()=>{
+  const email = $("cxEmail").value.trim(), mdp = $("cxMdp").value, nom = $("cxNom").value.trim();
+  if (!/^\S+@\S+\.\S+$/.test(email)) return message("msgConnexion","Adresse e-mail invalide.","err");
+  if (mdp.length < 8) return message("msgConnexion","Mot de passe : 8 caractères minimum.","err");
+  if (modeInscription && !nom) return message("msgConnexion","Indiquez le nom du commerce.","err");
+  try{
+    if (modeInscription){
+      const r = await API.inscription(email, mdp, nom);
+      if (r.aConfirmer){ ongletConnexion(false); return message("msgConnexion","Compte créé ! Un e-mail de confirmation vient d'être envoyé : cliquez sur le lien, puis connectez-vous.","ok"); }
+    } else {
+      await API.connexion(email, mdp);
+    }
+    SESSION = await API.session();
+    $("cxMdp").value = "";
+    entrer();
+  }catch(e){ message("msgConnexion", e.message, "err"); }
+});
+$("cxMdp").addEventListener("keydown", e=>{ if (e.key==="Enter") $("bConnexion").click(); });
+$("bOubli").onclick = async ()=>{
+  const email = $("cxEmail").value.trim();
+  if (!/^\S+@\S+\.\S+$/.test(email)) return message("msgConnexion","Écrivez d'abord votre adresse e-mail ci-dessus.","info");
+  try{ await API.oubli(email); message("msgConnexion","Si un compte existe, un e-mail pour changer le mot de passe vient d'être envoyé.","ok"); }
+  catch(e){ message("msgConnexion", e.message, "err"); }
+};
+
+async function entrer(){
+  $("ecranConnexion").classList.add("cache");
+  $("app").classList.remove("cache");
+  $("titreCommerce").textContent = SESSION.commerce.nom;
+  let admin = false;
+  try{ admin = await API.estAdmin(); }catch(e){}
+  $("bGerant").classList.toggle("cache", !admin);
+  if (!SESSION.commerce.programme_choisi) return montrer("ecranReglages");   // premier passage : choisir son programme
+  montrer("ecranAccueil");
+  $("tel").focus();
+}
+
+// Textes des boutons de points, selon le programme du commerce
+const aBonus = () => SESSION.commerce.points_bonus != null && SESSION.commerce.montant_bonus != null;
+const euros = m => Number(m).toLocaleString("fr-FR", {maximumFractionDigits:2}) + " €";
+function boutonsPoints(normal, gros, prefixe){
+  const c = SESSION.commerce;
+  normal.innerHTML = aBonus() ? `${prefixe}+${c.points_par_passage} points<small>panier normal</small>` : `${prefixe}+${c.points_par_passage} points`;
+  gros.classList.toggle("cache", !aBonus());
+  if (aBonus()) gros.innerHTML = `${prefixe}+${c.points_bonus} points<small>panier dès ${euros(c.montant_bonus)}</small>`;
+}
+
+// ---------- Navigation ----------
+$("bAccueil").onclick = ()=>montrer("ecranAccueil");
+$("bListe").onclick = ()=>montrer("ecranListe");
+$("bReglages").onclick = ()=>montrer("ecranReglages");
+$("bGerant").onclick = ()=>montrer("ecranGerant");
+
+// ---------- Accueil : chercher un client ----------
+async function chercher(){
+  const n = normaliser($("tel").value);
+  $("blocClient").classList.add("cache");
+  $("blocNouveau").classList.add("cache");
+  message("msgClient","");
+  if (n.length < 6 || n.length > 15) return message("msgAccueil","Numéro invalide.","err");
+  message("msgAccueil","");
+  try{
+    const c = await API.trouverClient(n);
+    if (c) return ouvrirClient(c);
+    enAttente = n;
+    $("nomNouveau").value = ""; $("accordNouveau").checked = false;
+    boutonsPoints($("bCreer"), $("bCreerGros"), aBonus() ? "" : "Créer la carte · ");
+    $("blocNouveau").classList.remove("cache");
+    message("msgAccueil", `Aucune carte pour le ${joli(n)}.`, "info");
+    $("nomNouveau").focus();
+  }catch(e){ message("msgAccueil", e.message, "err"); }
+}
+$("bChercher").onclick = ()=> occupe($("bChercher"), chercher);
+$("tel").addEventListener("keydown", e=>{ if (e.key==="Enter") $("bChercher").click(); });
+
+function creer(gros){
+  const btn = gros ? $("bCreerGros") : $("bCreer");
+  return occupe(btn, async ()=>{
+    if (!enAttente) return;
+    try{
+      const c = await API.creerClient(enAttente, $("nomNouveau").value, $("accordNouveau").checked, gros);
+      enAttente = null;
+      $("blocNouveau").classList.add("cache");
+      message("msgAccueil","");
+      await ouvrirClient(c);
+      message("msgClient", `Carte créée, +${c.points} points.`, "ok");
+    }catch(e){ message("msgAccueil", e.message, "err"); }
+  });
+}
+$("bCreer").onclick = ()=> creer(false);
+$("bCreerGros").onclick = ()=> creer(true);
+$("bAnnulerNouveau").onclick = ()=>{ enAttente=null; $("blocNouveau").classList.add("cache"); message("msgAccueil",""); };
+
+async function ouvrirClient(c){
+  courant = c;
+  const r = SESSION.commerce;
+  $("cNom").textContent = c.nom || "Client";
+  $("cTel").textContent = joli(c.telephone) + " · " + pluriel(c.visites, "passage") +
+    (c.recompenses ? " · " + pluriel(c.recompenses, "réduction") + " utilisée" + (c.recompenses>1?"s":"") : "");
+  $("cPoints").textContent = c.points;
+  $("cSeuil").textContent = r.seuil;
+  $("cBarre").style.width = Math.min(100, c.points / r.seuil * 100) + "%";
+  boutonsPoints($("bAjouter"), $("bAjouterGros"), "");
+  const atteint = c.points >= r.seuil;
+  $("cRecompense").classList.toggle("cache", !atteint);
+  $("bUtiliser").classList.toggle("cache", !atteint);
+  if (atteint){
+    $("cRecompense").textContent = `🎉 Réduction de ${r.remise} % à appliquer sur cet achat`;
+    $("cReste").textContent = "";
+  } else {
+    const reste = r.seuil - c.points, passages = Math.ceil(reste / r.points_par_passage);
+    $("cReste").textContent = `Encore ${reste} points (${pluriel(passages,"passage")}) pour -${r.remise} %`;
+  }
+  $("cAccord").textContent = c.accord_sms ? `✅ Accepte les SMS (depuis le ${jourFr(c.accord_sms_le)})` : "❌ N'a pas accepté les SMS";
+  $("blocClient").classList.remove("cache");
+  try{
+    const h = await API.historique(c.id);
+    $("bRetirer").disabled = !h.length || h[0].type !== "points";
+    $("cHisto").innerHTML = h.map(m=>`<div>${dateFr(m.le)} — ${m.type==="points" ? "+"+m.points+" points"+(m.gros_panier?" (gros panier)":"") : `Réduction -${m.remise} % utilisée, points remis à 0`}</div>`).join("");
+  }catch(e){ $("cHisto").textContent = ""; }
+}
+
+function ajouter(gros){
+  const btn = gros ? $("bAjouterGros") : $("bAjouter");
+  return occupe(btn, async ()=>{
+    if (!courant) return;
+    try{
+      const avant = courant.points;
+      const c = await API.ajouterPoints(courant.id, gros);
+      await ouvrirClient(c);
+      const gagne = c.points - avant;
+      message("msgClient", avant < SESSION.commerce.seuil && c.points >= SESSION.commerce.seuil
+        ? `+${gagne} points — palier atteint ! 🎉` : `+${gagne} points ajoutés.`, "ok");
+    }catch(e){ message("msgClient", e.message, "err"); }
+  });
+}
+$("bAjouter").onclick = ()=> ajouter(false);
+$("bAjouterGros").onclick = ()=> ajouter(true);
+$("bRetirer").onclick = ()=> occupe($("bRetirer"), async ()=>{
+  if (!courant || !confirm("Annuler le dernier ajout de points ?")) return;
+  try{ await ouvrirClient(await API.annulerDernier(courant.id)); message("msgClient","Dernier ajout annulé.","info"); }
+  catch(e){ message("msgClient", e.message, "err"); }
+});
+$("bUtiliser").onclick = ()=> occupe($("bUtiliser"), async ()=>{
+  if (!courant) return;
+  if (!confirm(`Confirmer : la réduction de ${SESSION.commerce.remise} % a été appliquée ? Les points repartent à 0.`)) return;
+  try{ await ouvrirClient(await API.utiliserReduction(courant.id)); message("msgClient","Réduction enregistrée. Points remis à 0.","ok"); }
+  catch(e){ message("msgClient", e.message, "err"); }
+});
+$("bAccord").onclick = async ()=>{
+  if (!courant) return;
+  const oui = !courant.accord_sms;
+  if (!confirm(oui ? "Le client accepte de recevoir des SMS ?" : "Le client ne veut plus recevoir de SMS ?")) return;
+  try{ await ouvrirClient(await API.majClient(courant.id, {accord_sms:oui, accord_sms_le: oui ? new Date().toISOString() : null})); }
+  catch(e){ message("msgClient", e.message, "err"); }
+};
+$("bRenommer").onclick = async ()=>{
+  if (!courant) return;
+  const nom = prompt("Nom du client :", courant.nom || "");
+  if (nom === null) return;
+  try{ await ouvrirClient(await API.majClient(courant.id, {nom:nom.trim()})); }
+  catch(e){ message("msgClient", e.message, "err"); }
+};
+$("bSupprimer").onclick = async ()=>{
+  if (!courant || !confirm(`Supprimer définitivement la carte du ${joli(courant.telephone)} ?`)) return;
+  try{
+    await API.supprimerClient(courant.id);
+    courant = null; $("blocClient").classList.add("cache"); $("tel").value = "";
+    message("msgAccueil","Client supprimé.","info");
+  }catch(e){ message("msgClient", e.message, "err"); }
+};
+
+// ---------- Liste des clients ----------
+let LISTE = [];
+async function afficherListe(){
+  $("tListe").innerHTML = `<tr><td colspan="3" class="note">Chargement…</td></tr>`;
+  try{ LISTE = await API.liste(); }
+  catch(e){ $("tListe").innerHTML = `<tr><td colspan="3">${echapper(e.message)}</td></tr>`; return; }
+  filtrerListe();
+}
+function filtrerListe(){
+  const f = $("filtre").value.trim().toLowerCase(), fn = normaliser(f);
+  const lignes = LISTE.filter(c => !f || (c.nom||"").toLowerCase().includes(f) || (fn && c.telephone.includes(fn)));
+  $("nbClients").textContent = LISTE.length;
+  $("tListe").innerHTML = lignes.map(c=>`<tr class="clic" data-id="${c.id}">
+      <td><b>${echapper(c.nom||"Client")}</b><br><span style="color:var(--doux)">${joli(c.telephone)}</span></td>
+      <td class="n">${c.points}${c.points>=SESSION.commerce.seuil?'<br><span class="pastille">réduction</span>':''}</td>
+      <td class="n">${jourFr(c.derniere_visite)}</td></tr>`).join("")
+    || `<tr><td colspan="3" class="note">Aucun client.</td></tr>`;
+  for (const tr of $("tListe").querySelectorAll("tr.clic")) tr.onclick = ()=>{
+    const c = LISTE.find(x=>x.id==tr.dataset.id);
+    montrer("ecranAccueil");
+    $("tel").value = joli(c.telephone);
+    $("blocNouveau").classList.add("cache"); message("msgAccueil",""); message("msgClient","");
+    ouvrirClient(c);
+  };
+}
+$("filtre").oninput = filtrerListe;
+
+// ---------- Réglages ----------
+function remplirReglages(){
+  const c = SESSION.commerce, premier = !c.programme_choisi;
+  $("rTitre").textContent = premier ? "Votre programme en 30 secondes" : "Mon programme de fidélité";
+  $("rIntro").classList.toggle("cache", !premier);
+  $("rBlocNom").classList.toggle("cache", premier);
+  $("rAutres").classList.toggle("cache", premier);
+  $("bEnregistrer").textContent = premier ? "C'est parti !" : "Enregistrer";
+  $("rNom").value = c.nom; $("rPoints").value = c.points_par_passage; $("rSeuil").value = c.seuil; $("rRemise").value = c.remise;
+  // Au premier passage, on propose le bonus gros panier (70 € → double de points) déjà coché
+  const bonus = premier || c.points_bonus != null;
+  $("rBonusActif").checked = bonus;
+  $("rMontant").value = c.montant_bonus ?? 70;
+  $("rPointsBonus").value = c.points_bonus ?? c.points_par_passage * 2;
+  $("rEmail").textContent = SESSION.email;
+  message("msgReglages","");
+  majResume();
+}
+function lireReglages(){
+  const n = id => Number(String($(id).value).replace(",", "."));
+  return {p:n("rPoints"), s:n("rSeuil"), r:n("rRemise"), bonus:$("rBonusActif").checked, m:n("rMontant"), pb:n("rPointsBonus")};
+}
+function majResume(){
+  const x = lireReglages();
+  $("rBlocBonus").classList.toggle("cache", !x.bonus);
+  const ok = Number.isInteger(x.p) && x.p>0 && Number.isInteger(x.s) && x.s>0 && Number.isInteger(x.r) && x.r>0 && x.r<=100;
+  const okBonus = !x.bonus || (x.m>0 && Number.isInteger(x.pb) && x.pb>0);
+  if (!ok || !okBonus){ $("rResume").textContent = "Complétez les cases ci-dessus (nombres entiers)."; return; }
+  const np = Math.ceil(x.s / x.p), ng = x.bonus ? Math.ceil(x.s / x.pb) : 0;
+  $("rResume").innerHTML = `Vos clients gagnent <b>${x.p} points</b> par passage` +
+    (x.bonus ? `, et <b>${x.pb} points</b> dès <b>${euros(x.m)}</b> d'achat` : "") +
+    `.<br>À <b>${x.s} points</b>, ils ont <b>-${x.r} %</b> sur leur achat suivant : ` +
+    pluriel(np, "passage") + (x.bonus && ng !== np ? `, ou ${ng} gros panier${ng>1?"s":""}` : "") + ".";
+}
+for (const id of ["rPoints","rSeuil","rRemise","rMontant","rPointsBonus"]) $(id).addEventListener("input", majResume);
+$("rBonusActif").addEventListener("change", majResume);
+
+$("bEnregistrer").onclick = ()=> occupe($("bEnregistrer"), async ()=>{
+  const nom = $("rNom").value.trim() || SESSION.commerce.nom, x = lireReglages();
+  const entier = v => Number.isInteger(v) && v > 0;
+  if (!entier(x.p) || !entier(x.s) || !entier(x.r) || x.r > 100) return message("msgReglages","Vérifiez les points et le pourcentage (nombres entiers, réduction entre 1 et 100 %).","err");
+  if (x.bonus && !(x.m > 0 && entier(x.pb))) return message("msgReglages","Indiquez le montant et les points du gros panier.","err");
+  if (x.bonus && x.pb <= x.p) return message("msgReglages","Le gros panier doit rapporter plus de points qu'un passage normal.","err");
+  const premier = !SESSION.commerce.programme_choisi;
+  try{
+    SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {
+      nom, points_par_passage:x.p, seuil:x.s, remise:x.r,
+      montant_bonus: x.bonus ? x.m : null, points_bonus: x.bonus ? x.pb : null, programme_choisi:true});
+    $("titreCommerce").textContent = SESSION.commerce.nom;
+    if (premier){ montrer("ecranAccueil"); message("msgAccueil","Votre programme est prêt ! Tapez le numéro d'un client pour commencer.","ok"); $("tel").focus(); return; }
+    message("msgReglages","Réglages enregistrés.","ok");
+  }catch(e){ message("msgReglages", e.message, "err"); }
+});
+$("bExporterCsv").onclick = ()=> occupe($("bExporterCsv"), async ()=>{
+  const l = [["Telephone","Nom","Points","Passages","Reductions utilisees","Accord SMS","Derniere visite","Client depuis"]];
+  for (const c of await API.liste())
+    l.push([c.telephone, c.nom, c.points, c.visites, c.recompenses, c.accord_sms?"oui":"non", jourFr(c.derniere_visite), jourFr(c.cree_le)]);
+  const csv = "﻿" + l.map(r=>r.map(x=>`"${String(x??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download = `clients_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+});
+$("bDeconnexion").onclick = async ()=>{
+  await API.deconnexion(); SESSION = null; courant = null;
+  $("tel").value = ""; $("blocClient").classList.add("cache");
+  afficherConnexion();
+};
+
+// ---------- Espace gérant ----------
+async function afficherGerant(){
+  $("gListe").innerHTML = `<tr><td colspan="7" class="note">Chargement…</td></tr>`;
+  let s;
+  try{ s = await API.stats(); }
+  catch(e){ $("gListe").innerHTML = `<tr><td colspan="7">${echapper(e.message)}</td></tr>`; return; }
+  const somme = k => s.reduce((t,x)=>t+Number(x[k]||0),0);
+  const actifs = s.filter(x=>x.derniere_activite && Date.now()-new Date(x.derniere_activite) < 30*864e5).length;
+  $("gChiffres").innerHTML = [
+    [s.length, "commerces inscrits"], [actifs, "actifs ces 30 jours"],
+    [somme("nb_clients"), "clients au total"], [somme("passages_30j"), "passages ces 30 jours"],
+  ].map(([n,t])=>`<div class="chiffre"><b>${n}</b><span>${t}</span></div>`).join("");
+  $("gListe").innerHTML = s.map(x=>`<tr>
+      <td><b>${echapper(x.commerce)}</b><br><span class="note">${echapper(x.email)}</span></td>
+      <td class="n">${x.nb_clients}</td><td class="n">${x.nb_accord_sms}</td><td class="n">${x.passages_30j}</td>
+      <td class="n">${x.nb_reductions}</td><td class="n">${jourFr(x.derniere_activite)}</td><td class="n">${jourFr(x.inscrit_le)}</td></tr>`).join("")
+    || `<tr><td colspan="7" class="note">Aucun commerce inscrit pour l'instant.</td></tr>`;
+}
+
+demarrer();
+</script>
+</body>
+</html>
