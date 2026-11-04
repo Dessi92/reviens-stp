@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
+<meta name="app-version" content="5">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -734,6 +735,25 @@ async function afficherGerant(){
       <td class="n">${x.nb_reductions}</td><td class="n">${jourFr(x.derniere_activite)}</td><td class="n">${jourFr(x.inscrit_le)}</td></tr>`).join("")
     || `<tr><td colspan="7" class="note">Aucun commerce inscrit pour l'instant.</td></tr>`;
 }
+
+// ---------- Mise à jour automatique ----------
+// Le téléphone garde l'ancienne page jusqu'à 10 min : à chaque ouverture, on compare avec la version en ligne.
+// Jamais pendant un passage en caisse (fiche ouverte ou nouveau client en cours).
+const VERSION = document.querySelector('meta[name="app-version"]').content;
+async function verifierMiseAJour(){
+  try{
+    const r = await fetch(location.pathname + "?verif=" + Date.now(), {cache:"no-store"});
+    const m = (await r.text()).match(/name="app-version" content="([^"]+)"/);
+    if (!m || m[1] === VERSION || courant || enAttente) return;
+    let deja = null; try{ deja = sessionStorage.getItem("maj_essayee"); }catch(e){}
+    if (deja === m[1]) return;                      // une seule tentative par version (évite une boucle)
+    try{ sessionStorage.setItem("maj_essayee", m[1]); }catch(e){}
+    const p = new URLSearchParams(location.search); p.set("v", m[1]);
+    location.replace(location.pathname + "?" + p.toString());
+  }catch(e){}
+}
+document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState === "visible") verifierMiseAJour(); });
+verifierMiseAJour();
 
 demarrer();
 </script>
