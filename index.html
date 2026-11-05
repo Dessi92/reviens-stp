@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="13">
+<meta name="app-version" content="16">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -83,6 +83,10 @@
   .chiffre span{color:var(--doux);font-size:13px}
   .grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 10px}
   .grille label{font-size:15px}
+  .etapeTitre{font-size:16px;margin:20px 0 6px}
+  .etape{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--bord);border-radius:14px;padding:12px;margin:8px 0;line-height:2.1;font-size:16px}
+  .etape .num{flex:none;width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1;margin-top:4px}
+  input.inline{display:inline-block;width:84px;padding:6px 8px;font-size:18px;font-weight:700;text-align:center;margin:0 2px;vertical-align:baseline}
   .resume{background:var(--orclair);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:15px;line-height:1.45}
   .btn small{display:block;font-size:13px;font-weight:600;opacity:.85;margin-top:2px}
   /* Thèmes par commerce */
@@ -137,6 +141,34 @@
     background-image:linear-gradient(90deg, var(--vichy) 50%, transparent 50%), linear-gradient(var(--vichy) 50%, transparent 50%);
     background-size:32px 32px}
   body.vichy #deco{display:none}
+  /* Roue de la fortune */
+  .fond{position:fixed;inset:0;background:rgba(20,14,8,.6);z-index:55;display:flex;align-items:center;justify-content:center;padding:12px}
+  .boite{background:var(--carte);border-radius:20px;padding:18px;width:min(96vw,500px);max-height:96vh;overflow:auto;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+  .boite h2{font-family:var(--police);font-size:26px;color:var(--accent);margin:0 0 4px}
+  .roueZone{position:relative;width:min(84vw,380px);aspect-ratio:1;margin:12px auto 6px}
+  .roueZone canvas{width:100%;height:100%;border-radius:50%;box-shadow:0 4px 18px rgba(0,0,0,.25);transition:transform 4.6s cubic-bezier(.15,.7,.1,1)}
+  .roueFleche{position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-top:34px solid var(--accent);z-index:3;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
+  .roueCentre{position:absolute;left:50%;top:50%;width:18%;height:18%;transform:translate(-50%,-50%);border-radius:50%;background:var(--carte);border:4px solid var(--accent);z-index:2}
+  .roueResultat{font-family:var(--police);font-size:28px;font-weight:800;color:var(--accent);margin:10px 0 2px}
+  .lot{border:1px solid var(--bord);border-left:10px solid var(--c,#ccc);border-radius:12px;padding:8px;margin:8px 0;background:#fff}
+  .lot .lotLigne{display:grid;grid-template-columns:1.4fr .9fr .8fr auto;gap:6px;align-items:center;margin-top:6px}
+  .lot .lotLigne span{font-size:12px;color:var(--doux)}
+  .lot .pct{display:flex;align-items:center;gap:4px}
+  .lotsTete{font-size:12px;font-weight:700;color:var(--doux);padding:0 8px 0 18px;text-transform:uppercase;letter-spacing:.04em}
+  .lotsTete .lotLigne{display:grid;grid-template-columns:1.4fr .9fr .8fr auto;gap:6px;margin-top:2px}
+  .lotsTete .lotLigne span:last-child{width:34px}
+  .lot .pct b{font-size:15px;color:var(--texte)}
+  .apercu{width:min(70vw,240px);aspect-ratio:1;margin:10px auto 4px;display:block;border-radius:50%}
+  .lot select,.lot input{width:100%;font-size:15px;padding:8px;border:2px solid var(--bord);border-radius:10px;background:#fff;color:var(--texte)}
+  .lot button{border:0;background:var(--gris);border-radius:10px;padding:8px 10px;cursor:pointer}
+
+  .total{font-weight:700;margin-top:8px}
+  .total.ko{color:#b3261e}
+  .petitbtn.roue{background:#efe4fb;color:#5b2a86}
+  .reglement{text-align:left;font-size:15px;line-height:1.5}
+  .reglement h3{font-size:16px;margin:14px 0 4px}
+  .reglement table{font-size:14px}
+  @media print{ body *{visibility:hidden} #reglFond, #reglFond *{visibility:visible} #reglFond{position:absolute;inset:0;background:#fff;display:block} #reglFond .boite{box-shadow:none;max-height:none;width:auto} #reglFond .pasImpr{display:none} }
   .logo{text-align:center;margin:20px 0 10px}
   .logo img{width:96px;height:96px;object-fit:contain}
   .logo h1{font-family:var(--police)}
@@ -171,6 +203,26 @@
 
 <!-- ============ APPLICATION ============ -->
 <div id="fete" aria-hidden="true"></div>
+<div id="roueFond" class="fond cache">
+  <div class="boite">
+    <h2>🎡 Roue de la fortune !</h2>
+    <p class="note" id="roueIntro" style="margin:0"></p>
+    <div class="roueZone"><div class="roueFleche"></div><canvas id="roueCanvas" width="640" height="640"></canvas><div class="roueCentre"></div></div>
+    <div id="roueResultat" class="cache"></div>
+    <button class="btn principal" id="bRoueLancer" style="font-size:20px;padding:16px">🎡 Lancer la roue</button>
+    <button class="btn vert cache" id="bRoueOk" style="font-size:20px;padding:16px">✓ C'est noté</button>
+    <p class="note" style="text-align:center"><a class="lien" id="bRoueReglement">Règlement du jeu</a></p>
+  </div>
+</div>
+<div id="reglFond" class="fond cache">
+  <div class="boite">
+    <div class="reglement" id="reglTexte"></div>
+    <div class="ligne pasImpr">
+      <button class="btn gris" id="bReglImprimer">🖨 Imprimer</button>
+      <button class="btn principal" id="bReglFermer">Fermer</button>
+    </div>
+  </div>
+</div>
 <div id="app" class="cache">
 <div id="deco" aria-hidden="true"></div>
 <header>
@@ -255,27 +307,57 @@
     </div>
     <label>Thème de votre commerce</label>
     <div class="themes" id="rThemes"></div>
-    <div class="grille">
-      <div><label for="rPoints">Points par passage</label>
-        <input id="rPoints" type="number" min="1" step="1" inputmode="numeric"></div>
-      <div><label for="rSeuil">Réduction à (points)</label>
-        <input id="rSeuil" type="number" min="1" step="1" inputmode="numeric"></div>
-      <div><label for="rRemise">Réduction (%)</label>
-        <input id="rRemise" type="number" min="1" max="100" step="1" inputmode="numeric"></div>
+    <h3 class="etapeTitre">Comment vos clients gagnent leur réduction</h3>
+    <div class="etape">
+      <span class="num">1</span>
+      <div><b>À chaque passage en caisse</b>, le client gagne
+        <input id="rPoints" class="inline" type="number" min="1" step="1" inputmode="numeric" aria-label="Points gagnés à chaque passage"> points.</div>
     </div>
-    <label class="case"><input type="checkbox" id="rBonusActif">
-      <span><b>Récompenser les gros paniers</b> : plus de points au-delà d'un certain montant</span></label>
-    <div class="grille" id="rBlocBonus">
-      <div><label for="rMontant">À partir de (€)</label>
-        <input id="rMontant" type="number" min="1" step="1" inputmode="decimal"></div>
-      <div><label for="rPointsBonus">Points gagnés</label>
-        <input id="rPointsBonus" type="number" min="1" step="1" inputmode="numeric"></div>
+    <div class="etape">
+      <span class="num">2</span>
+      <div><b>Quand il atteint</b>
+        <input id="rSeuil" class="inline" type="number" min="1" step="1" inputmode="numeric" aria-label="Nombre de points pour avoir la réduction"> points,
+        il reçoit <b>une réduction de</b>
+        <input id="rRemise" class="inline" type="number" min="1" max="100" step="1" inputmode="numeric" aria-label="Pourcentage de réduction"> %
+        sur son prochain achat. Ses points repartent ensuite à 0.</div>
+    </div>
+    <div class="etape">
+      <span class="num">3</span>
+      <div>
+        <label class="case" style="margin-top:0"><input type="checkbox" id="rBonusActif">
+          <span><b>Bonus gros panier</b> (facultatif) : récompenser davantage les gros achats</span></label>
+        <div id="rBlocBonus" style="margin-top:8px">Dès
+          <input id="rMontant" class="inline" type="number" min="1" step="1" inputmode="decimal" aria-label="Montant du gros panier en euros"> € d'achat,
+          le client gagne
+          <input id="rPointsBonus" class="inline" type="number" min="1" step="1" inputmode="numeric" aria-label="Points pour un gros panier"> points
+          au lieu de <span id="rPointsRappel">10</span>.</div>
+      </div>
     </div>
     <div class="resume" id="rResume"></div>
     <button class="btn principal" id="bEnregistrer">Enregistrer</button>
     <div id="msgReglages"></div>
   </div>
   <div id="rAutres">
+  <div class="carte cache" id="carteRoue">
+    <h2>🎡 Roue de la fortune</h2>
+    <p class="note" style="margin-top:-6px">Tous les <b>N</b> passages en caisse (tous clients confondus), la roue s'affiche pour le client en caisse. Le cadeau gagné s'applique <b>tout de suite</b>, sur l'achat en cours.</p>
+    <label for="roueFreq">La roue apparaît tous les … passages</label>
+    <input id="roueFreq" type="number" min="1" step="1" inputmode="numeric">
+    <label style="margin-top:14px">Les cadeaux et leurs chances</label>
+    <p class="note" style="margin-top:-2px">Plus le pourcentage est grand, plus la part est grande sur la roue, et plus le client a de chances de tomber dessus.</p>
+    <div class="lotsTete">
+      <div>Texte affiché sur la roue</div>
+      <div class="lotLigne"><span>Type de gain</span><span>Points</span><span>Taille de la part</span><span></span></div>
+    </div>
+    <div id="roueLots"></div>
+    <button class="btn gris" id="bRoueAjout">+ Ajouter une part</button>
+    <div class="total" id="roueTotal"></div>
+    <canvas id="roueApercu" class="apercu" width="480" height="480" aria-label="Aperçu de la roue"></canvas>
+    <button class="btn principal" id="bRoueEnregistrer">Enregistrer la roue</button>
+    <div id="msgRoue"></div>
+    <p class="note" id="roueInfo"></p>
+    <button class="btn gris" id="bRoueVoirRegl">📄 Voir / imprimer le règlement</button>
+  </div>
   <div class="carte">
     <h2>Mes données</h2>
     <p class="note" style="margin-top:0">Vos clients sont enregistrés en ligne, dans votre compte. Vous seul y avez accès. Vous pouvez télécharger la liste à tout moment.</p>
@@ -425,6 +507,10 @@ function apiSupabase(sb){
     async viderMesClients(){ v(await sb.from("clients").delete().eq("commerce_id", SESSION.commerce.id)); },
     async adminVider(id){ return v(await sb.rpc("admin_vider_commerce", {p_id:id})); },
     async adminSupprimer(id){ v(await sb.rpc("admin_supprimer_commerce", {p_id:id})); },
+    async adminRoue(id, actif){ v(await sb.rpc("admin_roue", {p_id:id, p_active:actif})); },
+    async roueEnAttente(clientId){ const d = v(await sb.from("roue_tirages").select("*").eq("client_id", clientId).is("tire_le", null).order("cree_le", {ascending:false}).limit(1)); return d[0] || null; },
+    async roueTirer(id){ return v(await sb.rpc("roue_tirer", {p_tirage:id})); },
+    async rechargerCommerce(){ return v(await sb.from("commerces").select("*").eq("id", SESSION.commerce.id).single()); },
     // Support
     async supEnvoyer(texte){ v(await sb.from("messages_support").insert({texte})); },
     async supMesMessages(){ return v(await sb.from("messages_support").select("*").order("cree_le", {ascending:false}).limit(50)); },
@@ -471,11 +557,18 @@ function apiDemo(){
       const p = gros ? D.commerce.points_bonus : D.commerce.points_par_passage;
       c.points += p; c.visites++; c.derniere_visite = now;
       D.mouvements.push({id:D.suivant++, client_id:id, type:"points", points:p, gros_panier:gros, le:now});
+      if (D.commerce.roue_active && D.commerce.roue && D.commerce.roue.lots && D.commerce.roue.lots.length){
+        D.commerce.roue_compteur = (D.commerce.roue_compteur||0) + 1;
+        if (D.commerce.roue_compteur % Math.max(1, Number(D.commerce.roue.frequence)||30) === 0){
+          D.tirages = D.tirages || [];
+          D.tirages.push({id:D.suivant++, client_id:id, numero:D.commerce.roue_compteur, lot:null, cree_le:now, tire_le:null});
+        }
+      }
       sauver(); return copie(c);
     },
     async annulerDernier(id){
       const c = client(id);
-      const ms = D.mouvements.filter(m=>m.client_id===id);
+      const ms = D.mouvements.filter(m=>m.client_id===id && m.type!=="roue");
       const m = ms[ms.length-1];
       if (!m) throw new Error("Rien à annuler");
       D.mouvements.splice(D.mouvements.indexOf(m),1);
@@ -495,12 +588,29 @@ function apiDemo(){
     async viderMesClients(){ D.clients = []; D.mouvements = []; sauver(); },
     async adminVider(id){ if (id !== "demo") throw new Error("Commerce d'exemple : rien à vider en démo"); const n = D.clients.length; D.clients = []; D.mouvements = []; sauver(); return n; },
     async adminSupprimer(id){ throw new Error("Pas de suppression de commerce en mode démo"); },
+    async adminRoue(id, actif){ if (id !== "demo") throw new Error("Commerce d'exemple"); D.commerce.roue_active = actif; if (actif && !(D.commerce.roue && D.commerce.roue.lots && D.commerce.roue.lots.length)) D.commerce.roue = ROUE_EXEMPLE(); if (actif && !D.commerce.roue_depuis) D.commerce.roue_depuis = new Date().toISOString(); sauver(); },
+    async roueEnAttente(clientId){ return copie((D.tirages||[]).filter(t=>t.client_id===clientId && !t.tire_le).pop() || null); },
+    async roueTirer(id){
+      const t = (D.tirages||[]).find(t=>t.id===id); if (!t) throw new Error("Tour de roue introuvable");
+      if (t.tire_le) return t.lot;
+      const lots = D.commerce.roue.lots, total = lots.reduce((a,l)=>a+Math.max(0,Number(l.chance)||0),0);
+      let r = Math.random()*total, i = 0;
+      for (; i < lots.length; i++){ r -= Math.max(0,Number(l_(lots[i]))); if (r < 0) break; }
+      if (i >= lots.length) i = lots.length - 1;
+      t.lot = {...lots[i], index:i}; t.tire_le = new Date().toISOString();
+      const c = D.clients.find(c=>c.id===t.client_id);
+      const pts = t.lot.type === "points" ? Math.max(0, Number(t.lot.valeur)||0) : 0;
+      if (c) c.points += pts;
+      D.mouvements.push({id:D.suivant++, client_id:t.client_id, type:"roue", points:pts, libelle:t.lot.nom, le:new Date().toISOString()});
+      sauver(); return copie(t.lot);
+    },
+    async rechargerCommerce(){ return copie(D.commerce); },
     async liste(){ return copie(D.clients).sort((a,b)=>(b.derniere_visite||"").localeCompare(a.derniere_visite||"")); },
     async historique(id){ return copie(D.mouvements.filter(m=>m.client_id===id)).reverse().slice(0,30); },
     async estAdmin(){ return true; },
     async stats(){
       const il30 = Date.now() - 30*864e5;
-      const moi = {id:"demo", commerce:D.commerce.nom, email:D.email, inscrit_le:D.commerce.cree_le,
+      const moi = {id:"demo", roue_active:!!D.commerce.roue_active, commerce:D.commerce.nom, email:D.email, inscrit_le:D.commerce.cree_le,
         nb_clients:D.clients.length, nb_accord_sms:D.clients.filter(c=>c.accord_sms).length,
         passages_30j:D.mouvements.filter(m=>m.type==="points" && new Date(m.le)>il30).length,
         nb_reductions:D.mouvements.filter(m=>m.type==="reduction").length,
@@ -768,6 +878,7 @@ function creer(gros){
       await ouvrirClient(c, true);
       message("msgClient", `Carte créée, +${c.points} points.`, "ok");
       fete(c.points >= SESSION.commerce.seuil);
+      verifierRoue(c);
     }catch(e){ message("msgAccueil", e.message, "err"); }
   });
 }
@@ -812,7 +923,7 @@ async function ouvrirClient(c, ajoute = false){
       $("zoneAjout").classList.add("cache");
       message("msgClient", `⚠️ Ce client a déjà reçu +${recent.points} points à ${new Date(recent.le).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}. Pas de nouveaux points avant 2 minutes.`, "info");
     }
-    $("cHisto").innerHTML = h.map(m=>`<div>${dateFr(m.le)} — ${m.type==="points" ? "+"+m.points+" points"+(m.gros_panier?" (gros panier)":"") : `Réduction -${m.remise} % utilisée, points remis à 0`}</div>`).join("");
+    $("cHisto").innerHTML = h.map(m=>`<div>${dateFr(m.le)} — ${m.type==="points" ? "+"+m.points+" points"+(m.gros_panier?" (gros panier)":"") : m.type==="roue" ? "🎡 Roue : "+echapper(m.libelle||"cadeau") : `Réduction -${m.remise} % utilisée, points remis à 0`}</div>`).join("");
   }catch(e){ $("cHisto").textContent = ""; }
 }
 
@@ -828,6 +939,7 @@ function ajouter(gros){
       message("msgClient", avant < SESSION.commerce.seuil && c.points >= SESSION.commerce.seuil
         ? `+${gagne} points — palier atteint ! 🎉` : `+${gagne} points ajoutés.`, "ok");
       fete(avant < SESSION.commerce.seuil && c.points >= SESSION.commerce.seuil);
+      verifierRoue(c);
     }catch(e){ message("msgClient", e.message, "err"); }
   });
 }
@@ -938,6 +1050,7 @@ function remplirReglages(){
   $("rPointsBonus").value = c.points_bonus ?? c.points_par_passage * 2;
   $("rEmail").textContent = SESSION.email;
   themeChoisi = THEMES[c.theme] ? c.theme : "defaut";
+  afficherReglagesRoue();
   afficherThemes();
   message("msgReglages","");
   majResume();
@@ -948,15 +1061,15 @@ function lireReglages(){
 }
 function majResume(){
   const x = lireReglages();
+  $("rPointsRappel").textContent = Number.isFinite(x.p) && x.p > 0 ? x.p : "…";
   $("rBlocBonus").classList.toggle("cache", !x.bonus);
   const ok = Number.isInteger(x.p) && x.p>0 && Number.isInteger(x.s) && x.s>0 && Number.isInteger(x.r) && x.r>0 && x.r<=100;
   const okBonus = !x.bonus || (x.m>0 && Number.isInteger(x.pb) && x.pb>0);
   if (!ok || !okBonus){ $("rResume").textContent = "Complétez les cases ci-dessus (nombres entiers)."; return; }
   const np = Math.ceil(x.s / x.p), ng = x.bonus ? Math.ceil(x.s / x.pb) : 0;
-  $("rResume").innerHTML = `Vos clients gagnent <b>${x.p} points</b> par passage` +
-    (x.bonus ? `, et <b>${x.pb} points</b> dès <b>${euros(x.m)}</b> d'achat` : "") +
-    `.<br>À <b>${x.s} points</b>, ils ont <b>-${x.r} %</b> sur leur achat suivant : ` +
-    pluriel(np, "passage") + (x.bonus && ng !== np ? `, ou ${ng} gros panier${ng>1?"s":""}` : "") + ".";
+  $("rResume").innerHTML = `<b>En résumé :</b> un client qui vient <b>${np} fois</b>` +
+    (x.bonus && ng !== np ? ` (ou seulement <b>${ng} fois</b> avec des paniers de ${euros(x.m)} ou plus)` : "") +
+    ` obtient <b>-${x.r} %</b> sur son achat suivant.`;
 }
 for (const id of ["rPoints","rSeuil","rRemise","rMontant","rPointsBonus"]) $(id).addEventListener("input", majResume);
 $("rBonusActif").addEventListener("change", majResume);
@@ -1011,7 +1124,7 @@ async function afficherGerant(){
       <td><b>${echapper(x.commerce)}</b><br><span class="note">${echapper(x.email)}</span></td>
       <td class="n">${x.nb_clients}</td><td class="n">${x.nb_accord_sms}</td><td class="n">${x.passages_30j}</td>
       <td class="n">${x.nb_reductions}</td><td class="n">${jourFr(x.derniere_activite)}</td><td class="n">${jourFr(x.inscrit_le)}</td>
-      <td><button class="petitbtn vider" data-vider="${x.id}">Vider</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer</button></td></tr>`).join("")
+      <td><button class="petitbtn roue" data-roue="${x.id}">${x.roue_active ? "🎡 Couper la roue" : "🎡 Activer la roue"}</button><button class="petitbtn vider" data-vider="${x.id}">Vider</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer</button></td></tr>`).join("")
     || `<tr><td colspan="8" class="note">Aucun commerce inscrit pour l'instant.</td></tr>`;
   for (const b of $("gListe").querySelectorAll("button")) b.onclick = ()=> actionCommerce(b);
 }
@@ -1100,6 +1213,10 @@ function alerte(texte, action){
 async function verifierNotifs(){
   if (!SESSION || !API) return;
   try{ badge("badgeSupport", await API.supReponsesNonVues()); }catch(e){}
+  try{
+    const co = await API.rechargerCommerce();
+    if (co && SESSION) for (const k of ["roue_active","roue","roue_compteur","roue_depuis"]) if (k in co) SESSION.commerce[k] = co[k];
+  }catch(e){}
   if (!ADMIN) return;
   try{
     const n = await API.adminSupNonLus();
@@ -1166,10 +1283,16 @@ $("bVider").onclick = ()=> occupe($("bVider"), async ()=>{
 // Gérant : vider ou supprimer un commerce
 async function actionCommerce(b){
   const s = DERNIERES_STATS || [];
-  const id = b.dataset.vider || b.dataset.suppr, x = s.find(c=>String(c.id)===String(id));
+  const id = b.dataset.vider || b.dataset.suppr || b.dataset.roue, x = s.find(c=>String(c.id)===String(id));
   if (!x) return;
   try{
-    if (b.dataset.vider){
+    if (b.dataset.roue){
+      const activer = !x.roue_active;
+      if (!confirm(activer ? `Activer la roue de la fortune pour « ${x.commerce} » ? Des cadeaux d'exemple sont proposés, le commerçant les modifie dans ⚙️.` : `Couper la roue de la fortune pour « ${x.commerce} » ?`)) return;
+      await API.adminRoue(x.id, activer);
+      await verifierNotifs();
+      alerte(activer ? `🎡 Roue activée pour ${x.commerce}` : `Roue coupée pour ${x.commerce}`);
+    } else if (b.dataset.vider){
       if (!confirm(`Vider « ${x.commerce} » ? Ses ${x.nb_clients} clients et leur historique seront effacés. Le compte et les réglages sont gardés.`)) return;
       const n = await API.adminVider(x.id);
       alerte(`✓ ${x.commerce} vidé (${n} client${n>1?"s":""} effacé${n>1?"s":""})`);
@@ -1183,6 +1306,187 @@ async function actionCommerce(b){
     afficherGerant();
   }catch(e){ alert(e.message); }
 }
+
+// ---------- Roue de la fortune ----------
+const l_ = l => l.chance;
+const ROUE_EXEMPLE = () => ({frequence:30, lots:[
+  {nom:"-5 % sur cet achat", type:"remise", valeur:5, chance:45},
+  {nom:"+20 points", type:"points", valeur:20, chance:30},
+  {nom:"-10 % sur cet achat", type:"remise", valeur:10, chance:20},
+  {nom:"Un cadeau surprise", type:"cadeau", valeur:0, chance:5}]});
+const TYPES_LOT = {cadeau:"Réduction ou cadeau", points:"Points ajoutés", perdu:"Perdu"};
+function nomLot(l){
+  if (l.type === "remise") return `-${l.valeur} % sur cet achat`;
+  if (l.type === "points") return `+${l.valeur} points`;
+  if (l.type === "perdu") return "Pas de chance, retentez !";
+  return (l.nom || "Un cadeau").trim();
+}
+const lotsRoue = () => ((SESSION && SESSION.commerce.roue && SESSION.commerce.roue.lots) || []);
+
+// Dessin : chaque part a la taille de sa vraie chance (honnête)
+function couleurPart(i, n){ return (n % 4 === 1 && i === n-1 && i > 0) ? 2 : i % 4; }   // pas deux parts voisines de la même couleur
+function dessinerRoue(lots, cv){
+  cv = cv || $("roueCanvas"); const ctx = cv.getContext("2d"), W = cv.width, R = W/2 - 6;
+  const total = lots.reduce((a,l)=>a+Math.max(0,Number(l.chance)||0),0) || 1;
+  const st = getComputedStyle(document.documentElement);
+  const couleurs = [st.getPropertyValue("--accent").trim()||"#9b2c2c", st.getPropertyValue("--accent2").trim()||"#c0392b", "#f3e6c9", "#ffffff"];
+  ctx.clearRect(0,0,W,W);
+  let a = -Math.PI/2;
+  lots.forEach((l,i)=>{
+    const part = Math.max(0,Number(l.chance)||0)/total*Math.PI*2;
+    const ci = couleurPart(i, lots.length);
+    const coul = couleurs[ci];
+    ctx.beginPath(); ctx.moveTo(W/2,W/2); ctx.arc(W/2,W/2,R,a,a+part); ctx.closePath();
+    ctx.fillStyle = coul; ctx.fill(); ctx.strokeStyle = "rgba(0,0,0,.15)"; ctx.lineWidth = 2; ctx.stroke();
+    if (part > 0.12){
+      ctx.save(); ctx.translate(W/2,W/2); ctx.rotate(a+part/2);
+      ctx.fillStyle = (ci < 2) ? "#fff" : "#2b2118";
+      // texte court sur la roue, réduit jusqu'à tenir entre le bord et le centre
+      let t = (l.nom || "").trim() || nomLot(l);
+      let taille = Math.max(18, Math.min(40, part*60));
+      ctx.font = `800 ${taille}px system-ui, sans-serif`;
+      while (ctx.measureText(t).width > R*0.68 && taille > 14){ taille -= 1; ctx.font = `800 ${taille}px system-ui, sans-serif`; }
+      while (ctx.measureText(t).width > R*0.68 && t.length > 4) t = t.slice(0,-2) + "…";
+      ctx.textBaseline = "middle";
+      if (Math.cos(a+part/2) < 0){ ctx.rotate(Math.PI); ctx.textAlign = "left"; ctx.fillText(t, -(R-18), 0); }   // côté gauche : texte remis à l'endroit
+      else { ctx.textAlign = "right"; ctx.fillText(t, R-18, 0); }
+      ctx.restore();
+    }
+    l._debut = a + Math.PI/2; l._part = part;
+    a += part;
+  });
+  ctx.beginPath(); ctx.arc(W/2,W/2,R,0,Math.PI*2); ctx.lineWidth = 10; ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim(); ctx.stroke();
+}
+
+let tirageEnCours = null, angleRoue = 0;
+async function verifierRoue(c){
+  if (!SESSION || !SESSION.commerce.roue_active || !lotsRoue().length) return;
+  try{
+    const t = await API.roueEnAttente(c.id);
+    if (t) setTimeout(()=>ouvrirRoue(t, c), 900);
+  }catch(e){}
+}
+function ouvrirRoue(t, c){
+  tirageEnCours = t;
+  $("roueIntro").textContent = `Passage n° ${t.numero} : ${c && c.nom ? c.nom : "ce client"} gagne un tour de roue !`;
+  $("roueResultat").classList.add("cache");
+  $("bRoueLancer").classList.remove("cache"); $("bRoueLancer").disabled = false;
+  $("bRoueOk").classList.add("cache");
+  const cv = $("roueCanvas"); cv.style.transition = "none"; angleRoue = 0; cv.style.transform = "rotate(0deg)";
+  dessinerRoue(lotsRoue());
+  $("roueFond").classList.remove("cache");
+}
+$("bRoueLancer").onclick = async ()=>{
+  if (!tirageEnCours) return;
+  $("bRoueLancer").disabled = true;
+  let lot;
+  try{ lot = await API.roueTirer(tirageEnCours.id); }
+  catch(e){ $("bRoueLancer").disabled = false; return alert(e.message); }
+  const lots = lotsRoue(); dessinerRoue(lots);
+  const L = lots[lot.index] || lots[0];
+  // angle (en degrés, depuis le haut, sens horaire) d'un point au hasard dans la part gagnante
+  const milieu = (L._debut + L._part * (0.2 + Math.random()*0.6)) * 180 / Math.PI;
+  const cible = 360*6 + (360 - milieu);
+  const cv = $("roueCanvas");
+  void cv.offsetWidth; cv.style.transition = ""; angleRoue = cible; cv.style.transform = `rotate(${cible}deg)`;
+  setTimeout(async ()=>{
+    $("roueResultat").innerHTML = `<div class="roueResultat">${lot.type === "perdu" ? "😅 " : "🎉 "}${echapper(lot.nom || nomLot(lot))}</div>` +
+      `<p class="note" style="margin:0">${lot.type === "perdu" ? "Ce sera pour la prochaine fois !" : lot.type === "points" ? "Les points sont déjà ajoutés à la carte du client." : "À appliquer tout de suite, sur l'achat en cours."}</p>`;
+    $("roueResultat").classList.remove("cache");
+    $("bRoueLancer").classList.add("cache"); $("bRoueOk").classList.remove("cache");
+    if (lot.type !== "perdu") fete(true);
+    try{ if (courant){ const c = await API.trouverClient(courant.telephone); if (c) await ouvrirClient(c, true); } }catch(e){}
+  }, 4800);
+};
+$("bRoueOk").onclick = ()=>{ $("roueFond").classList.add("cache"); tirageEnCours = null; };
+
+// Réglages de la roue (commerçant)
+let LOTS_EDIT = [];
+function afficherReglagesRoue(){
+  const c = SESSION.commerce, actif = !!c.roue_active;
+  $("carteRoue").classList.toggle("cache", !actif);
+  if (!actif) return;
+  const r = c.roue || {frequence:30, lots:[]};
+  $("roueFreq").value = r.frequence || 30;
+  LOTS_EDIT = (r.lots || []).map(l=>({...l, type: l.type === "remise" ? "cadeau" : l.type, nom: l.nom || nomLot(l)}));
+  dessinerLotsEdit();
+  const n = c.roue_compteur || 0, f = Math.max(1, Number(r.frequence)||30);
+  $("roueInfo").textContent = `Passages comptés depuis l'activation : ${n}. Prochaine roue au passage n° ${n + (f - n % f)}.`;
+  message("msgRoue","");
+}
+function dessinerLotsEdit(){
+  const st = getComputedStyle(document.documentElement);
+  const couleurs = [st.getPropertyValue("--accent").trim(), st.getPropertyValue("--accent2").trim(), "#e9d9b5", "#d9d4cc"];
+  $("roueLots").innerHTML = LOTS_EDIT.map((l,i)=>`<div class="lot" data-i="${i}" style="--c:${couleurs[couleurPart(i, LOTS_EDIT.length)]}">
+      <input data-k="nom" type="text" maxlength="40" placeholder="${l.type==="points" ? "ex. +20 points" : l.type==="perdu" ? "ex. Perdu, retentez !" : "ex. -10 % sur les terrines"}" value="${echapper(l.nom||"")}">
+      <div class="lotLigne">
+        <select data-k="type">${Object.entries(TYPES_LOT).map(([k,t])=>`<option value="${k}" ${l.type===k?"selected":""}>${t}</option>`).join("")}</select>
+        ${l.type === "points" ? `<input data-k="valeur" type="number" min="1" step="1" inputmode="numeric" placeholder="points" value="${Number(l.valeur)||""}">` : `<span></span>`}
+        <span class="pct"><input data-k="chance" type="number" min="0" max="100" step="1" inputmode="numeric" value="${Number(l.chance)||0}" title="Chance en %"><b>%</b></span>
+        <button type="button" data-k="suppr" title="Retirer cette part">✕</button>
+      </div></div>`).join("");
+  for (const row of $("roueLots").querySelectorAll(".lot")){
+    const i = Number(row.dataset.i);
+    for (const el of row.querySelectorAll("[data-k]")){
+      const k = el.dataset.k;
+      if (k === "suppr") el.onclick = ()=>{ LOTS_EDIT.splice(i,1); dessinerLotsEdit(); };
+      else if (k === "type") el.onchange = ()=>{ LOTS_EDIT[i].type = el.value; if (el.value === "points" && !LOTS_EDIT[i].valeur) LOTS_EDIT[i].valeur = 20; dessinerLotsEdit(); };
+      else el.oninput = ()=>{ LOTS_EDIT[i][k] = k === "nom" ? el.value : Number(el.value); majTotalRoue(); };
+    }
+  }
+  majTotalRoue();
+}
+function majTotalRoue(){
+  const t = LOTS_EDIT.reduce((a,l)=>a+(Number(l.chance)||0),0);
+  $("roueTotal").textContent = `Total des parts : ${t} %` + (t === 100 ? " ✓" : " (doit faire 100 %)");
+  $("roueTotal").classList.toggle("ko", t !== 100);
+  dessinerRoue(LOTS_EDIT.map(l=>({...l})), $("roueApercu"));
+}
+$("bRoueAjout").onclick = ()=>{ LOTS_EDIT.push({type:"cadeau", nom:"", valeur:0, chance:0}); dessinerLotsEdit(); };
+$("bRoueEnregistrer").onclick = ()=> occupe($("bRoueEnregistrer"), async ()=>{
+  const f = Number($("roueFreq").value);
+  if (!Number.isInteger(f) || f < 1) return message("msgRoue","Indiquez tous les combien de passages la roue apparaît (1 ou plus).","err");
+  if (!LOTS_EDIT.length) return message("msgRoue","Ajoutez au moins un cadeau.","err");
+  if (LOTS_EDIT.length < 2) return message("msgRoue","Mettez au moins 2 parts dans la roue.","err");
+  for (const l of LOTS_EDIT){
+    if (l.type === "points" && !(Number.isInteger(l.valeur) && l.valeur > 0)) return message("msgRoue","Indiquez combien de points ajouter (nombre entier).","err");
+    if (l.type === "cadeau" && !(l.nom||"").trim()) return message("msgRoue","Écrivez le texte de chaque part (ex. « -10 % sur les terrines »).","err");
+    if (!(Number.isInteger(l.chance) && l.chance >= 0)) return message("msgRoue","Les chances sont des nombres entiers (en %).","err");
+  }
+  const total = LOTS_EDIT.reduce((a,l)=>a+l.chance,0);
+  if (total !== 100) return message("msgRoue",`Le total des chances doit faire 100 % (actuellement ${total} %).`,"err");
+  const lots = LOTS_EDIT.map(l=>({type:l.type, valeur:l.type==="points"?l.valeur:0, chance:l.chance, nom:(l.nom||"").trim() || nomLot(l)}));
+  try{
+    SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {roue:{frequence:f, lots}});
+    afficherReglagesRoue();
+    message("msgRoue","✓ Roue enregistrée.","ok");
+  }catch(e){ message("msgRoue", e.message, "err"); }
+});
+
+// Règlement généré à partir des vrais réglages
+function texteReglement(){
+  const c = SESSION.commerce, r = c.roue || {frequence:30, lots:[]}, nom = echapper(c.nom);
+  const debut = c.roue_depuis ? new Date(c.roue_depuis).toLocaleDateString("fr-FR") : new Date().toLocaleDateString("fr-FR");
+  const lignes = (r.lots||[]).map(l=>`<tr><td>${echapper(l.nom || nomLot(l))}</td><td class="n">${Number(l.chance)||0} %</td></tr>`).join("");
+  return `<h2 style="text-align:center">Règlement du jeu « Roue de la fortune »</h2>
+    <p style="text-align:center"><b>${nom}</b></p>
+    <h3>Article 1 – Organisateur</h3><p>Le jeu est organisé par ${nom}, dans sa boutique, dans le cadre de son programme de fidélité.</p>
+    <h3>Article 2 – Durée</h3><p>Le jeu commence le ${debut} et dure jusqu'à son arrêt, annoncé en boutique.</p>
+    <h3>Article 3 – Participation</h3><p>Le jeu est gratuit et réservé aux clients inscrits au programme de fidélité de ${nom}. Tous les <b>${Number(r.frequence)||30} passages en caisse</b> enregistrés dans le programme (tous clients confondus), le client en caisse à ce moment-là fait tourner la roue une fois. Un seul tour de roue par passage.</p>
+    <h3>Article 4 – Cadeaux et chances de gain</h3>
+    <table><thead><tr><th>Cadeau</th><th class="n">Chance</th></tr></thead><tbody>${lignes}</tbody></table>
+    <p>La taille de chaque part de la roue correspond à sa chance réelle.</p>
+    <h3>Article 5 – Tirage</h3><p>Le résultat est tiré au hasard par le serveur du programme de fidélité, selon les chances ci-dessus. Il ne peut être ni relancé, ni modifié par le personnel.</p>
+    <h3>Article 6 – Utilisation des gains</h3><p>Une réduction gagnée s'applique immédiatement sur l'achat en cours. Les points gagnés sont ajoutés aussitôt à la carte de fidélité. Les gains ne peuvent être ni échangés, ni remboursés, ni convertis en argent.</p>
+    <h3>Article 7 – Données personnelles</h3><p>Le numéro de téléphone du client sert uniquement au programme de fidélité de ${nom}. Le client peut demander à tout moment l'accès à ses données ou leur suppression, en boutique.</p>
+    <h3>Article 8 – Consultation</h3><p>Ce règlement est consultable en boutique et remis gratuitement à toute personne qui le demande.</p>
+    <p class="note pasImpr">Brouillon généré automatiquement à partir des réglages de la roue : à faire relire avant affichage.</p>`;
+}
+function ouvrirReglement(){ $("reglTexte").innerHTML = texteReglement(); $("reglFond").classList.remove("cache"); }
+$("bRoueVoirRegl").onclick = ouvrirReglement;
+$("bRoueReglement").onclick = ouvrirReglement;
+$("bReglFermer").onclick = ()=> $("reglFond").classList.add("cache");
+$("bReglImprimer").onclick = ()=> window.print();
 
 marqueConnexion();
 demarrer();
