@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="10">
+<meta name="app-version" content="11">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -157,7 +157,7 @@
     <label for="cxEmail">Adresse e-mail</label>
     <input id="cxEmail" type="email" autocomplete="username" placeholder="contact@moncommerce.fr">
     <label for="cxMdp">Mot de passe</label>
-    <input id="cxMdp" type="password" autocomplete="current-password" placeholder="8 caractères minimum">
+    <input id="cxMdp" type="password" autocomplete="current-password" placeholder="Votre mot de passe">
     <button class="btn principal" id="bConnexion">Se connecter</button>
     <p class="note" id="lienOubli"><a class="lien" id="bOubli">Mot de passe oublié ?</a></p>
     <div id="msgConnexion"></div>
@@ -279,8 +279,10 @@
   <div class="carte">
     <h2>Mon compte</h2>
     <p class="note" style="margin-top:-6px">Connecté avec <b id="rEmail"></b></p>
+    <label for="mdp0">Mot de passe actuel</label>
+    <input id="mdp0" type="password" autocomplete="current-password" placeholder="Obligatoire pour changer le mot de passe ou l'e-mail">
     <label for="mdp1">Nouveau mot de passe</label>
-    <input id="mdp1" type="password" autocomplete="new-password" placeholder="8 caractères minimum">
+    <input id="mdp1" type="password" autocomplete="new-password" placeholder="6 caractères minimum">
     <label for="mdp2">Retapez le nouveau mot de passe</label>
     <input id="mdp2" type="password" autocomplete="new-password">
     <button class="btn principal" id="bMdp">Changer le mot de passe</button>
@@ -390,6 +392,13 @@ function apiSupabase(sb){
     async oubli(email){ v(await sb.auth.resetPasswordForEmail(email, {redirectTo: adresseApp()})); },
     async nouveauMdp(mdp){ v(await sb.auth.updateUser({password:mdp})); },
     async nouvelEmail(email){ v(await sb.auth.updateUser({email}, {emailRedirectTo: adresseApp()})); },
+    async verifierMdp(email, mdp){
+      const r = await sb.auth.signInWithPassword({email, password:mdp});
+      if (r.error){
+        if ((r.error.message || "").includes("Invalid login credentials")) throw new Error("Mot de passe actuel incorrect.");
+        throw traduire(r.error);
+      }
+    },
     async deconnexion(){ await sb.auth.signOut(); },
     async majCommerce(id, champs){ return v(await sb.from("commerces").update(champs).eq("id", id).select().single()); },
     async trouverClient(tel){ return v(await sb.from("clients").select("*").eq("telephone", tel).maybeSingle()); },
@@ -425,11 +434,12 @@ function apiDemo(){
   const copie = o => JSON.parse(JSON.stringify(o));
   const api = {
     async session(){ return D.connecte ? {email:D.email, commerce:copie(D.commerce)} : null; },
-    async connexion(email){ D.connecte = true; D.email = email; sauver(); },
-    async inscription(email, mdp, nom){ D.connecte = true; D.email = email; if (nom) D.commerce.nom = nom; sauver(); return {aConfirmer:false}; },
+    async connexion(email, mdp){ D.connecte = true; D.email = email; if (!D.mdp) D.mdp = mdp; sauver(); },
+    async inscription(email, mdp, nom){ D.connecte = true; D.email = email; D.mdp = mdp; if (nom) D.commerce.nom = nom; sauver(); return {aConfirmer:false}; },
     async oubli(){ },
-    async nouveauMdp(){ },
+    async nouveauMdp(mdp){ D.mdp = mdp; sauver(); },
     async nouvelEmail(email){ D.email = email; sauver(); },
+    async verifierMdp(email, mdp){ if (D.mdp && mdp !== D.mdp) throw new Error("Mot de passe actuel incorrect."); },
     async deconnexion(){ D.connecte = false; sauver(); },
     async majCommerce(id, champs){ Object.assign(D.commerce, champs); sauver(); return copie(D.commerce); },
     async trouverClient(tel){ const c = D.clients.find(c=>c.telephone===tel); return c ? copie(c) : null; },
@@ -525,8 +535,8 @@ async function demarrer(){
     API = apiSupabase(sb);
     sb.auth.onAuthStateChange(async (evt)=>{
       if (evt === "PASSWORD_RECOVERY"){
-        const mdp = prompt("Choisissez votre nouveau mot de passe (8 caractères minimum) :");
-        if (mdp && mdp.length >= 8){
+        const mdp = prompt("Choisissez votre nouveau mot de passe (6 caractères minimum) :");
+        if (mdp){
           try{ await API.nouveauMdp(mdp); alert("Mot de passe modifié."); }
           catch(e){ alert(e.message); }
         }
@@ -562,7 +572,8 @@ $("ongInscription").onclick = ()=>{ ongletConnexion(true); message("msgConnexion
 $("bConnexion").onclick = ()=> occupe($("bConnexion"), async ()=>{
   const email = $("cxEmail").value.trim(), mdp = $("cxMdp").value, nom = $("cxNom").value.trim();
   if (!/^\S+@\S+\.\S+$/.test(email)) return message("msgConnexion","Adresse e-mail invalide.","err");
-  if (mdp.length < 8) return message("msgConnexion","Mot de passe : 8 caractères minimum.","err");
+  if (!mdp) return message("msgConnexion","Tapez votre mot de passe.","err");
+  if (modeInscription && mdp.length < 6) return message("msgConnexion","Mot de passe : 6 caractères minimum.","err");
   if (modeInscription && !nom) return message("msgConnexion","Indiquez le nom du commerce.","err");
   try{
     if (modeInscription){
@@ -1093,12 +1104,15 @@ new MutationObserver(majCentrage).observe($("blocNouveau"), {attributes:true, at
 
 // ---------- Mon compte : mot de passe et e-mail ----------
 $("bMdp").onclick = ()=> occupe($("bMdp"), async ()=>{
-  const m1 = $("mdp1").value, m2 = $("mdp2").value;
-  if (m1.length < 8) return message("msgMdp","Le mot de passe doit faire au moins 8 caractères.","err");
-  if (m1 !== m2) return message("msgMdp","Les deux mots de passe ne sont pas identiques.","err");
+  const m0 = $("mdp0").value, m1 = $("mdp1").value, m2 = $("mdp2").value;
+  if (!m0) return message("msgMdp","Tapez d'abord votre mot de passe actuel.","err");
+  if (!m1) return message("msgMdp","Tapez le nouveau mot de passe.","err");
+  if (m1 !== m2) return message("msgMdp","Les deux nouveaux mots de passe ne sont pas identiques.","err");
+  if (m1.length < 6) return message("msgMdp","Le nouveau mot de passe doit faire au moins 6 caractères (règle imposée par Supabase).","err");
   try{
+    await API.verifierMdp(SESSION.email, m0);
     await API.nouveauMdp(m1);
-    $("mdp1").value = ""; $("mdp2").value = "";
+    $("mdp0").value = ""; $("mdp1").value = ""; $("mdp2").value = "";
     message("msgMdp","✓ Mot de passe changé. Utilisez-le à la prochaine connexion.","ok");
   }catch(e){ message("msgMdp", e.message, "err"); }
 });
@@ -1106,8 +1120,11 @@ $("bEmail").onclick = ()=> occupe($("bEmail"), async ()=>{
   const e = $("nouvEmail").value.trim();
   if (!/^\S+@\S+\.\S+$/.test(e)) return message("msgEmail","Adresse e-mail invalide.","err");
   if (e.toLowerCase() === (SESSION.email || "").toLowerCase()) return message("msgEmail","C'est déjà votre adresse actuelle.","info");
+  if (!$("mdp0").value) return message("msgEmail","Tapez votre mot de passe actuel (en haut de cette carte).","err");
   try{
+    await API.verifierMdp(SESSION.email, $("mdp0").value);
     await API.nouvelEmail(e);
+    $("mdp0").value = "";
     $("nouvEmail").value = "";
     message("msgEmail", DEMO ? "✓ Adresse changée (démo)." : "📩 Un e-mail de confirmation a été envoyé. Cliquez sur le lien reçu pour valider le changement (vérifiez aussi les courriers indésirables). D'ici là, l'ancienne adresse reste valable.", "ok");
   }catch(err){ message("msgEmail", err.message, "err"); }
