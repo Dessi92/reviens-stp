@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="9">
+<meta name="app-version" content="10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -12,6 +12,7 @@
 <title>Reviens STP</title>
 <style>
   :root{
+    --police:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --vichy:transparent;
     --bg:#faf6f1; --carte:#ffffff; --texte:#2b2118; --doux:#7a6a5c;
     --accent:#9b2c2c; --accent2:#c0392b; --vert:#2e7d4f; --vertclair:#e3f3e9;
     --bord:#e6dccf; --or:#b7791f; --orclair:#fdf3e1; --gris:#efe7dc;
@@ -20,7 +21,8 @@
   body{margin:0;background:var(--bg);color:var(--texte);
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:17px}
   header{background:var(--accent);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:5}
-  header h1{font-size:19px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  header h1{font-family:var(--police);font-size:19px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  @media (max-width:430px){ header{padding:10px 10px;gap:6px} header button{padding:7px 8px} header h1{font-size:17px} }
   header button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:10px;padding:8px 11px;font-size:15px;cursor:pointer}
   .demo{background:var(--orclair);color:var(--or);text-align:center;font-size:14px;padding:6px 12px;font-weight:600}
   main{max-width:640px;margin:0 auto;padding:16px}
@@ -110,8 +112,29 @@
   .msgsup .actions{display:flex;gap:8px;margin-top:6px}
   .msgsup .actions button{border:0;border-radius:10px;padding:8px 12px;font-size:15px;font-weight:600;cursor:pointer;background:var(--gris);color:var(--texte)}
   .alerte{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:60;background:#2b2118;color:#fff;border-radius:14px;padding:12px 16px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:92vw;cursor:pointer}
+  /* Écran de caisse centré + en-tête du commerce */
+  #ecranAccueil{display:flex;flex-direction:column}
+  #ecranAccueil.seul{min-height:calc(100vh - 70px);min-height:calc(100dvh - 70px);justify-content:center}
+  .entete{text-align:center;margin:4px 0 18px}
+  .entete img{width:120px;height:120px;object-fit:contain;display:block;margin:0 auto 6px}
+  .entete .sur{font-family:var(--police);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-size:18px;line-height:1}
+  .entete h1{font-family:var(--police);font-weight:700;font-size:44px;line-height:1.05;margin:2px 0 0;color:var(--accent);letter-spacing:.01em;overflow-wrap:anywhere}
+  .entete .sous{margin:6px 0 0;color:var(--doux);letter-spacing:.16em;text-transform:uppercase;font-size:12px;font-weight:700}
+  .entete .trait{width:120px;height:2px;background:var(--accent2);margin:10px auto 0;border-radius:2px}
+  #carteRecherche{width:100%;max-width:520px;margin:0 auto 16px;text-align:center}
+  #carteRecherche label{text-align:center}
+  #carteRecherche input{text-align:center}
+  #blocClient,#blocNouveau{width:100%;max-width:640px;margin-left:auto;margin-right:auto}
+  header .logoEntete{width:34px;height:34px;object-fit:contain;background:#fff;border-radius:50%;padding:2px;flex:none}
+  @media (min-width:700px){ .entete img{width:150px;height:150px} .entete h1{font-size:56px} input.grand{font-size:26px} }
+  /* Fond vichy (thème personnalisé) */
+  body.vichy{background-color:var(--bg);
+    background-image:linear-gradient(90deg, var(--vichy) 50%, transparent 50%), linear-gradient(var(--vichy) 50%, transparent 50%);
+    background-size:32px 32px}
+  body.vichy #deco{display:none}
   .logo{text-align:center;margin:20px 0 10px}
-  .logo img{width:72px;height:72px}
+  .logo img{width:96px;height:96px;object-fit:contain}
+  .logo h1{font-family:var(--police)}
   .logo h1{font-size:24px;margin:10px 0 0}
   .logo p{color:var(--doux);margin:4px 0 0}
 </style>
@@ -121,7 +144,7 @@
 
 <!-- ============ CONNEXION ============ -->
 <main id="ecranConnexion" class="cache">
-  <div class="logo"><img src="icone.svg" alt=""><h1>Reviens STP</h1><p>Le programme de fidélité de votre commerce</p></div>
+  <div class="logo"><img id="cxLogo" src="icone.svg" alt=""><h1 id="cxTitre">Reviens STP</h1><p id="cxSous">Le programme de fidélité de votre commerce</p></div>
   <div class="carte">
     <div class="onglets">
       <button id="ongConnexion" class="actif">Se connecter</button>
@@ -146,6 +169,7 @@
 <div id="app" class="cache">
 <div id="deco" aria-hidden="true"></div>
 <header>
+  <img id="logoEntete" class="logoEntete cache" alt="">
   <h1 id="titreCommerce">Reviens STP</h1>
   <button id="bAccueil" title="Accueil">🏠</button>
   <button id="bListe" title="Mes clients">👥</button>
@@ -154,8 +178,15 @@
   <button id="bReglages" title="Réglages">⚙️</button>
 </header>
 
-<main id="ecranAccueil">
-  <div class="carte">
+<main id="ecranAccueil" class="seul">
+  <div class="entete">
+    <img id="aLogo" class="cache" alt="">
+    <div class="sur cache" id="aSur"></div>
+    <h1 id="aTitre"></h1>
+    <p class="sous cache" id="aSous"></p>
+    <div class="trait"></div>
+  </div>
+  <div class="carte" id="carteRecherche">
     <label for="tel">Numéro de téléphone du client</label>
     <input id="tel" class="grand" type="tel" inputmode="numeric" autocomplete="off" placeholder="06 12 34 56 78">
     <button class="btn principal" id="bChercher">Valider</button>
@@ -246,8 +277,21 @@
     <button class="btn gris" id="bExporterCsv">Télécharger ma liste de clients (Excel)</button>
   </div>
   <div class="carte">
-    <p class="note" style="margin-top:0">Connecté avec <b id="rEmail"></b></p>
-    <button class="btn gris" id="bDeconnexion">Se déconnecter</button>
+    <h2>Mon compte</h2>
+    <p class="note" style="margin-top:-6px">Connecté avec <b id="rEmail"></b></p>
+    <label for="mdp1">Nouveau mot de passe</label>
+    <input id="mdp1" type="password" autocomplete="new-password" placeholder="8 caractères minimum">
+    <label for="mdp2">Retapez le nouveau mot de passe</label>
+    <input id="mdp2" type="password" autocomplete="new-password">
+    <button class="btn principal" id="bMdp">Changer le mot de passe</button>
+    <div id="msgMdp"></div>
+    <label for="nouvEmail" style="margin-top:22px">Nouvelle adresse e-mail</label>
+    <input id="nouvEmail" type="email" autocomplete="email" placeholder="nouvelle@adresse.fr">
+    <button class="btn gris" id="bEmail">Changer l'adresse e-mail</button>
+    <div id="msgEmail"></div>
+  </div>
+  <div class="carte">
+    <button class="btn gris" id="bDeconnexion" style="margin-top:0">Se déconnecter</button>
   </div>
   </div>
 </main>
@@ -318,6 +362,11 @@ function traduire(err){
     "User already registered":"Un compte existe déjà avec cette adresse.",
     "Password should be at least 6 characters.":"Mot de passe trop court.",
     "Failed to fetch":"Pas de connexion internet.",
+    "New password should be different":"Le nouveau mot de passe doit être différent de l'ancien.",
+    "should be at least":"Mot de passe trop court.",
+    "already been registered":"Cette adresse e-mail est déjà utilisée par un autre compte.",
+    "rate limit":"Trop d'e-mails envoyés pour l'instant : réessayez dans une heure.",
+    "Unable to validate email":"Adresse e-mail invalide.",
   };
   for (const k in t) if (m.includes(k)) return new Error(t[k]);
   return new Error(m);
@@ -340,6 +389,7 @@ function apiSupabase(sb){
     },
     async oubli(email){ v(await sb.auth.resetPasswordForEmail(email, {redirectTo: adresseApp()})); },
     async nouveauMdp(mdp){ v(await sb.auth.updateUser({password:mdp})); },
+    async nouvelEmail(email){ v(await sb.auth.updateUser({email}, {emailRedirectTo: adresseApp()})); },
     async deconnexion(){ await sb.auth.signOut(); },
     async majCommerce(id, champs){ return v(await sb.from("commerces").update(champs).eq("id", id).select().single()); },
     async trouverClient(tel){ return v(await sb.from("clients").select("*").eq("telephone", tel).maybeSingle()); },
@@ -379,6 +429,7 @@ function apiDemo(){
     async inscription(email, mdp, nom){ D.connecte = true; D.email = email; if (nom) D.commerce.nom = nom; sauver(); return {aConfirmer:false}; },
     async oubli(){ },
     async nouveauMdp(){ },
+    async nouvelEmail(email){ D.email = email; sauver(); },
     async deconnexion(){ D.connecte = false; sauver(); },
     async majCommerce(id, champs){ Object.assign(D.commerce, champs); sauver(); return copie(D.commerce); },
     async trouverClient(tel){ const c = D.clients.find(c=>c.telephone===tel); return c ? copie(c) : null; },
@@ -494,6 +545,7 @@ function chargerScript(src){
 function afficherConnexion(){
   $("app").classList.add("cache");
   $("ecranConnexion").classList.remove("cache");
+  marqueConnexion();
   ongletConnexion(false);
 }
 function ongletConnexion(inscr){
@@ -574,10 +626,33 @@ let themeActif = "defaut";
 function appliquerTheme(cle){
   themeActif = THEMES[cle] ? cle : "defaut";
   const t = leTheme(themeActif);
-  document.documentElement.style.setProperty("--accent", t.a);
-  document.documentElement.style.setProperty("--accent2", t.b);
-  document.querySelector('meta[name="theme-color"]').content = t.a;
-  if (SESSION) $("titreCommerce").textContent = t.e[0] + " " + SESSION.commerce.nom;
+  const perso = (SESSION && SESSION.commerce.perso) || null;    // thème sur mesure réglé par le gérant
+  const a = (perso && perso.a) || t.a, b = (perso && perso.b) || t.b;
+  const racine = document.documentElement.style;
+  racine.setProperty("--accent", a);
+  racine.setProperty("--accent2", b);
+  racine.setProperty("--bg", (perso && perso.fond) || "#faf6f1");
+  racine.setProperty("--carte", (perso && perso.carte) || "#ffffff");
+  racine.setProperty("--vichy", (perso && perso.vichy) || "transparent");
+  racine.setProperty("--police", perso && perso.police === "serif" ? '"Cormorant Garamond", Georgia, "Times New Roman", serif' : 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif');
+  if (perso && perso.police === "serif") chargerPolice();
+  document.body.classList.toggle("vichy", !!(perso && perso.vichy));
+  document.querySelector('meta[name="theme-color"]').content = a;
+  if (SESSION){
+    const nom = SESSION.commerce.nom;
+    $("titreCommerce").textContent = (perso && perso.logo ? "" : t.e[0] + " ") + nom;
+    $("logoEntete").classList.toggle("cache", !(perso && perso.logo));
+    if (perso && perso.logo) $("logoEntete").src = perso.logo;
+    // En-tête de l'écran de caisse
+    $("aLogo").classList.toggle("cache", !(perso && perso.logo));
+    if (perso && perso.logo) $("aLogo").src = perso.logo;
+    const sur = perso && perso.surtitre;
+    $("aSur").textContent = sur || ""; $("aSur").classList.toggle("cache", !sur);
+    $("aTitre").textContent = (perso && perso.titre) || nom;
+    $("aSous").textContent = (perso && perso.sous_titre) || ""; $("aSous").classList.toggle("cache", !(perso && perso.sous_titre));
+    // Mémorisé sur l'appareil pour l'écran de connexion
+    try{ localStorage.setItem("reviens_derniere_marque", JSON.stringify({nom, logo:perso && perso.logo, a, fond:perso && perso.fond, vichy:perso && perso.vichy, police:perso && perso.police})); }catch(e){}
+  }
   // Décor de fond : petits émojis discrets, toujours aux mêmes places
   let g = 7, html = "";
   const hasard = () => (g = (g * 9301 + 49297) % 233280) / 233280;
@@ -585,6 +660,26 @@ function appliquerTheme(cle){
     html += `<span style="left:${(hasard()*96).toFixed(1)}%;top:${(hasard()*96).toFixed(1)}%;font-size:${Math.round(26+hasard()*26)}px;transform:rotate(${Math.round(hasard()*60-30)}deg)">${t.e[i % t.e.length]}</span>`;
   }
   $("deco").innerHTML = html;
+}
+let policeChargee = false;
+function chargerPolice(){
+  if (policeChargee) return; policeChargee = true;
+  const l = document.createElement("link"); l.rel = "stylesheet";
+  l.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap";
+  document.head.appendChild(l);
+}
+// Écran de connexion aux couleurs du dernier commerce connecté sur cet appareil
+function marqueConnexion(){
+  let m = null; try{ m = JSON.parse(localStorage.getItem("reviens_derniere_marque")); }catch(e){}
+  if (!m) return;
+  const racine = document.documentElement.style;
+  if (m.a){ racine.setProperty("--accent", m.a); document.querySelector('meta[name="theme-color"]').content = m.a; }
+  if (m.fond) racine.setProperty("--bg", m.fond);
+  if (m.vichy){ racine.setProperty("--vichy", m.vichy); document.body.classList.add("vichy"); }
+  if (m.police === "serif"){ racine.setProperty("--police", '"Cormorant Garamond", Georgia, serif'); chargerPolice(); }
+  if (m.logo) $("cxLogo").src = m.logo;
+  $("cxTitre").textContent = m.nom || "Reviens STP";
+  $("cxSous").textContent = "Carte de fidélité · Reviens STP";
 }
 // Petits émojis qui s'envolent comme des ballons ; « grand » = pluie de fête (palier atteint)
 function fete(grand){
@@ -989,6 +1084,36 @@ async function verifierNotifs(){
 setInterval(verifierNotifs, 60000);
 document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState === "visible") verifierNotifs(); });
 
+function majCentrage(){
+  const seul = $("blocClient").classList.contains("cache") && $("blocNouveau").classList.contains("cache");
+  $("ecranAccueil").classList.toggle("seul", seul);
+}
+new MutationObserver(majCentrage).observe($("blocClient"), {attributes:true, attributeFilter:["class"]});
+new MutationObserver(majCentrage).observe($("blocNouveau"), {attributes:true, attributeFilter:["class"]});
+
+// ---------- Mon compte : mot de passe et e-mail ----------
+$("bMdp").onclick = ()=> occupe($("bMdp"), async ()=>{
+  const m1 = $("mdp1").value, m2 = $("mdp2").value;
+  if (m1.length < 8) return message("msgMdp","Le mot de passe doit faire au moins 8 caractères.","err");
+  if (m1 !== m2) return message("msgMdp","Les deux mots de passe ne sont pas identiques.","err");
+  try{
+    await API.nouveauMdp(m1);
+    $("mdp1").value = ""; $("mdp2").value = "";
+    message("msgMdp","✓ Mot de passe changé. Utilisez-le à la prochaine connexion.","ok");
+  }catch(e){ message("msgMdp", e.message, "err"); }
+});
+$("bEmail").onclick = ()=> occupe($("bEmail"), async ()=>{
+  const e = $("nouvEmail").value.trim();
+  if (!/^\S+@\S+\.\S+$/.test(e)) return message("msgEmail","Adresse e-mail invalide.","err");
+  if (e.toLowerCase() === (SESSION.email || "").toLowerCase()) return message("msgEmail","C'est déjà votre adresse actuelle.","info");
+  try{
+    await API.nouvelEmail(e);
+    $("nouvEmail").value = "";
+    message("msgEmail", DEMO ? "✓ Adresse changée (démo)." : "📩 Un e-mail de confirmation a été envoyé. Cliquez sur le lien reçu pour valider le changement (vérifiez aussi les courriers indésirables). D'ici là, l'ancienne adresse reste valable.", "ok");
+  }catch(err){ message("msgEmail", err.message, "err"); }
+});
+
+marqueConnexion();
 demarrer();
 </script>
 </body>
