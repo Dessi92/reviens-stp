@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="12">
+<meta name="app-version" content="13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -40,6 +40,11 @@
   .btn.principal{background:var(--accent);color:#fff}
   .btn.vert{background:var(--vert);color:#fff}
   .btn.gris{background:var(--gris);color:var(--texte)}
+  .btn.rouge{background:#b3261e;color:#fff}
+  .poubelle{border:0;background:var(--gris);border-radius:10px;padding:8px 10px;font-size:16px;cursor:pointer}
+  .petitbtn{border:0;border-radius:9px;padding:6px 10px;font-size:13px;font-weight:700;cursor:pointer;margin:2px 0;display:block;width:100%}
+  .petitbtn.vider{background:var(--orclair);color:var(--or)}
+  .petitbtn.suppr{background:#fde8e8;color:#b3261e}
   .btn:disabled{opacity:.45;cursor:default}
   .ligne{display:flex;gap:10px}
   .ligne > *{flex:1}
@@ -234,7 +239,7 @@
     <h2>Mes clients (<span id="nbClients">0</span>)</h2>
     <input id="filtre" type="text" placeholder="Chercher un nom ou un numéro">
     <div class="tableau"><table>
-      <thead><tr><th>Client</th><th class="n">Points</th><th class="n">Dernière visite</th></tr></thead>
+      <thead><tr><th>Client</th><th class="n">Points</th><th class="n">Dernière visite</th><th></th></tr></thead>
       <tbody id="tListe"></tbody>
     </table></div>
   </div>
@@ -275,6 +280,11 @@
     <h2>Mes données</h2>
     <p class="note" style="margin-top:0">Vos clients sont enregistrés en ligne, dans votre compte. Vous seul y avez accès. Vous pouvez télécharger la liste à tout moment.</p>
     <button class="btn gris" id="bExporterCsv">Télécharger ma liste de clients (Excel)</button>
+    <label for="mdpVider" style="margin-top:22px">Repartir à zéro : tapez votre mot de passe</label>
+    <input id="mdpVider" type="password" autocomplete="current-password" placeholder="Mot de passe actuel">
+    <button class="btn rouge" id="bVider">🗑 Effacer tous mes clients</button>
+    <p class="note">Efface tous les clients, leurs points et leur historique. Votre compte, vos réglages et votre thème sont gardés. Impossible à annuler : téléchargez la liste avant si besoin.</p>
+    <div id="msgVider"></div>
   </div>
   <div class="carte">
     <h2>Mon compte</h2>
@@ -321,7 +331,7 @@
   <div class="carte">
     <h2>Les commerces inscrits</h2>
     <div class="tableau"><table>
-      <thead><tr><th>Commerce</th><th class="n">Clients</th><th class="n">Accord SMS</th><th class="n">Passages 30 j</th><th class="n">Réductions</th><th class="n">Dernière activité</th><th class="n">Inscrit le</th></tr></thead>
+      <thead><tr><th>Commerce</th><th class="n">Clients</th><th class="n">Accord SMS</th><th class="n">Passages 30 j</th><th class="n">Réductions</th><th class="n">Dernière activité</th><th class="n">Inscrit le</th><th></th></tr></thead>
       <tbody id="gListe"></tbody>
     </table></div>
     <p class="note">Espace gérant : seulement des chiffres. Les numéros et les noms des clients restent visibles par leur commerce uniquement.</p>
@@ -412,6 +422,9 @@ function apiSupabase(sb){
     async historique(id){ return v(await sb.from("mouvements").select("*").eq("client_id", id).order("le", {ascending:false}).order("id", {ascending:false}).limit(30)); },
     async estAdmin(){ return v(await sb.rpc("est_admin")) === true; },
     async stats(){ return v(await sb.rpc("stats_commerces")); },
+    async viderMesClients(){ v(await sb.from("clients").delete().eq("commerce_id", SESSION.commerce.id)); },
+    async adminVider(id){ return v(await sb.rpc("admin_vider_commerce", {p_id:id})); },
+    async adminSupprimer(id){ v(await sb.rpc("admin_supprimer_commerce", {p_id:id})); },
     // Support
     async supEnvoyer(texte){ v(await sb.from("messages_support").insert({texte})); },
     async supMesMessages(){ return v(await sb.from("messages_support").select("*").order("cree_le", {ascending:false}).limit(50)); },
@@ -479,20 +492,23 @@ function apiDemo(){
     },
     async majClient(id, champs){ Object.assign(client(id), champs); sauver(); return copie(client(id)); },
     async supprimerClient(id){ D.clients = D.clients.filter(c=>c.id!==id); D.mouvements = D.mouvements.filter(m=>m.client_id!==id); sauver(); },
+    async viderMesClients(){ D.clients = []; D.mouvements = []; sauver(); },
+    async adminVider(id){ if (id !== "demo") throw new Error("Commerce d'exemple : rien à vider en démo"); const n = D.clients.length; D.clients = []; D.mouvements = []; sauver(); return n; },
+    async adminSupprimer(id){ throw new Error("Pas de suppression de commerce en mode démo"); },
     async liste(){ return copie(D.clients).sort((a,b)=>(b.derniere_visite||"").localeCompare(a.derniere_visite||"")); },
     async historique(id){ return copie(D.mouvements.filter(m=>m.client_id===id)).reverse().slice(0,30); },
     async estAdmin(){ return true; },
     async stats(){
       const il30 = Date.now() - 30*864e5;
-      const moi = {commerce:D.commerce.nom, email:D.email, inscrit_le:D.commerce.cree_le,
+      const moi = {id:"demo", commerce:D.commerce.nom, email:D.email, inscrit_le:D.commerce.cree_le,
         nb_clients:D.clients.length, nb_accord_sms:D.clients.filter(c=>c.accord_sms).length,
         passages_30j:D.mouvements.filter(m=>m.type==="points" && new Date(m.le)>il30).length,
         nb_reductions:D.mouvements.filter(m=>m.type==="reduction").length,
         derniere_activite:D.mouvements.length ? D.mouvements[D.mouvements.length-1].le : null};
       const j = n => new Date(Date.now()-n*864e5).toISOString();
       return [moi,
-        {commerce:"Boulangerie (exemple)", email:"exemple1@demo", inscrit_le:j(40), nb_clients:128, nb_accord_sms:74, passages_30j:312, nb_reductions:21, derniere_activite:j(0)},
-        {commerce:"Fleuriste (exemple)", email:"exemple2@demo", inscrit_le:j(12), nb_clients:9, nb_accord_sms:3, passages_30j:11, nb_reductions:0, derniere_activite:j(6)}];
+        {id:"ex1", commerce:"Boulangerie (exemple)", email:"exemple1@demo", inscrit_le:j(40), nb_clients:128, nb_accord_sms:74, passages_30j:312, nb_reductions:21, derniere_activite:j(0)},
+        {id:"ex2", commerce:"Fleuriste (exemple)", email:"exemple2@demo", inscrit_le:j(12), nb_clients:9, nb_accord_sms:3, passages_30j:11, nb_reductions:0, derniere_activite:j(6)}];
     },
     // Support (démo : les messages arrivent au gérant sur le même appareil)
     async supEnvoyer(texte){ D.support = D.support || []; D.support.unshift({id:D.suivant++, texte, cree_le:new Date().toISOString(), lu:false, reponse:null, repondu_le:null, reponse_vue:true}); sauver(); },
@@ -886,8 +902,16 @@ function filtrerListe(){
   $("tListe").innerHTML = lignes.map(c=>`<tr class="clic" data-id="${c.id}">
       <td><b>${echapper(c.nom||"Client")}</b><br><span style="color:var(--doux)">${joli(c.telephone)}</span></td>
       <td class="n">${c.points}${c.points>=SESSION.commerce.seuil?'<br><span class="pastille">réduction</span>':''}</td>
-      <td class="n">${jourFr(c.derniere_visite)}</td></tr>`).join("")
+      <td class="n">${jourFr(c.derniere_visite)}</td>
+      <td class="n"><button class="poubelle" data-suppr="${c.id}" title="Supprimer ce client">🗑</button></td></tr>`).join("")
     || `<tr><td colspan="3" class="note">Aucun client.</td></tr>`;
+  for (const b of $("tListe").querySelectorAll("button[data-suppr]")) b.onclick = async (ev)=>{
+    ev.stopPropagation();
+    const c = LISTE.find(x=>x.id==b.dataset.suppr);
+    if (!c || !confirm(`Supprimer définitivement ${c.nom ? c.nom + " (" + joli(c.telephone) + ")" : "le " + joli(c.telephone)} ? Ses points et son historique seront effacés.`)) return;
+    try{ await API.supprimerClient(c.id); LISTE = LISTE.filter(x=>x.id!==c.id); filtrerListe(); }
+    catch(e){ alert(e.message); }
+  };
   for (const tr of $("tListe").querySelectorAll("tr.clic")) tr.onclick = ()=>{
     const c = LISTE.find(x=>x.id==tr.dataset.id);
     montrer("ecranAccueil");
@@ -970,12 +994,13 @@ $("bDeconnexion").onclick = async ()=>{
 };
 
 // ---------- Espace gérant ----------
+let DERNIERES_STATS = [];
 async function afficherGerant(){
   afficherSupportGerant();
-  $("gListe").innerHTML = `<tr><td colspan="7" class="note">Chargement…</td></tr>`;
+  $("gListe").innerHTML = `<tr><td colspan="8" class="note">Chargement…</td></tr>`;
   let s;
-  try{ s = await API.stats(); }
-  catch(e){ $("gListe").innerHTML = `<tr><td colspan="7">${echapper(e.message)}</td></tr>`; return; }
+  try{ s = await API.stats(); DERNIERES_STATS = s; }
+  catch(e){ $("gListe").innerHTML = `<tr><td colspan="8">${echapper(e.message)}</td></tr>`; return; }
   const somme = k => s.reduce((t,x)=>t+Number(x[k]||0),0);
   const actifs = s.filter(x=>x.derniere_activite && Date.now()-new Date(x.derniere_activite) < 30*864e5).length;
   $("gChiffres").innerHTML = [
@@ -985,8 +1010,10 @@ async function afficherGerant(){
   $("gListe").innerHTML = s.map(x=>`<tr>
       <td><b>${echapper(x.commerce)}</b><br><span class="note">${echapper(x.email)}</span></td>
       <td class="n">${x.nb_clients}</td><td class="n">${x.nb_accord_sms}</td><td class="n">${x.passages_30j}</td>
-      <td class="n">${x.nb_reductions}</td><td class="n">${jourFr(x.derniere_activite)}</td><td class="n">${jourFr(x.inscrit_le)}</td></tr>`).join("")
-    || `<tr><td colspan="7" class="note">Aucun commerce inscrit pour l'instant.</td></tr>`;
+      <td class="n">${x.nb_reductions}</td><td class="n">${jourFr(x.derniere_activite)}</td><td class="n">${jourFr(x.inscrit_le)}</td>
+      <td><button class="petitbtn vider" data-vider="${x.id}">Vider</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer</button></td></tr>`).join("")
+    || `<tr><td colspan="8" class="note">Aucun commerce inscrit pour l'instant.</td></tr>`;
+  for (const b of $("gListe").querySelectorAll("button")) b.onclick = ()=> actionCommerce(b);
 }
 
 // ---------- Mise à jour automatique ----------
@@ -1122,6 +1149,40 @@ $("bEmail").onclick = ()=> occupe($("bEmail"), async ()=>{
     message("msgEmail", DEMO ? "✓ Adresse changée (démo)." : "📩 Un e-mail de confirmation a été envoyé. Cliquez sur le lien reçu pour valider le changement (vérifiez aussi les courriers indésirables). D'ici là, l'ancienne adresse reste valable.", "ok");
   }catch(err){ message("msgEmail", err.message, "err"); }
 });
+
+// ---------- Repartir à zéro ----------
+$("bVider").onclick = ()=> occupe($("bVider"), async ()=>{
+  const m = $("mdpVider").value;
+  if (!m) return message("msgVider","Tapez votre mot de passe actuel.","err");
+  if (!confirm("Effacer TOUS vos clients, leurs points et leur historique ? C'est définitif.")) return;
+  try{
+    await API.verifierMdp(SESSION.email, m);
+    await API.viderMesClients();
+    $("mdpVider").value = "";
+    message("msgVider","✓ Tous les clients ont été effacés. Vous repartez à zéro.","ok");
+  }catch(e){ message("msgVider", e.message, "err"); }
+});
+
+// Gérant : vider ou supprimer un commerce
+async function actionCommerce(b){
+  const s = DERNIERES_STATS || [];
+  const id = b.dataset.vider || b.dataset.suppr, x = s.find(c=>String(c.id)===String(id));
+  if (!x) return;
+  try{
+    if (b.dataset.vider){
+      if (!confirm(`Vider « ${x.commerce} » ? Ses ${x.nb_clients} clients et leur historique seront effacés. Le compte et les réglages sont gardés.`)) return;
+      const n = await API.adminVider(x.id);
+      alerte(`✓ ${x.commerce} vidé (${n} client${n>1?"s":""} effacé${n>1?"s":""})`);
+    } else {
+      const t = prompt(`Supprimer DÉFINITIVEMENT « ${x.commerce} » (compte, clients, historique, messages) ?\nPour confirmer, tapez son nom exact :`);
+      if (t === null) return;
+      if (t.trim() !== x.commerce) return alert("Nom différent : rien n'a été supprimé.");
+      await API.adminSupprimer(x.id);
+      alerte(`✓ ${x.commerce} supprimé`);
+    }
+    afficherGerant();
+  }catch(e){ alert(e.message); }
+}
 
 marqueConnexion();
 demarrer();
