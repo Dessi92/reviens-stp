@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="11">
+<meta name="app-version" content="12">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -661,8 +661,6 @@ function appliquerTheme(cle){
     $("aSur").textContent = sur || ""; $("aSur").classList.toggle("cache", !sur);
     $("aTitre").textContent = (perso && perso.titre) || nom;
     $("aSous").textContent = (perso && perso.sous_titre) || ""; $("aSous").classList.toggle("cache", !(perso && perso.sous_titre));
-    // Mémorisé sur l'appareil pour l'écran de connexion
-    try{ localStorage.setItem("reviens_derniere_marque", JSON.stringify({nom, logo:perso && perso.logo, a, fond:perso && perso.fond, vichy:perso && perso.vichy, police:perso && perso.police})); }catch(e){}
   }
   // Décor de fond : petits émojis discrets, toujours aux mêmes places
   let g = 7, html = "";
@@ -679,18 +677,13 @@ function chargerPolice(){
   l.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap";
   document.head.appendChild(l);
 }
-// Écran de connexion aux couleurs du dernier commerce connecté sur cet appareil
+// Écran de connexion : toujours neutre (Reviens STP), jamais aux couleurs d'un commerce
 function marqueConnexion(){
-  let m = null; try{ m = JSON.parse(localStorage.getItem("reviens_derniere_marque")); }catch(e){}
-  if (!m) return;
-  const racine = document.documentElement.style;
-  if (m.a){ racine.setProperty("--accent", m.a); document.querySelector('meta[name="theme-color"]').content = m.a; }
-  if (m.fond) racine.setProperty("--bg", m.fond);
-  if (m.vichy){ racine.setProperty("--vichy", m.vichy); document.body.classList.add("vichy"); }
-  if (m.police === "serif"){ racine.setProperty("--police", '"Cormorant Garamond", Georgia, serif'); chargerPolice(); }
-  if (m.logo) $("cxLogo").src = m.logo;
-  $("cxTitre").textContent = m.nom || "Reviens STP";
-  $("cxSous").textContent = "Carte de fidélité · Reviens STP";
+  try{ localStorage.removeItem("reviens_derniere_marque"); }catch(e){}
+  if (!SESSION) appliquerTheme("defaut");
+  $("cxLogo").src = "icone.svg";
+  $("cxTitre").textContent = "Reviens STP";
+  $("cxSous").textContent = "Le programme de fidélité de votre commerce";
 }
 // Petits émojis qui s'envolent comme des ballons ; « grand » = pluie de fête (palier atteint)
 function fete(grand){
