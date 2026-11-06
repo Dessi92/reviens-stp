@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="21">
+<meta name="app-version" content="22">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -570,7 +570,7 @@ function demoExemple(){
       const g = gros.includes(n), p = g ? 20 : 10;
       c.points += p; c.visites++; c.derniere_visite = j(n, 2);
       D.mouvements.push({id:D.suivant++, client_id:id, type:"points", points:p, gros_panier:g, le:j(n, 2)});
-      if (c.points >= 100 && recomp){ D.mouvements.push({id:D.suivant++, client_id:id, type:"reduction", points:-c.points, remise:10, le:j(n, 2)}); c.points = 0; }
+      if (c.points >= 100 && recomp){ D.mouvements.push({id:D.suivant++, client_id:id, type:"reduction", points:-100, remise:10, le:j(n, 2)}); c.points -= 100; }
     }
     D.clients.push(c);
   }
@@ -647,8 +647,9 @@ function apiDemo(){
     async utiliserReduction(id){
       const c = client(id);
       if (c.points < D.commerce.seuil) throw new Error("Pas encore assez de points");
-      D.mouvements.push({id:D.suivant++, client_id:id, type:"reduction", points:-c.points, remise:D.commerce.remise, le:new Date().toISOString()});
-      c.points = 0; c.recompenses++;
+      // On retire seulement le palier : les points en trop restent au client (110 → 10)
+      D.mouvements.push({id:D.suivant++, client_id:id, type:"reduction", points:-D.commerce.seuil, remise:D.commerce.remise, le:new Date().toISOString()});
+      c.points -= D.commerce.seuil; c.recompenses++;
       sauver(); return copie(c);
     },
     async majClient(id, champs){ Object.assign(client(id), champs); sauver(); return copie(client(id)); },
@@ -997,6 +998,8 @@ async function ouvrirClient(c, ajoute = false){
   $("cRecompense").classList.toggle("cache", !atteint);
   $("bUtiliser").classList.toggle("cache", !atteint);
   if (atteint){
+    const reste = c.points - r.seuil;
+    $("bUtiliser").textContent = reste > 0 ? `✓ Réduction faite · garder ${reste} point${reste>1?"s":""}` : "✓ Réduction faite · remettre à 0";
     $("cRecompense").textContent = `🎉 Réduction de ${r.remise} % à appliquer sur cet achat`;
     $("cReste").textContent = "";
   } else {
@@ -1062,7 +1065,7 @@ $("bAnnulerReduc").onclick = async ()=>{
 $("bFermer").onclick = ()=> retourAccueil("");
 $("bUtiliser").onclick = ()=> occupe($("bUtiliser"), async ()=>{
   if (!courant) return;
-  try{ await ouvrirClient(await API.utiliserReduction(courant.id), ajouteCeTour); message("msgClient","Réduction enregistrée. Points remis à 0.","ok"); $("zoneErreurReduc").classList.remove("cache"); fete(true); }
+  try{ await ouvrirClient(await API.utiliserReduction(courant.id), ajouteCeTour); message("msgClient", courant.points > 0 ? `Réduction enregistrée. ${pluriel(courant.points, "point")} gardé${courant.points>1?"s":""} pour la prochaine fois.` : "Réduction enregistrée. Points remis à 0.","ok"); $("zoneErreurReduc").classList.remove("cache"); fete(true); }
   catch(e){ message("msgClient", e.message, "err"); }
 });
 $("bAccord").onclick = async ()=>{
