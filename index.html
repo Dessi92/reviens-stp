@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="23">
+<meta name="app-version" content="24">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -296,14 +296,17 @@
 
   <div class="carte cache" id="blocNouveau">
     <h2>Nouveau client</h2>
-    <label for="nomNouveau">Prénom / nom (facultatif)</label>
+    <label for="nomNouveau">Prénom / nom</label>
     <input id="nomNouveau" type="text" placeholder="ex. Mme Dupont">
+    <label for="emailNouveau">Adresse e-mail (facultatif)</label>
+    <input id="emailNouveau" type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ex. marie.dupont@gmail.com">
     <label class="case"><input type="checkbox" id="accordNouveau">
       <span>Le client accepte de recevoir des SMS du commerce (offres, réduction disponible). Il pourra se désinscrire à tout moment.</span></label>
     <div class="ligne">
       <button class="btn vert" id="bCreer">Créer la carte</button>
       <button class="btn vert cache" id="bCreerGros">Créer la carte</button>
     </div>
+    <div id="msgNouveau"></div>
     <button class="btn gris" id="bAnnulerNouveau">Annuler</button>
   </div>
 
@@ -326,7 +329,7 @@
     <p class="note cache" id="zoneErreur" style="text-align:center">Erreur ? <a class="lien" id="bRetirer">Annuler ces points</a></p>
     <div class="histo" id="cHisto"></div>
     <p class="note"><span id="cAccord"></span> · <a class="lien" id="bAccord">modifier</a></p>
-    <p class="note"><a class="lien" id="bRenommer">Modifier le nom</a> · <a class="lien" id="bSupprimer">Supprimer ce client</a></p>
+    <p class="note"><a class="lien" id="bRenommer">Modifier le nom</a> · <a class="lien" id="bEmailClient">E-mail</a> · <a class="lien" id="bSupprimer">Supprimer ce client</a></p>
   </div>
 </main>
 
@@ -538,7 +541,7 @@ function apiSupabase(sb){
     async deconnexion(){ await sb.auth.signOut(); },
     async majCommerce(id, champs){ return v(await sb.from("commerces").update(champs).eq("id", id).select().single()); },
     async trouverClient(tel){ return v(await sb.from("clients").select("*").eq("telephone", tel).maybeSingle()); },
-    async creerClient(tel, nom, accord, gros){ return v(await sb.rpc("creer_client", {p_tel:tel, p_nom:nom, p_accord:accord, p_gros:!!gros})); },
+    async creerClient(tel, nom, accord, gros, email){ return v(await sb.rpc("creer_client", {p_tel:tel, p_nom:nom, p_accord:accord, p_gros:!!gros, p_email:email||""})); },
     async ajouterPoints(id, gros){ return v(await sb.rpc("ajouter_points", {p_client:id, p_gros:!!gros})); },
     async annulerDernier(id){ return v(await sb.rpc("annuler_dernier", {p_client:id})); },
     async utiliserReduction(id){ return v(await sb.rpc("utiliser_reduction", {p_client:id})); },
@@ -627,10 +630,10 @@ function apiDemo(){
     async trouverClient(tel){
       if (tel === DEMO_LUCAS || tel === DEMO_MADAME) remettreClientDemo(tel);   // démo rejouable : Lucas 90/100, Mme Martin 50/100
       const c = D.clients.find(c=>c.telephone===tel); return c ? copie(c) : null; },
-    async creerClient(tel, nom, accord, gros){
+    async creerClient(tel, nom, accord, gros, email){
       if (D.clients.some(c=>c.telephone===tel)) throw new Error("Ce numéro a déjà une carte");
       const now = new Date().toISOString(), id = D.suivant++;
-      D.clients.push({id, telephone:tel, nom:(nom||"").trim(), points:0, visites:0, recompenses:0,
+      D.clients.push({id, telephone:tel, nom:(nom||"").trim(), email:(email||"").trim().toLowerCase(), points:0, visites:0, recompenses:0,
         accord_sms:!!accord, accord_sms_le: accord ? now : null, cree_le:now, derniere_visite:null});
       return api.ajouterPoints(id, gros);
     },
@@ -963,7 +966,7 @@ async function chercher(){
     const c = await API.trouverClient(n);
     if (c) return ouvrirClient(c);
     enAttente = n;
-    $("nomNouveau").value = ""; $("accordNouveau").checked = false;
+    $("nomNouveau").value = ""; $("emailNouveau").value = ""; message("msgNouveau",""); $("accordNouveau").checked = false;
     boutonsPoints($("bCreer"), $("bCreerGros"), aBonus() ? "" : "Créer la carte · ");
     $("blocNouveau").classList.remove("cache");
     message("msgAccueil", `Aucune carte pour le ${joli(n)}.`, "info");
@@ -994,7 +997,9 @@ function creer(gros){
   return occupe(btn, async ()=>{
     if (!enAttente) return;
     try{
-      const c = await API.creerClient(enAttente, $("nomNouveau").value, $("accordNouveau").checked, gros);
+      const email = emailValide($("emailNouveau").value);
+      if (email === null){ message("msgNouveau", "Adresse e-mail incomplète : corrigez-la ou laissez la case vide.", "err"); return; }
+      const c = await API.creerClient(enAttente, $("nomNouveau").value, $("accordNouveau").checked, gros, email);
       enAttente = null;
       $("blocNouveau").classList.add("cache");
       message("msgAccueil","");
@@ -1021,6 +1026,7 @@ async function ouvrirClient(c, ajoute = false){
   $("zoneErreurReduc").classList.add("cache");
   const r = SESSION.commerce;
   $("cNom").textContent = c.nom || "Client";
+  $("bEmailClient").textContent = c.email ? "✉️ " + c.email : "Ajouter un e-mail";
   $("cTel").textContent = joli(c.telephone) + " · " + pluriel(c.visites, "passage") +
     (c.recompenses ? " · " + pluriel(c.recompenses, "réduction") + " utilisée" + (c.recompenses>1?"s":"") : "");
   $("cPoints").textContent = c.points;
@@ -1106,6 +1112,17 @@ $("bAccord").onclick = async ()=>{
   const oui = !courant.accord_sms;
   if (!confirm(oui ? "Le client accepte de recevoir des SMS ?" : "Le client ne veut plus recevoir de SMS ?")) return;
   try{ await ouvrirClient(await API.majClient(courant.id, {accord_sms:oui, accord_sms_le: oui ? new Date().toISOString() : null}), ajouteCeTour); }
+  catch(e){ message("msgClient", e.message, "err"); }
+};
+// E-mail facultatif : vide = pas d'e-mail ; renvoie null si la forme est fausse
+function emailValide(t){ t = (t||"").trim().toLowerCase(); if (!t) return ""; return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t) && t.length <= 254 ? t : null; }
+$("bEmailClient").onclick = async ()=>{
+  if (!courant) return;
+  const saisie = prompt("Adresse e-mail du client (laisser vide pour l'effacer) :", courant.email || "");
+  if (saisie === null) return;
+  const email = emailValide(saisie);
+  if (email === null){ message("msgClient", "Adresse e-mail incomplète, rien n'a été changé.", "err"); return; }
+  try{ await ouvrirClient(await API.majClient(courant.id, {email}), ajouteCeTour); }
   catch(e){ message("msgClient", e.message, "err"); }
 };
 $("bRenommer").onclick = async ()=>{
@@ -1217,9 +1234,9 @@ $("bEnregistrer").onclick = ()=> occupe($("bEnregistrer"), async ()=>{
   }catch(e){ message("msgReglages", e.message, "err"); }
 });
 $("bExporterCsv").onclick = ()=> occupe($("bExporterCsv"), async ()=>{
-  const l = [["Telephone","Nom","Points","Passages","Reductions utilisees","Accord SMS","Derniere visite","Client depuis"]];
+  const l = [["Telephone","Nom","E-mail","Points","Passages","Reductions utilisees","Accord SMS","Derniere visite","Client depuis"]];
   for (const c of await API.liste())
-    l.push([c.telephone, c.nom, c.points, c.visites, c.recompenses, c.accord_sms?"oui":"non", jourFr(c.derniere_visite), jourFr(c.cree_le)]);
+    l.push([c.telephone, c.nom, c.email||"", c.points, c.visites, c.recompenses, c.accord_sms?"oui":"non", jourFr(c.derniere_visite), jourFr(c.cree_le)]);
   const csv = "﻿" + l.map(r=>r.map(x=>`"${String(x??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
