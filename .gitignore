@@ -8,3 +8,7 @@ fidelite.html
 # Outils locaux et mises à jour de la base : jamais en ligne
 outils/
 migrations/
+journal.md
+*.crt
+# Brouillons des documents légaux : jamais en ligne
+documents/

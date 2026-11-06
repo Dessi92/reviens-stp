@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="18">
+<meta name="app-version" content="20">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -197,7 +197,7 @@
 </style>
 </head>
 <body>
-<div class="demo cache" id="bandeauDemo">Mode démonstration : les données restent sur cet appareil</div>
+<div class="demo cache" id="bandeauDemo">Démonstration : clients fictifs, rien n'est enregistré en ligne · <a href="#" onclick="recommencerDemo();return false" style="color:inherit">Recommencer</a></div>
 
 <!-- ============ CONNEXION ============ -->
 <main id="ecranConnexion" class="cache">
@@ -548,12 +548,52 @@ function apiSupabase(sb){
   };
 }
 
+// Démo prête à montrer à un commerçant : commerce réglé, clients fictifs, roue fréquente
+function demoExemple(){
+  const j = (n, h) => new Date(Date.now() - n*864e5 - (h||0)*36e5).toISOString();
+  const D = {connecte:true, email:"demo@reviens-stp", suivant:1, mouvements:[], clients:[], tirages:[],
+    commerce:{id:"demo", nom:"Votre commerce", points_par_passage:10, seuil:100, remise:10, montant_bonus:50, points_bonus:20,
+      programme_choisi:true, theme:"defaut", cree_le:j(60), roue_active:true, roue:{...ROUE_EXEMPLE(), frequence:3}, roue_compteur:1, roue_depuis:j(20)}};
+  // [téléphone fictif, prénom, passages (jours écoulés), gros paniers, réductions déjà obtenues, accord SMS]
+  const ex = [["0600000001","Sophie",[1,8,15,22,29,36,43,50,57],[8],0,true],
+              ["0600000002","Karim",[0,7,14,21,28],[],1,true],
+              ["0600000003","Mme Durand",[3,10,17],[3],0,false],
+              ["0600000004","",[5],[],0,false],
+              ["0600000005","Lucas",[2,9,16,23,30,37,44],[2,23],0,true],
+              ["0600000006","Nadia",[12,26,40],[],0,true]];
+  for (const [tel, nom, passages, gros, recomp, sms] of ex){
+    const id = D.suivant++, c = {id, telephone:tel, nom, points:0, visites:0, recompenses:recomp, accord_sms:sms,
+      accord_sms_le: sms ? j(Math.max(...passages)) : null, cree_le:j(Math.max(...passages)), derniere_visite:null};
+    for (const n of [...passages].sort((a,b)=>b-a)){
+      const g = gros.includes(n), p = g ? 20 : 10;
+      c.points += p; c.visites++; c.derniere_visite = j(n, 2);
+      D.mouvements.push({id:D.suivant++, client_id:id, type:"points", points:p, gros_panier:g, le:j(n, 2)});
+      if (c.points >= 100 && recomp){ D.mouvements.push({id:D.suivant++, client_id:id, type:"reduction", points:-c.points, remise:10, le:j(n, 2)}); c.points = 0; }
+    }
+    D.clients.push(c);
+  }
+  return D;
+}
+const DEMO_LUCAS = "0600000005";
+function recommencerDemo(){ localStorage.removeItem("fidelite_demo_v1"); location.reload(); }
+
 function apiDemo(){
   const CLE = "fidelite_demo_v1";
   let D;
   try{ D = JSON.parse(localStorage.getItem(CLE)); }catch(e){}
-  if (!D || !D.commerce) D = {connecte:false, email:"", commerce:{id:"demo", nom:"Terrine", points_par_passage:10, seuil:100, remise:10, montant_bonus:null, points_bonus:null, programme_choisi:false, theme:"defaut", cree_le:new Date().toISOString()}, clients:[], mouvements:[], suivant:1};
+  if (!D || !D.commerce) D = demoExemple();
   const sauver = ()=>{ try{ localStorage.setItem(CLE, JSON.stringify(D)); }catch(e){} };
+  // Remet Lucas (et le compteur de la roue) comme au début de la démo, sans toucher aux autres clients
+  function remettreLucas(){
+    const F = demoExemple(), f = F.clients.find(c=>c.telephone===DEMO_LUCAS);
+    let c = D.clients.find(c=>c.telephone===DEMO_LUCAS);
+    if (c){ D.mouvements = D.mouvements.filter(m=>m.client_id!==c.id); D.tirages = (D.tirages||[]).filter(t=>t.client_id!==c.id); }
+    else { c = {id:D.suivant++}; D.clients.push(c); }
+    const id = c.id; Object.assign(c, f, {id});
+    for (const m of F.mouvements.filter(m=>m.client_id===f.id)) D.mouvements.push({...m, id:D.suivant++, client_id:id});
+    D.commerce.roue_compteur = 1;
+    sauver();
+  }
   const client = id => { const c = D.clients.find(c=>c.id===id); if (!c) throw new Error("Client introuvable"); return c; };
   const copie = o => JSON.parse(JSON.stringify(o));
   const api = {
@@ -566,7 +606,9 @@ function apiDemo(){
     async verifierMdp(email, mdp){ if (D.mdp && mdp !== D.mdp) throw new Error("Mot de passe actuel incorrect."); },
     async deconnexion(){ D.connecte = false; sauver(); },
     async majCommerce(id, champs){ Object.assign(D.commerce, champs); sauver(); return copie(D.commerce); },
-    async trouverClient(tel){ const c = D.clients.find(c=>c.telephone===tel); return c ? copie(c) : null; },
+    async trouverClient(tel){
+      if (tel === DEMO_LUCAS) remettreLucas();   // démo rejouable : Lucas revient toujours à 90/100
+      const c = D.clients.find(c=>c.telephone===tel); return c ? copie(c) : null; },
     async creerClient(tel, nom, accord, gros){
       if (D.clients.some(c=>c.telephone===tel)) throw new Error("Ce numéro a déjà une carte");
       const now = new Date().toISOString(), id = D.suivant++;
@@ -632,7 +674,7 @@ function apiDemo(){
     async rechargerCommerce(){ return copie(D.commerce); },
     async liste(){ return copie(D.clients).sort((a,b)=>(b.derniere_visite||"").localeCompare(a.derniere_visite||"")); },
     async historique(id){ return copie(D.mouvements.filter(m=>m.client_id===id)).reverse().slice(0,30); },
-    async estAdmin(){ return true; },
+    async estAdmin(){ return new URLSearchParams(location.search).has("gerant"); },   // démo commerçant : pas d'espace gérant
     async stats(){
       const il30 = Date.now() - 30*864e5;
       const moi = {id:"demo", roue_active:!!D.commerce.roue_active, commerce:D.commerce.nom, email:D.email, inscrit_le:D.commerce.cree_le,

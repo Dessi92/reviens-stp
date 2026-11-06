@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#9b2c2c">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<title>Reviens STP – la carte de fidélité des commerces de quartier</title>
+<meta name="description" content="Carte de fidélité par numéro de téléphone, sur tablette, aux couleurs de votre commerce. Rien à installer, rien à imprimer.">
+<style>
+  :root{--bg:#faf6f1;--carte:#fff;--texte:#2b2118;--doux:#6f5f51;--accent:#9b2c2c;--accent2:#c0392b;--bord:#e6dccf;--or:#b7791f;--orclair:#fdf3e1;--vert:#2e7d4f;--vertclair:#e3f3e9}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--texte);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:1.5}
+  a{color:inherit}
+  .bloc{max-width:980px;margin:0 auto;padding:0 20px}
+  header{background:var(--accent);color:#fff}
+  header .bloc{display:flex;align-items:center;gap:10px;padding-top:14px;padding-bottom:14px}
+  header img{width:34px;height:34px}
+  header b{font-size:20px;flex:1}
+  header a{font-size:15px;text-decoration:none;background:rgba(255,255,255,.18);padding:8px 14px;border-radius:10px}
+  .hero{background:linear-gradient(180deg,var(--accent) 0%,#7d2222 100%);color:#fff;padding:36px 0 56px}
+  .hero .bloc{display:grid;grid-template-columns:1.2fr .8fr;gap:36px;align-items:center}
+  .hero h1{font-size:40px;line-height:1.15;margin:0 0 14px}
+  .hero p{font-size:19px;opacity:.93;margin:0 0 22px}
+  .btn{display:inline-block;background:#fff;color:var(--accent);font-weight:700;text-decoration:none;padding:15px 24px;border-radius:14px;font-size:18px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+  .btn.second{background:transparent;color:#fff;border:2px solid rgba(255,255,255,.6);box-shadow:none;margin-left:8px}
+  .petit{font-size:14px;opacity:.85;margin-top:12px}
+  /* Maquette de tablette */
+  .ecran{background:#1d1714;border-radius:28px;padding:12px;box-shadow:0 20px 40px rgba(0,0,0,.35);max-width:330px;margin:0 auto;width:100%}
+  .ecran .in{background:var(--bg);border-radius:18px;overflow:hidden;color:var(--texte)}
+  .ecran .barre{background:var(--accent);color:#fff;font-weight:700;padding:9px 12px;font-size:14px}
+  .ecran .contenu{padding:14px}
+  .ecran .nom{font-weight:700;font-size:18px}
+  .ecran .sous{color:var(--doux);font-size:13px}
+  .jauge{height:12px;background:#efe7dc;border-radius:8px;margin:10px 0 4px;overflow:hidden}
+  .jauge i{display:block;height:100%;width:90%;background:linear-gradient(90deg,var(--accent2),var(--or));border-radius:8px}
+  .ecran .info{font-size:13px;color:var(--doux)}
+  .ecran .b2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+  .ecran .b2 span{background:var(--accent);color:#fff;border-radius:10px;text-align:center;padding:10px 4px;font-weight:700;font-size:14px}
+  .ecran .b2 span+span{background:var(--or)}
+  section{padding:48px 0}
+  h2{font-size:30px;margin:0 0 8px;text-align:center}
+  .intro{text-align:center;color:var(--doux);margin:0 auto 28px;max-width:640px}
+  .etapes,.atouts{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .atouts{grid-template-columns:repeat(3,1fr)}
+  .c{background:var(--carte);border:1px solid var(--bord);border-radius:18px;padding:20px}
+  .c .ico{font-size:30px}
+  .c h3{margin:8px 0 6px;font-size:19px}
+  .c p{margin:0;color:var(--doux);font-size:16px}
+  .num{display:inline-flex;width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;align-items:center;justify-content:center;font-weight:700}
+  .bande{background:#fff;border-top:1px solid var(--bord);border-bottom:1px solid var(--bord)}
+  .exemple{max-width:640px;margin:0 auto;background:var(--orclair);border-radius:18px;padding:20px 22px;color:#5c4210}
+  .exemple b{color:var(--texte)}
+  .prix{max-width:520px;margin:0 auto;text-align:center;background:var(--carte);border:2px solid var(--accent);border-radius:22px;padding:28px 22px}
+  .prix .gros{font-size:34px;font-weight:800;color:var(--accent);margin:6px 0}
+  .prix ul{text-align:left;margin:16px auto;padding-left:22px;max-width:360px}
+  .prix .btn{background:var(--accent);color:#fff}
+  .faq details{background:var(--carte);border:1px solid var(--bord);border-radius:14px;padding:14px 18px;margin:0 auto 10px;max-width:760px}
+  .faq summary{font-weight:700;cursor:pointer}
+  .faq p{color:var(--doux);margin:10px 0 0}
+  footer{text-align:center;color:var(--doux);font-size:14px;padding:30px 20px 40px}
+  @media (max-width:760px){
+    .hero{padding:26px 0 40px}
+    .hero .bloc{grid-template-columns:1fr;gap:28px}
+    .hero h1{font-size:30px}
+    .hero p{font-size:17px}
+    .btn{display:block;text-align:center}
+    .btn.second{margin:10px 0 0}
+    .etapes,.atouts{grid-template-columns:1fr}
+    h2{font-size:25px}
+    section{padding:36px 0}
+    .bloc{padding:0 16px}
+  }
+  @media print{
+    header a,.btn,.faq{display:none!important}
+    .hero{background:var(--accent)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    section{padding:18px 0}
+  }
+</style>
+</head>
+<body>
+
+<header><div class="bloc">
+  <img src="icone.svg" alt="">
+  <b>Reviens STP</b>
+  <a href="index.html?demo">Essayer la démo</a>
+</div></header>
+
+<div class="hero"><div class="bloc">
+  <div>
+    <h1>La carte de fidélité qui fait revenir vos clients.</h1>
+    <p>Le client donne son numéro de téléphone, vous appuyez sur un bouton : ses points sont comptés. Pas de carte en carton, pas d'application à installer pour le client.</p>
+    <a class="btn" href="index.html?demo">▶ Essayer la démo</a><a class="btn second" href="#prix">Voir l'offre</a>
+    <div class="petit">Démo avec des clients fictifs, sans inscription.</div>
+  </div>
+  <div class="ecran" aria-hidden="true"><div class="in">
+    <div class="barre">🥖 Votre commerce</div>
+    <div class="contenu">
+      <div class="nom">Lucas</div>
+      <div class="sous">06 •• •• •• 05 · 7 passages</div>
+      <div class="jauge"><i></i></div>
+      <div class="info"><b>90 / 100 points</b> · encore 1 passage pour <b>-10 %</b></div>
+      <div class="b2"><span>+10 points</span><span>+20 points<br><small style="font-weight:400">dès 50 €</small></span></div>
+    </div>
+  </div></div>
+</div></div>
+
+<section><div class="bloc">
+  <h2>Simple comme bonjour</h2>
+  <p class="intro">Moins de 5 secondes par client en caisse.</p>
+  <div class="etapes">
+    <div class="c"><span class="num">1</span><h3>Le numéro du client</h3><p>Vous le tapez sur la tablette. Nouveau client ? Sa carte est créée sur-le-champ.</p></div>
+    <div class="c"><span class="num">2</span><h3>Un appui</h3><p>+10 points pour un passage, plus pour un gros panier. Vous choisissez vos règles.</p></div>
+    <div class="c"><span class="num">3</span><h3>La récompense</h3><p>Au palier, l'écran l'annonce : réduction appliquée, compteur remis à zéro. Le client revient pour la suivante.</p></div>
+  </div>
+</div></section>
+
+<section class="bande"><div class="bloc">
+  <h2>Pensée pour les commerces de quartier</h2>
+  <p class="intro">Charcuterie, boulangerie, fleuriste, coiffeur, pizzeria…</p>
+  <div class="atouts">
+    <div class="c"><div class="ico">📱</div><h3>Rien à installer</h3><p>Ça marche sur la tablette, le téléphone ou l'ordinateur que vous avez déjà. Le client n'a rien à télécharger.</p></div>
+    <div class="c"><div class="ico">🎨</div><h3>À vos couleurs</h3><p>Des thèmes prêts à l'emploi, ou un thème sur mesure avec votre logo et vos couleurs.</p></div>
+    <div class="c"><div class="ico">🎡</div><h3>Roue de la fortune</h3><p>En option : tous les X passages, un client fait tourner la roue. Vous choisissez les lots et leurs chances.</p></div>
+    <div class="c"><div class="ico">🔒</div><h3>Données protégées</h3><p>Vos clients sont à vous : personne d'autre ne les voit, ils ne sont jamais revendus. Accord SMS recueilli, connexion chiffrée.</p></div>
+    <div class="c"><div class="ico">📊</div><h3>Vos clients en un coup d'œil</h3><p>Liste de vos clients, points, passages, export Excel quand vous voulez.</p></div>
+    <div class="c"><div class="ico">💬</div><h3>Un vrai support</h3><p>Une question ? Un bouton dans l'application, et une personne vous répond.</p></div>
+  </div>
+</div></section>
+
+<section><div class="bloc">
+  <h2>Un exemple</h2>
+  <div class="exemple">
+    <b>10 points par passage, 20 points dès 50 € d'achat, -10 % à 100 points.</b><br>
+    Un client qui vient chaque semaine obtient sa réduction environ tous les deux mois. Et il a une bonne raison de revenir chez vous plutôt qu'ailleurs.
+  </div>
+</div></section>
+
+<section class="bande" id="prix"><div class="bloc">
+  <h2>L'offre</h2>
+  <div class="prix">
+    <div>Abonnement mensuel</div>
+    <div class="gros">Premier mois offert</div>
+    <div style="color:var(--doux)">Sans engagement · tarif sur demande</div>
+    <ul>
+      <li>Clients et passages illimités</li>
+      <li>Thèmes, réglages du programme, export Excel</li>
+      <li>Mise en route avec vous, en boutique ou à distance</li>
+      <li>Mises à jour et support inclus</li>
+    </ul>
+    <a class="btn" href="index.html?demo">▶ Essayer la démo</a>
+  </div>
+</div></section>
+
+<section class="faq"><div class="bloc">
+  <h2>Questions fréquentes</h2>
+  <details><summary>Mes clients doivent-ils installer quelque chose ?</summary><p>Non. Ils donnent seulement leur numéro de téléphone en caisse.</p></details>
+  <details><summary>Et si je me trompe de bouton ?</summary><p>Un lien « Annuler ces points » corrige l'erreur, et un double appui accidentel est bloqué automatiquement.</p></details>
+  <details><summary>Que deviennent mes données si j'arrête ?</summary><p>Vous les exportez en Excel, puis elles sont supprimées. Elles vous appartiennent.</p></details>
+  <details><summary>Faut-il une connexion internet ?</summary><p>Oui, le wifi de la boutique ou le partage de connexion d'un téléphone suffit.</p></details>
+</div></section>
+
+<footer>Reviens STP · la carte de fidélité des commerces de quartier</footer>
+</body>
+</html>
