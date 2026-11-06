@@ -5,3 +5,6 @@ fidelite.html
 # Jamais en ligne : mots de passe et notes
 *.txt
 *mot de passe*
+# Outils locaux et mises à jour de la base : jamais en ligne
+outils/
+migrations/

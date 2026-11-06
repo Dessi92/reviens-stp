@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="16">
+<meta name="app-version" content="18">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -129,6 +129,26 @@
   .entete .sur{font-family:var(--police);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-size:18px;line-height:1}
   .entete h1{font-family:var(--police);font-weight:700;font-size:44px;line-height:1.05;margin:2px 0 0;color:var(--accent);letter-spacing:.01em;overflow-wrap:anywhere}
   .entete .sous{margin:6px 0 0;color:var(--doux);letter-spacing:.16em;text-transform:uppercase;font-size:12px;font-weight:700}
+  .accroche{margin:0 0 16px;color:var(--accent)}
+  .accroche .accSur{display:flex;align-items:center;justify-content:center;gap:10px;font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--doux)}
+  .accroche .accSur::before,.accroche .accSur::after{content:"";height:1px;width:38px;background:var(--accent2)}
+  .accroche .accTitre{font-family:var(--police);font-size:25px;font-weight:600;line-height:1.2;margin-top:6px}
+  .accroche .accRegles{margin-top:8px;font-size:14px;color:var(--doux)}
+  .accroche .chip{white-space:nowrap}
+  .accroche .chip b{color:var(--accent)}
+  /* A : sobre, filets fins */
+  .accroche.va .accTitre{font-style:italic}
+  .accroche.va .chip + .chip::before{content:"·";margin:0 8px;color:var(--accent2);font-weight:800}
+  /* B : pastilles */
+  .accroche.vb .accSur{display:none}
+  .accroche.vb .accTitre{margin-top:0}
+  .accroche.vb .accRegles{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+  .accroche.vb .chip{border:1px solid var(--accent2);border-radius:99px;padding:4px 12px;background:#fff;color:var(--texte)}
+  /* C : encadré fin */
+  .accroche.vc{border:1px solid var(--accent2);border-radius:14px;padding:12px 14px;background:color-mix(in srgb, var(--accent2) 10%, #fff)}
+  .accroche.vc .accSur::before,.accroche.vc .accSur::after{display:none}
+  .accroche.vc .chip + .chip::before{content:"·";margin:0 8px;color:var(--accent2);font-weight:800}
+  @media (min-width:700px){ .accroche .accTitre{font-size:30px} .accroche .accRegles{font-size:15px} }
   .entete .trait{width:120px;height:2px;background:var(--accent2);margin:10px auto 0;border-radius:2px}
   #carteRecherche{width:100%;max-width:520px;margin:0 auto 16px;text-align:center}
   #carteRecherche label{text-align:center}
@@ -244,6 +264,11 @@
     <div class="trait"></div>
   </div>
   <div class="carte" id="carteRecherche">
+    <div class="accroche va cache" id="aAccroche">
+      <div class="accSur">Programme fidélité</div>
+      <div class="accTitre" id="aAccTitre">Votre fidélité est récompensée</div>
+      <div class="accRegles" id="aAccRegles"></div>
+    </div>
     <label for="tel">Numéro de téléphone du client</label>
     <input id="tel" class="grand" type="tel" inputmode="numeric" autocomplete="off" placeholder="06 12 34 56 78">
     <button class="btn principal" id="bChercher">Valider</button>
@@ -758,12 +783,18 @@ const THEMES = {
   coiffeur:    {nom:"Coiffeur",    e:["✂️","💈","💇","💅"],      a:"#37474f", b:"#607d8b"},
   epicerie:    {nom:"Épicerie",    e:["🍎","🥕","🛒","🧺"],      a:"#33691e", b:"#689f38"},
 };
-const leTheme = cle => THEMES[cle] || THEMES.defaut;
+// Thème « sur mesure » (ex. Maison Terrine) : disponible seulement pour le commerce qui en a un
+function leTheme(cle){
+  const perso = SESSION && SESSION.commerce && SESSION.commerce.perso;
+  if (cle === "perso" && perso) return {nom: perso.nom_theme || SESSION.commerce.nom, e: perso.emojis || THEMES.charcuterie.e, a: perso.a, b: perso.b, logo: perso.logo};
+  return THEMES[cle] || THEMES.defaut;
+}
 let themeActif = "defaut";
 function appliquerTheme(cle){
-  themeActif = THEMES[cle] ? cle : "defaut";
+  const marque = (SESSION && SESSION.commerce.perso) || null;     // logo et titres du commerce (gardés quel que soit le thème)
+  themeActif = (cle === "perso" && marque) ? "perso" : (THEMES[cle] ? cle : "defaut");
   const t = leTheme(themeActif);
-  const perso = (SESSION && SESSION.commerce.perso) || null;    // thème sur mesure réglé par le gérant
+  const perso = themeActif === "perso" ? marque : null;           // couleurs, vichy et police seulement avec le thème sur mesure
   const a = (perso && perso.a) || t.a, b = (perso && perso.b) || t.b;
   const racine = document.documentElement.style;
   racine.setProperty("--accent", a);
@@ -777,16 +808,17 @@ function appliquerTheme(cle){
   document.querySelector('meta[name="theme-color"]').content = a;
   if (SESSION){
     const nom = SESSION.commerce.nom;
-    $("titreCommerce").textContent = (perso && perso.logo ? "" : t.e[0] + " ") + nom;
-    $("logoEntete").classList.toggle("cache", !(perso && perso.logo));
-    if (perso && perso.logo) $("logoEntete").src = perso.logo;
+    $("titreCommerce").textContent = (marque && marque.logo ? "" : t.e[0] + " ") + nom;
+    $("logoEntete").classList.toggle("cache", !(marque && marque.logo));
+    if (marque && marque.logo) $("logoEntete").src = marque.logo;
     // En-tête de l'écran de caisse
-    $("aLogo").classList.toggle("cache", !(perso && perso.logo));
-    if (perso && perso.logo) $("aLogo").src = perso.logo;
-    const sur = perso && perso.surtitre;
+    $("aLogo").classList.toggle("cache", !(marque && marque.logo));
+    if (marque && marque.logo) $("aLogo").src = marque.logo;
+    const sur = marque && marque.surtitre;
     $("aSur").textContent = sur || ""; $("aSur").classList.toggle("cache", !sur);
-    $("aTitre").textContent = (perso && perso.titre) || nom;
-    $("aSous").textContent = (perso && perso.sous_titre) || ""; $("aSous").classList.toggle("cache", !(perso && perso.sous_titre));
+    $("aTitre").textContent = (marque && marque.titre) || nom;
+    $("aSous").textContent = (marque && marque.sous_titre) || ""; $("aSous").classList.toggle("cache", !(marque && marque.sous_titre));
+    majAccroche();
   }
   // Décor de fond : petits émojis discrets, toujours aux mêmes places
   let g = 7, html = "";
@@ -802,6 +834,18 @@ function chargerPolice(){
   const l = document.createElement("link"); l.rel = "stylesheet";
   l.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap";
   document.head.appendChild(l);
+}
+// Accroche « Gagnez votre réduction ! » : seulement pour les commerces au thème sur mesure (Maison Terrine)
+function majAccroche(){
+  const c = SESSION && SESSION.commerce, perso = c && c.perso;
+  $("aAccroche").classList.toggle("cache", !perso);
+  if (!perso) return;
+  const style = new URLSearchParams(location.search).get("acc") || perso.accroche_style || "va";
+  for (const v of ["va","vb","vc"]) $("aAccroche").classList.toggle(v, v === style);
+  $("aAccTitre").textContent = perso.accroche || "Votre fidélité est récompensée";
+  const morceaux = [`${Number(c.points_par_passage)} points par passage`, `<b>-${Number(c.remise)} %</b> dès ${Number(c.seuil)} points`];
+  if (c.points_bonus != null && c.montant_bonus != null) morceaux.push(`${Number(c.points_bonus)} points dès ${euros(c.montant_bonus)}`);
+  $("aAccRegles").innerHTML = morceaux.map(m=>`<span class="chip">${m}</span>`).join("");
 }
 // Écran de connexion : toujours neutre (Reviens STP), jamais aux couleurs d'un commerce
 function marqueConnexion(){
@@ -830,7 +874,9 @@ function fete(grand){
 // Choix du thème dans les réglages (aperçu immédiat)
 let themeChoisi = "defaut";
 function afficherThemes(){
-  $("rThemes").innerHTML = Object.entries(THEMES).map(([k,t]) =>
+  const perso = SESSION && SESSION.commerce.perso;
+  const vignettePerso = perso ? `<button type="button" data-k="perso" class="${themeChoisi==="perso"?"choisi":""}"><span>${perso.logo ? `<img src="${echapper(perso.logo)}" alt="" style="width:30px;height:30px;object-fit:contain;vertical-align:middle">` : "⭐"}</span>${echapper(perso.nom_theme || SESSION.commerce.nom)}</button>` : "";
+  $("rThemes").innerHTML = vignettePerso + Object.entries(THEMES).map(([k,t]) =>
     `<button type="button" data-k="${k}" class="${k===themeChoisi?"choisi":""}"><span>${t.e[0]}</span>${t.nom}</button>`).join("");
   for (const b of $("rThemes").querySelectorAll("button")) b.onclick = () => {
     themeChoisi = b.dataset.k; appliquerTheme(themeChoisi); afficherThemes(); fete(false);
@@ -1049,7 +1095,7 @@ function remplirReglages(){
   $("rMontant").value = c.montant_bonus ?? 70;
   $("rPointsBonus").value = c.points_bonus ?? c.points_par_passage * 2;
   $("rEmail").textContent = SESSION.email;
-  themeChoisi = THEMES[c.theme] ? c.theme : "defaut";
+  themeChoisi = (c.theme === "perso" && c.perso) || THEMES[c.theme] ? c.theme : "defaut";
   afficherReglagesRoue();
   afficherThemes();
   message("msgReglages","");
@@ -1086,6 +1132,7 @@ $("bEnregistrer").onclick = ()=> occupe($("bEnregistrer"), async ()=>{
       nom, points_par_passage:x.p, seuil:x.s, remise:x.r,
       montant_bonus: x.bonus ? x.m : null, points_bonus: x.bonus ? x.pb : null, programme_choisi:true, theme:themeChoisi});
     appliquerTheme(SESSION.commerce.theme);
+    majAccroche();
     if (premier){ montrer("ecranAccueil"); message("msgAccueil","Votre programme est prêt ! Tapez le numéro d'un client pour commencer.","ok"); $("tel").focus(); return; }
     message("msgReglages","Réglages enregistrés.","ok");
   }catch(e){ message("msgReglages", e.message, "err"); }
