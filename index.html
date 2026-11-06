@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="20">
+<meta name="app-version" content="21">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -23,6 +23,7 @@
   header{background:var(--accent);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:5}
   header h1{font-family:var(--police);font-size:19px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   @media (max-width:430px){ header{padding:10px 10px;gap:6px} header button{padding:7px 8px} header h1{font-size:17px} }
+  #bResetDemo{background:#fff!important;color:var(--accent)!important;font-weight:700;white-space:nowrap;flex:none}
   header button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:10px;padding:8px 11px;font-size:15px;cursor:pointer}
   .demo{background:var(--orclair);color:var(--or);text-align:center;font-size:14px;padding:6px 12px;font-weight:600}
   main{max-width:640px;margin:0 auto;padding:16px}
@@ -197,7 +198,7 @@
 </style>
 </head>
 <body>
-<div class="demo cache" id="bandeauDemo">Démonstration : clients fictifs, rien n'est enregistré en ligne · <a href="#" onclick="recommencerDemo();return false" style="color:inherit">Recommencer</a></div>
+<div class="demo cache" id="bandeauDemo">Démonstration : clients fictifs, rien n'est enregistré en ligne</div>
 
 <!-- ============ CONNEXION ============ -->
 <main id="ecranConnexion" class="cache">
@@ -246,6 +247,7 @@
 <div id="app" class="cache">
 <div id="deco" aria-hidden="true"></div>
 <header>
+  <button id="bResetDemo" class="cache" title="Remettre la démo au départ" onclick="recommencerDemo()">↺ Réinitialiser</button>
   <img id="logoEntete" class="logoEntete cache" alt="">
   <h1 id="titreCommerce">Reviens STP</h1>
   <button id="bAccueil" title="Accueil">🏠</button>
@@ -553,14 +555,14 @@ function demoExemple(){
   const j = (n, h) => new Date(Date.now() - n*864e5 - (h||0)*36e5).toISOString();
   const D = {connecte:true, email:"demo@reviens-stp", suivant:1, mouvements:[], clients:[], tirages:[],
     commerce:{id:"demo", nom:"Votre commerce", points_par_passage:10, seuil:100, remise:10, montant_bonus:50, points_bonus:20,
-      programme_choisi:true, theme:"defaut", cree_le:j(60), roue_active:true, roue:{...ROUE_EXEMPLE(), frequence:3}, roue_compteur:1, roue_depuis:j(20)}};
+      programme_choisi:true, theme:"defaut", cree_le:j(60), roue_active:true, roue:{...ROUE_EXEMPLE(), frequence:30}, roue_compteur:12, roue_depuis:j(20)}};
   // [téléphone fictif, prénom, passages (jours écoulés), gros paniers, réductions déjà obtenues, accord SMS]
   const ex = [["0600000001","Sophie",[1,8,15,22,29,36,43,50,57],[8],0,true],
               ["0600000002","Karim",[0,7,14,21,28],[],1,true],
               ["0600000003","Mme Durand",[3,10,17],[3],0,false],
               ["0600000004","",[5],[],0,false],
               ["0600000005","Lucas",[2,9,16,23,30,37,44],[2,23],0,true],
-              ["0600000006","Nadia",[12,26,40],[],0,true]];
+              ["0600000006","Mme Martin",[6,13,20,27,34],[],0,true]];
   for (const [tel, nom, passages, gros, recomp, sms] of ex){
     const id = D.suivant++, c = {id, telephone:tel, nom, points:0, visites:0, recompenses:recomp, accord_sms:sms,
       accord_sms_le: sms ? j(Math.max(...passages)) : null, cree_le:j(Math.max(...passages)), derniere_visite:null};
@@ -574,8 +576,8 @@ function demoExemple(){
   }
   return D;
 }
-const DEMO_LUCAS = "0600000005";
-function recommencerDemo(){ localStorage.removeItem("fidelite_demo_v1"); location.reload(); }
+const DEMO_LUCAS = "0600000005", DEMO_MADAME = "0600000006";   // démo en 2 étapes : Lucas → réduction, Mme Martin → roue
+function recommencerDemo(){ try{ localStorage.removeItem("fidelite_demo_v1"); }catch(e){} location.replace(location.pathname + "?demo"); }
 
 function apiDemo(){
   const CLE = "fidelite_demo_v1";
@@ -584,14 +586,13 @@ function apiDemo(){
   if (!D || !D.commerce) D = demoExemple();
   const sauver = ()=>{ try{ localStorage.setItem(CLE, JSON.stringify(D)); }catch(e){} };
   // Remet Lucas (et le compteur de la roue) comme au début de la démo, sans toucher aux autres clients
-  function remettreLucas(){
-    const F = demoExemple(), f = F.clients.find(c=>c.telephone===DEMO_LUCAS);
-    let c = D.clients.find(c=>c.telephone===DEMO_LUCAS);
+  function remettreClientDemo(tel){
+    const F = demoExemple(), f = F.clients.find(c=>c.telephone===tel);
+    let c = D.clients.find(c=>c.telephone===tel);
     if (c){ D.mouvements = D.mouvements.filter(m=>m.client_id!==c.id); D.tirages = (D.tirages||[]).filter(t=>t.client_id!==c.id); }
     else { c = {id:D.suivant++}; D.clients.push(c); }
     const id = c.id; Object.assign(c, f, {id});
     for (const m of F.mouvements.filter(m=>m.client_id===f.id)) D.mouvements.push({...m, id:D.suivant++, client_id:id});
-    D.commerce.roue_compteur = 1;
     sauver();
   }
   const client = id => { const c = D.clients.find(c=>c.id===id); if (!c) throw new Error("Client introuvable"); return c; };
@@ -607,7 +608,7 @@ function apiDemo(){
     async deconnexion(){ D.connecte = false; sauver(); },
     async majCommerce(id, champs){ Object.assign(D.commerce, champs); sauver(); return copie(D.commerce); },
     async trouverClient(tel){
-      if (tel === DEMO_LUCAS) remettreLucas();   // démo rejouable : Lucas revient toujours à 90/100
+      if (tel === DEMO_LUCAS || tel === DEMO_MADAME) remettreClientDemo(tel);   // démo rejouable : Lucas 90/100, Mme Martin 50/100
       const c = D.clients.find(c=>c.telephone===tel); return c ? copie(c) : null; },
     async creerClient(tel, nom, accord, gros){
       if (D.clients.some(c=>c.telephone===tel)) throw new Error("Ce numéro a déjà une carte");
@@ -626,7 +627,7 @@ function apiDemo(){
       D.mouvements.push({id:D.suivant++, client_id:id, type:"points", points:p, gros_panier:gros, le:now});
       if (D.commerce.roue_active && D.commerce.roue && D.commerce.roue.lots && D.commerce.roue.lots.length){
         D.commerce.roue_compteur = (D.commerce.roue_compteur||0) + 1;
-        if (D.commerce.roue_compteur % Math.max(1, Number(D.commerce.roue.frequence)||30) === 0){
+        if (c.telephone === DEMO_MADAME || D.commerce.roue_compteur % Math.max(1, Number(D.commerce.roue.frequence)||30) === 0){
           D.tirages = D.tirages || [];
           D.tirages.push({id:D.suivant++, client_id:id, numero:D.commerce.roue_compteur, lot:null, cree_le:now, tire_le:null});
         }
@@ -720,7 +721,7 @@ function montrer(ecran){
 
 async function demarrer(){
   if (DEMO){
-    $("bandeauDemo").classList.remove("cache");
+    $("bandeauDemo").classList.remove("cache"); $("bResetDemo").classList.remove("cache");
     API = apiDemo();
   } else {
     await chargerScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js");
