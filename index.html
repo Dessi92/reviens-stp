@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="25">
+<meta name="app-version" content="26">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -53,6 +53,11 @@
   @media (min-width:700px){ .pave button{height:74px;font-size:32px} }
   input:focus{outline:none;border-color:var(--accent)}
   .case{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:15px;margin-top:14px;cursor:pointer}
+  .infoRgpd{margin-top:14px;font-size:13px;line-height:1.4;color:var(--doux)}
+  .infoRgpd summary{list-style:none;cursor:pointer}
+  .infoRgpd summary::-webkit-details-marker{display:none}
+  .infoRgpd u{white-space:nowrap}
+  .infoRgpd p{margin:6px 0 0}
   .case input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--vert)}
   .btn{display:block;width:100%;border:0;border-radius:12px;padding:14px;font-size:18px;font-weight:700;cursor:pointer;margin-top:10px}
   .btn.principal{background:var(--accent);color:#fff}
@@ -309,6 +314,10 @@
     <input id="emailNouveau" type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ex. marie.dupont@gmail.com">
     <label class="case"><input type="checkbox" id="accordNouveau">
       <span>Le client accepte de recevoir des SMS du commerce (offres, réduction disponible). Il pourra se désinscrire à tout moment.</span></label>
+    <details class="infoRgpd">
+      <summary>🔒 Ses coordonnées servent seulement à sa carte de fidélité chez <b id="rgpdNom">nous</b>. Jamais vendues ni partagées, effacées après 3 ans sans passage. Il peut les faire modifier ou supprimer à tout moment au comptoir. <u>En savoir plus</u></summary>
+      <p>Le commerce est responsable de ces données ; elles sont hébergées par Reviens STP pour son compte. Base légale : l'accord du client pour participer au programme. Le client peut aussi s'adresser à la CNIL (cnil.fr).</p>
+    </details>
     <div class="ligne">
       <button class="btn vert" id="bCreer">Créer la carte</button>
       <button class="btn vert cache" id="bCreerGros">Créer la carte</button>
@@ -982,7 +991,7 @@ async function chercher(){
     const c = await API.trouverClient(n);
     if (c) return ouvrirClient(c);
     enAttente = n;
-    $("nomNouveau").value = ""; $("emailNouveau").value = ""; message("msgNouveau",""); $("accordNouveau").checked = false;
+    $("rgpdNom").textContent = (SESSION && SESSION.commerce && SESSION.commerce.nom) || "nous"; $("nomNouveau").value = ""; $("emailNouveau").value = ""; message("msgNouveau",""); $("accordNouveau").checked = false;
     boutonsPoints($("bCreer"), $("bCreerGros"), aBonus() ? "" : "Créer la carte · ");
     $("blocNouveau").classList.remove("cache");
     message("msgAccueil", `Aucune carte pour le ${joli(n)}.`, "info");
