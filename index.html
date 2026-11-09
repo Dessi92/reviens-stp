@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="26">
+<meta name="app-version" content="28">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -91,6 +91,15 @@
   td.n,th.n{text-align:right;white-space:nowrap}
   tr.clic{cursor:pointer}
   tr.clic:hover{background:#fbf7f2}
+  .bon{background:#fff4c2;border:2px solid #f0c400;border-radius:14px;padding:12px 14px;margin:12px 0;text-align:center}
+  .bon .bonTitre{font-size:13px;font-weight:700;color:#8a6d00;text-transform:uppercase;letter-spacing:.04em}
+  .bon .bonLot{font-family:var(--police);font-size:24px;font-weight:800;color:#2b2118;margin:2px 0}
+  .bon .bonFin{font-size:14px;color:#6b5600;margin-bottom:8px}
+  tr.avecBon{background:#fff4c2}
+  tr.avecBon:hover{background:#ffeea0}
+  tr.avecBon td:first-child{box-shadow:inset 5px 0 0 #f0c400}
+  .pastille.jaune{background:#f0c400;color:#3d3100}
+  .alerteBons{background:#fff4c2;border:2px solid #f0c400;border-radius:12px;padding:8px 12px;margin:8px 0;font-weight:600;color:#3d3100}
   .pastille{display:inline-block;background:var(--vert);color:#fff;border-radius:99px;padding:1px 8px;font-size:12px;font-weight:700}
   .histo{max-height:220px;overflow:auto;font-size:14px;color:var(--doux);margin-top:10px}
   .histo div{padding:4px 0;border-bottom:1px dashed var(--bord)}
@@ -333,6 +342,7 @@
     <div class="barre"><div id="cBarre" style="width:0%"></div></div>
     <div class="reste" id="cReste"></div>
     <div class="recompense cache" id="cRecompense"></div>
+    <div id="cBons"></div>
     <button class="btn vert cache" id="bUtiliser" style="font-size:20px;padding:16px">✓ Réduction faite · remettre à 0</button>
     <p class="note cache" id="zoneErreurReduc" style="text-align:center">Erreur ? <a class="lien" id="bAnnulerReduc">Annuler la réduction</a></p>
     <div class="ligne" id="zoneAjout">
@@ -352,6 +362,7 @@
 <main id="ecranListe" class="cache">
   <div class="carte">
     <h2>Mes clients (<span id="nbClients">0</span>)</h2>
+    <div class="alerteBons cache" id="alerteBons"></div>
     <input id="filtre" type="text" placeholder="Chercher un nom ou un numéro">
     <div class="tableau"><table>
       <thead><tr><th>Client</th><th class="n">Points</th><th class="n">Dernière visite</th><th></th></tr></thead>
@@ -403,7 +414,7 @@
   <div id="rAutres">
   <div class="carte cache" id="carteRoue">
     <h2>🎡 Roue de la fortune</h2>
-    <p class="note" style="margin-top:-6px">Tous les <b>N</b> passages en caisse (tous clients confondus), la roue s'affiche pour le client en caisse. Le cadeau gagné s'applique <b>tout de suite</b>, sur l'achat en cours.</p>
+    <p class="note" style="margin-top:-6px">Tous les <b>N</b> passages en caisse (tous clients confondus), la roue s'affiche pour le client en caisse. Un cadeau ou une réduction gagné devient un <b>bon</b> sur la fiche du client, valable <b>jusqu'à la fin du mois</b> ; les points gagnés sont ajoutés tout de suite.</p>
     <label for="roueFreq">La roue apparaît tous les … passages</label>
     <input id="roueFreq" type="number" min="1" step="1" inputmode="numeric">
     <label style="margin-top:14px">Les cadeaux et leurs chances</label>
@@ -507,6 +518,10 @@ function normaliser(t){
 const joli = n => n.length===10 ? n.replace(/(\d{2})(?=\d)/g,"$1 ") : n;
 const dateFr = iso => { const d=new Date(iso); return d.toLocaleDateString("fr-FR")+" "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}); };
 const jourFr = iso => iso ? new Date(iso).toLocaleDateString("fr-FR") : "—";
+// Bons de la roue : valables jusqu'au dernier jour du mois où ils ont été gagnés
+const debutMois = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); };
+const finMoisFr = iso => { const d = new Date(iso); return new Date(d.getFullYear(), d.getMonth()+1, 0).toLocaleDateString("fr-FR", {day:"numeric", month:"long"}); };
+const estBon = t => !!(t && t.tire_le && !t.utilise_le && t.lot && !["points","perdu"].includes(t.lot.type) && new Date(t.tire_le) >= debutMois());
 const echapper = s => String(s ?? "").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const pluriel = (n, mot) => n + " " + mot + (n>1 ? "s" : "");
 function message(id, texte, type){ $(id).innerHTML = texte ? `<div class="msg ${type}">${echapper(texte)}</div>` : ""; }
@@ -580,6 +595,8 @@ function apiSupabase(sb){
     async adminRoue(id, actif){ v(await sb.rpc("admin_roue", {p_id:id, p_active:actif})); },
     async roueEnAttente(clientId){ const d = v(await sb.from("roue_tirages").select("*").eq("client_id", clientId).is("tire_le", null).order("cree_le", {ascending:false}).limit(1)); return d[0] || null; },
     async roueTirer(id){ return v(await sb.rpc("roue_tirer", {p_tirage:id})); },
+    async bonsActifs(){ return (v(await sb.from("roue_tirages").select("id,client_id,lot,tire_le,utilise_le").is("utilise_le", null).gte("tire_le", debutMois().toISOString()).limit(5000)) || []).filter(estBon); },
+    async bonUtilise(id){ return v(await sb.rpc("roue_bon_utilise", {p_tirage:id})); },
     async rechargerCommerce(){ return v(await sb.from("commerces").select("*").eq("id", SESSION.commerce.id).single()); },
     // Support
     async supEnvoyer(texte){ v(await sb.from("messages_support").insert({texte})); },
@@ -617,6 +634,11 @@ function demoExemple(){
     }
     D.clients.push(c);
   }
+  // Mme Durand a gagné un bon à la roue ce mois-ci, pas encore utilisé (surligné dans la liste)
+  const durand = D.clients.find(c=>c.telephone==="0600000003"), auj = new Date(Math.max(debutMois().getTime(), Date.now() - 36e5));
+  D.tirages.push({id:D.suivant++, client_id:durand.id, numero:12, cree_le:auj.toISOString(), tire_le:auj.toISOString(), utilise_le:null,
+    lot:{nom:"-10 % sur un achat", type:"cadeau", valeur:0, chance:20, index:2}});
+  D.mouvements.push({id:D.suivant++, client_id:durand.id, type:"roue", points:0, libelle:"-10 % sur un achat", le:auj.toISOString()});
   return D;
 }
 const DEMO_LUCAS = "0600000005", DEMO_MADAME = "0600000006";   // démo en 2 étapes : Lucas → réduction, Mme Martin → roue
@@ -650,8 +672,8 @@ function apiDemo(){
     async verifierMdp(email, mdp){ if (D.mdp && mdp !== D.mdp) throw new Error("Mot de passe actuel incorrect."); },
     async deconnexion(){ D.connecte = false; sauver(); },
     async majCommerce(id, champs){ Object.assign(D.commerce, champs); sauver(); return copie(D.commerce); },
-    async trouverClient(tel){
-      if (tel === DEMO_LUCAS || tel === DEMO_MADAME) remettreClientDemo(tel);   // démo rejouable : Lucas 90/100, Mme Martin 50/100
+    async trouverClient(tel, sansRemise){
+      if (!sansRemise && (tel === DEMO_LUCAS || tel === DEMO_MADAME)) remettreClientDemo(tel);   // démo rejouable : Lucas 90/100, Mme Martin 50/100
       const c = D.clients.find(c=>c.telephone===tel); return c ? copie(c) : null; },
     async creerClient(tel, nom, accord, gros, email){
       if (D.clients.some(c=>c.telephone===tel)) throw new Error("Ce numéro a déjà une carte");
@@ -714,6 +736,14 @@ function apiDemo(){
       const pts = t.lot.type === "points" ? Math.max(0, Number(t.lot.valeur)||0) : 0;
       if (c) c.points += pts;
       D.mouvements.push({id:D.suivant++, client_id:t.client_id, type:"roue", points:pts, libelle:t.lot.nom, le:new Date().toISOString()});
+      sauver(); return copie(t.lot);
+    },
+    async bonsActifs(){ return copie((D.tirages||[]).filter(estBon)); },
+    async bonUtilise(id){
+      const t = (D.tirages||[]).find(t=>t.id===id);
+      if (!estBon(t)) throw new Error("Ce bon n'est plus valable");
+      t.utilise_le = new Date().toISOString();
+      D.mouvements.push({id:D.suivant++, client_id:t.client_id, type:"roue", points:0, libelle:"Bon utilisé : " + (t.lot.nom || "cadeau"), le:t.utilise_le});
       sauver(); return copie(t.lot);
     },
     async rechargerCommerce(){ return copie(D.commerce); },
@@ -1028,9 +1058,8 @@ function creer(gros){
       enAttente = null;
       $("blocNouveau").classList.add("cache");
       message("msgAccueil","");
-      await ouvrirClient(c, true);
-      message("msgClient", `Carte créée, +${c.points} points.`, "ok");
       fete(c.points >= SESSION.commerce.seuil);
+      await finPassage(c, `Carte créée, +${c.points} points`);
       verifierRoue(c);
     }catch(e){ message("msgAccueil", e.message, "err"); }
   });
@@ -1070,6 +1099,7 @@ async function ouvrirClient(c, ajoute = false){
     const reste = r.seuil - c.points, passages = Math.ceil(reste / r.points_par_passage);
     $("cReste").textContent = `Encore ${reste} points (${pluriel(passages,"passage")}) pour -${r.remise} %`;
   }
+  afficherBons(c);
   $("cAccord").textContent = c.accord_sms ? `✅ Accepte les SMS (depuis le ${jourFr(c.accord_sms_le)})` : "❌ N'a pas accepté les SMS";
   $("blocClient").classList.remove("cache");
   try{
@@ -1079,8 +1109,25 @@ async function ouvrirClient(c, ajoute = false){
       $("zoneAjout").classList.add("cache");
       message("msgClient", `⚠️ Ce client a déjà reçu +${recent.points} points à ${new Date(recent.le).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}. Pas de nouveaux points avant 2 minutes.`, "info");
     }
-    $("cHisto").innerHTML = h.map(m=>`<div>${dateFr(m.le)} — ${m.type==="points" ? "+"+m.points+" points"+(m.gros_panier?" (gros panier)":"") : m.type==="roue" ? "🎡 Roue : "+echapper(m.libelle||"cadeau") : `Réduction -${m.remise} % utilisée, points remis à 0`}</div>`).join("");
+    $("cHisto").innerHTML = h.map(m=>`<div>${dateFr(m.le)} — ${m.type==="points" ? "+"+m.points+" points"+(m.gros_panier?" (gros panier)":"") : m.type==="roue" ? ((m.libelle||"").startsWith("Bon utilisé") ? "🎟️ "+echapper(m.libelle) : "🎡 Roue : "+echapper(m.libelle||"cadeau")) : `Réduction -${m.remise} % utilisée, points remis à 0`}</div>`).join("");
   }catch(e){ $("cHisto").textContent = ""; }
+}
+
+async function afficherBons(c){
+  const z = $("cBons"); z.innerHTML = "";
+  let bons = [];
+  try{ bons = (await API.bonsActifs()).filter(t=>t.client_id===c.id); }catch(e){ return; }
+  if (!courant || courant.id !== c.id) return;
+  z.innerHTML = bons.map(t=>`<div class="bon"><div class="bonTitre">🎟️ Bon gagné à la roue</div>
+      <div class="bonLot">${echapper(t.lot.nom || nomLot(t.lot))}</div>
+      <div class="bonFin">Valable jusqu'au <b>${finMoisFr(t.tire_le)}</b> · gagné le ${jourFr(t.tire_le)}</div>
+      <button class="btn vert" data-bon="${t.id}">✓ Bon utilisé</button></div>`).join("");
+  for (const b of z.querySelectorAll("button[data-bon]")) b.onclick = ()=> occupe(b, async ()=>{
+    const t = bons.find(x=>String(x.id)===b.dataset.bon);
+    if (!confirm(`Le client utilise maintenant son bon « ${t.lot.nom || nomLot(t.lot)} » ?`)) return;
+    try{ await API.bonUtilise(t.id); await ouvrirClient(courant, ajouteCeTour); message("msgClient", "🎟️ Bon utilisé, c'est noté.", "ok"); }
+    catch(e){ message("msgClient", e.message, "err"); }
+  });
 }
 
 function ajouter(gros){
@@ -1090,11 +1137,9 @@ function ajouter(gros){
     try{
       const avant = courant.points;
       const c = await API.ajouterPoints(courant.id, gros);
-      await ouvrirClient(c, true);
-      const gagne = c.points - avant;
-      message("msgClient", avant < SESSION.commerce.seuil && c.points >= SESSION.commerce.seuil
-        ? `+${gagne} points — palier atteint ! 🎉` : `+${gagne} points ajoutés.`, "ok");
-      fete(avant < SESSION.commerce.seuil && c.points >= SESSION.commerce.seuil);
+      const gagne = c.points - avant, palier = avant < SESSION.commerce.seuil && c.points >= SESSION.commerce.seuil;
+      fete(palier);
+      await finPassage(c, palier ? `+${gagne} points — palier atteint ! 🎉` : `+${gagne} points ajoutés`);
       verifierRoue(c);
     }catch(e){ message("msgClient", e.message, "err"); }
   });
@@ -1121,6 +1166,27 @@ function retourAccueil(texte){
   if (texte) retourAccueil.t = setTimeout(()=>message("msgAccueil",""), 4000);
 }
 $("bValider").onclick = ()=> retourAccueil("✓ Passage enregistré");
+// Après des points : si rien d'autre n'est à faire sur la fiche (pas de réduction à appliquer, pas de bon de la roue),
+// retour direct à l'accueil, sans clic sur « Valider ». Le message garde un lien « Annuler » pour corriger une erreur.
+async function finPassage(c, texte){
+  let bons = [];
+  try{ bons = (await API.bonsActifs()).filter(t=>t.client_id===c.id); }catch(e){}
+  if (c.points >= SESSION.commerce.seuil || bons.length){
+    await ouvrirClient(c, true);
+    message("msgClient", texte + ".", "ok");
+    return;
+  }
+  const id = c.id, nom = c.nom || joli(c.telephone);
+  retourAccueil("");
+  $("msgAccueil").innerHTML = `<div class="msg ok">✓ ${echapper(texte)} pour ${echapper(nom)} (${c.points}/${SESSION.commerce.seuil}) · <a class="lien" id="bAnnulerPassage">Annuler</a></div>`;
+  $("bAnnulerPassage").onclick = async ()=>{
+    if (!confirm(`Annuler les points de ce passage pour ${nom} ?`)) return;
+    try{ await API.annulerDernier(id); message("msgAccueil", `Points annulés pour ${nom}.`, "info"); }
+    catch(e){ message("msgAccueil", e.message, "err"); }
+  };
+  clearTimeout(retourAccueil.t);
+  retourAccueil.t = setTimeout(()=>message("msgAccueil",""), 20000);
+}
 $("bAnnulerReduc").onclick = async ()=>{
   if (!courant) return;
   try{ await ouvrirClient(await API.annulerDernier(courant.id), ajouteCeTour); message("msgClient","Réduction annulée, points rendus.","info"); }
@@ -1172,14 +1238,22 @@ async function afficherListe(){
   $("tListe").innerHTML = `<tr><td colspan="3" class="note">Chargement…</td></tr>`;
   try{ LISTE = await API.liste(); }
   catch(e){ $("tListe").innerHTML = `<tr><td colspan="3">${echapper(e.message)}</td></tr>`; return; }
+  BONS = {};
+  try{ for (const t of await API.bonsActifs()) (BONS[t.client_id] = BONS[t.client_id] || []).push(t); }catch(e){}
   filtrerListe();
 }
+let BONS = {};
 function filtrerListe(){
   const f = $("filtre").value.trim().toLowerCase(), fn = normaliser(f);
-  const lignes = LISTE.filter(c => !f || (c.nom||"").toLowerCase().includes(f) || (fn && c.telephone.includes(fn)));
+  // les clients qui ont un bon de la roue à utiliser passent en haut, surlignés
+  const lignes = LISTE.filter(c => !f || (c.nom||"").toLowerCase().includes(f) || (fn && c.telephone.includes(fn)))
+    .sort((a,b)=>(BONS[b.id]?1:0)-(BONS[a.id]?1:0));
   $("nbClients").textContent = LISTE.length;
-  $("tListe").innerHTML = lignes.map(c=>`<tr class="clic" data-id="${c.id}">
-      <td><b>${echapper(c.nom||"Client")}</b><br><span style="color:var(--doux)">${joli(c.telephone)}</span></td>
+  const nbB = Object.keys(BONS).length;
+  $("alerteBons").innerHTML = nbB ? `🎟️ ${nbB} client${nbB>1?"s ont":" a"} un bon de la roue à utiliser avant le ${finMoisFr(new Date().toISOString())} (surligné${nbB>1?"s":""} en jaune)` : "";
+  $("alerteBons").classList.toggle("cache", !nbB);
+  $("tListe").innerHTML = lignes.map(c=>`<tr class="clic${BONS[c.id]?" avecBon":""}" data-id="${c.id}">
+      <td><b>${echapper(c.nom||"Client")}</b><br><span style="color:var(--doux)">${joli(c.telephone)}</span>${(BONS[c.id]||[]).map(t=>`<br><span class="pastille jaune">🎟️ ${echapper(t.lot.nom || nomLot(t.lot))}</span>`).join("")}</td>
       <td class="n">${c.points}${c.points>=SESSION.commerce.seuil?'<br><span class="pastille">réduction</span>':''}</td>
       <td class="n">${jourFr(c.derniere_visite)}</td>
       <td class="n"><button class="poubelle" data-suppr="${c.id}" title="Supprimer ce client">🗑</button></td></tr>`).join("")
@@ -1259,9 +1333,10 @@ $("bEnregistrer").onclick = ()=> occupe($("bEnregistrer"), async ()=>{
   }catch(e){ message("msgReglages", e.message, "err"); }
 });
 $("bExporterCsv").onclick = ()=> occupe($("bExporterCsv"), async ()=>{
-  const l = [["Telephone","Nom","E-mail","Points","Passages","Reductions utilisees","Accord SMS","Derniere visite","Client depuis"]];
+  const l = [["Telephone","Nom","E-mail","Points","Passages","Reductions utilisees","Accord SMS","Derniere visite","Client depuis","Bon roue a utiliser"]];
+  const bons = {}; try{ for (const t of await API.bonsActifs()) (bons[t.client_id] = bons[t.client_id] || []).push((t.lot.nom || nomLot(t.lot)) + " (jusqu'au " + finMoisFr(t.tire_le) + ")"); }catch(e){}
   for (const c of await API.liste())
-    l.push([c.telephone, c.nom, c.email||"", c.points, c.visites, c.recompenses, c.accord_sms?"oui":"non", jourFr(c.derniere_visite), jourFr(c.cree_le)]);
+    l.push([c.telephone, c.nom, c.email||"", c.points, c.visites, c.recompenses, c.accord_sms?"oui":"non", jourFr(c.derniere_visite), jourFr(c.cree_le), (bons[c.id]||[]).join(" + ")]);
   const csv = "﻿" + l.map(r=>r.map(x=>`"${String(x??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
@@ -1478,13 +1553,13 @@ async function actionCommerce(b){
 // ---------- Roue de la fortune ----------
 const l_ = l => l.chance;
 const ROUE_EXEMPLE = () => ({frequence:30, lots:[
-  {nom:"-5 % sur cet achat", type:"remise", valeur:5, chance:45},
+  {nom:"-5 % sur un achat", type:"remise", valeur:5, chance:45},
   {nom:"+20 points", type:"points", valeur:20, chance:30},
-  {nom:"-10 % sur cet achat", type:"remise", valeur:10, chance:20},
+  {nom:"-10 % sur un achat", type:"remise", valeur:10, chance:20},
   {nom:"Un cadeau surprise", type:"cadeau", valeur:0, chance:5}]});
 const TYPES_LOT = {cadeau:"Réduction ou cadeau", points:"Points ajoutés", perdu:"Perdu"};
 function nomLot(l){
-  if (l.type === "remise") return `-${l.valeur} % sur cet achat`;
+  if (l.type === "remise") return `-${l.valeur} % sur un achat`;
   if (l.type === "points") return `+${l.valeur} points`;
   if (l.type === "perdu") return "Pas de chance, retentez !";
   return (l.nom || "Un cadeau").trim();
@@ -1534,8 +1609,9 @@ async function verifierRoue(c){
     if (t) setTimeout(()=>ouvrirRoue(t, c), 900);
   }catch(e){}
 }
+let roueClient = null;
 function ouvrirRoue(t, c){
-  tirageEnCours = t;
+  tirageEnCours = t; roueClient = c;
   $("roueIntro").textContent = `Passage n° ${t.numero} : ${c && c.nom ? c.nom : "ce client"} gagne un tour de roue !`;
   $("roueResultat").classList.add("cache");
   $("bRoueLancer").classList.remove("cache"); $("bRoueLancer").disabled = false;
@@ -1559,11 +1635,13 @@ $("bRoueLancer").onclick = async ()=>{
   void cv.offsetWidth; cv.style.transition = ""; angleRoue = cible; cv.style.transform = `rotate(${cible}deg)`;
   setTimeout(async ()=>{
     $("roueResultat").innerHTML = `<div class="roueResultat">${lot.type === "perdu" ? "😅 " : "🎉 "}${echapper(lot.nom || nomLot(lot))}</div>` +
-      `<p class="note" style="margin:0">${lot.type === "perdu" ? "Ce sera pour la prochaine fois !" : lot.type === "points" ? "Les points sont déjà ajoutés à la carte du client." : "À appliquer tout de suite, sur l'achat en cours."}</p>`;
+      `<p class="note" style="margin:0">${lot.type === "perdu" ? "Ce sera pour la prochaine fois !" : lot.type === "points" ? "Les points sont déjà ajoutés à la carte du client." : `🎟️ Bon valable jusqu'au <b>${finMoisFr(new Date().toISOString())}</b> : à utiliser maintenant ou à un prochain passage. Il est noté sur la fiche du client.`}</p>`;
     $("roueResultat").classList.remove("cache");
     $("bRoueLancer").classList.add("cache"); $("bRoueOk").classList.remove("cache");
     if (lot.type !== "perdu") fete(true);
-    try{ if (courant){ const c = await API.trouverClient(courant.telephone); if (c) await ouvrirClient(c, true); } }catch(e){}
+    // un bon gagné s'affiche tout de suite sur la fiche du client, même si l'accueil était déjà revenu
+    const qui = courant || (!["points","perdu"].includes(lot.type) ? roueClient : null);
+    try{ if (qui){ const c = await API.trouverClient(qui.telephone, true); if (c){ $("tel").value = joli(c.telephone); await ouvrirClient(c, true); } } }catch(e){}
   }, 4800);
 };
 $("bRoueOk").onclick = ()=>{ $("roueFond").classList.add("cache"); tirageEnCours = null; };
@@ -1645,7 +1723,7 @@ function texteReglement(){
     <table><thead><tr><th>Cadeau</th><th class="n">Chance</th></tr></thead><tbody>${lignes}</tbody></table>
     <p>La taille de chaque part de la roue correspond à sa chance réelle.</p>
     <h3>Article 5 – Tirage</h3><p>Le résultat est tiré au hasard par le serveur du programme de fidélité, selon les chances ci-dessus. Il ne peut être ni relancé, ni modifié par le personnel.</p>
-    <h3>Article 6 – Utilisation des gains</h3><p>Une réduction gagnée s'applique immédiatement sur l'achat en cours. Les points gagnés sont ajoutés aussitôt à la carte de fidélité. Les gains ne peuvent être ni échangés, ni remboursés, ni convertis en argent.</p>
+    <h3>Article 6 – Utilisation des gains</h3><p>Une réduction ou un cadeau gagné peut être utilisé sur l'achat en cours ou lors d'un prochain passage, jusqu'au dernier jour du mois où il a été gagné ; passé ce délai, il est perdu. Les points gagnés sont ajoutés aussitôt à la carte de fidélité. Les gains ne peuvent être ni échangés, ni remboursés, ni convertis en argent.</p>
     <h3>Article 7 – Données personnelles</h3><p>Le numéro de téléphone du client sert uniquement au programme de fidélité de ${nom}. Le client peut demander à tout moment l'accès à ses données ou leur suppression, en boutique.</p>
     <h3>Article 8 – Consultation</h3><p>Ce règlement est consultable en boutique et remis gratuitement à toute personne qui le demande.</p>
     <p class="note pasImpr">Brouillon généré automatiquement à partir des réglages de la roue : à faire relire avant affichage.</p>`;
