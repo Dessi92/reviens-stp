@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="30">
+<meta name="app-version" content="31">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -99,9 +99,9 @@
   #tListe .pastille{font-size:11px;padding:1px 6px}
   #tListe td:first-child b{max-width:26vw}
   #tListe td,.tableau th{padding-left:4px;padding-right:4px}
-  .rechTri{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .rechTri input{flex:1 1 180px}
-  .rechTri select{flex:1 1 150px;font-size:15px;padding:10px;border:2px solid var(--bord);border-radius:12px;background:#fff;color:var(--texte)}
+  th.tri{cursor:pointer;user-select:none;color:var(--accent);text-decoration:underline dotted;text-underline-offset:3px}
+  th.tri.actif{background:var(--orclair,#fdf3e1);text-decoration:none;border-radius:8px 8px 0 0}
+  th.tri .fl{display:block;font-size:12px;line-height:1}
   tr.avecBon{background:#fff4c2}
   tr.avecBon:hover{background:#ffeea0}
   tr.avecBon td:first-child{box-shadow:inset 5px 0 0 #f0c400}
@@ -370,17 +370,10 @@
   <div class="carte">
     <h2>Mes clients (<span id="nbClients">0</span>)</h2>
     <div class="alerteBons cache" id="alerteBons"></div>
-    <div class="rechTri">
-      <input id="filtre" type="text" placeholder="Chercher un nom ou un numéro">
-      <select id="tri" aria-label="Classer les clients">
-        <option value="visite">Classer : dernière visite</option>
-        <option value="nom">Classer : nom (A → Z)</option>
-        <option value="points">Classer : points (petit → gros)</option>
-        <option value="mois">Classer : passages par mois</option>
-      </select>
-    </div>
+    <input id="filtre" type="text" placeholder="Chercher un nom ou un numéro">
+    <p class="note" style="margin:6px 0 0">Touchez un titre de colonne pour classer.</p>
     <div class="tableau"><table>
-      <thead><tr><th>Client</th><th class="n">Points</th><th class="n">Par<br>mois</th><th class="n">Dernière<br>visite</th><th></th></tr></thead>
+      <thead><tr><th class="tri" data-tri="nom">Client</th><th class="n tri" data-tri="points">Points</th><th class="n tri" data-tri="mois">Par<br>mois</th><th class="n tri" data-tri="visite">Dernière<br>visite</th><th></th></tr></thead>
       <tbody id="tListe"></tbody>
     </table></div>
   </div>
@@ -1265,15 +1258,22 @@ let BONS = {};
 function filtrerListe(){
   const f = $("filtre").value.trim().toLowerCase(), fn = normaliser(f);
   // les clients qui ont un bon de la roue à utiliser passent en haut, surlignés
-  const tri = $("tri").value;
-  try{ localStorage.setItem("tri_clients", tri); }catch(e){}
-  const comp = {
+  const tri = TRI.cle, sens = TRI.inverse ? -1 : 1;
+  for (const th of document.querySelectorAll("th[data-tri]")){
+    const on = th.dataset.tri === tri;
+    th.classList.toggle("actif", on);
+    th.querySelectorAll(".fl").forEach(x=>x.remove());
+    if (on) th.insertAdjacentHTML("beforeend", `<span class="fl">${TRI.inverse ? "▲" : "▼"}</span>`);
+  }
+  const base = {
     nom: (a,b)=>(a.nom||"").localeCompare(b.nom||"", "fr", {sensitivity:"base"}),
     points: (a,b)=>a.points - b.points,
     mois: (a,b)=>parMois(b) - parMois(a),
     // par défaut : les clients qui ont un bon de la roue passent en haut, puis la visite la plus récente
-    visite: (a,b)=>((BONS[b.id]?1:0)-(BONS[a.id]?1:0)) || (b.derniere_visite||"").localeCompare(a.derniere_visite||"")
+    visite: (a,b)=>(b.derniere_visite||"").localeCompare(a.derniere_visite||"")
   }[tri];
+  // les bons de la roue restent en haut seulement dans le classement par dernière visite (celui de départ)
+  const comp = (a,b)=> (tri === "visite" && !TRI.inverse && ((BONS[b.id]?1:0)-(BONS[a.id]?1:0))) || sens * base(a,b);
   const lignes = LISTE.filter(c => !f || (c.nom||"").toLowerCase().includes(f) || (fn && c.telephone.includes(fn))).sort(comp);
   $("nbClients").textContent = LISTE.length;
   const nbB = Object.keys(BONS).length;
@@ -1302,8 +1302,14 @@ function filtrerListe(){
   };
 }
 $("filtre").oninput = filtrerListe;
-try{ const t = localStorage.getItem("tri_clients"); if (t && [...$("tri").options].some(o=>o.value===t)) $("tri").value = t; }catch(e){}
-$("tri").onchange = filtrerListe;
+// Classement : toucher un titre de colonne classe par cette colonne ; le toucher encore inverse l'ordre.
+let TRI = {cle:"visite", inverse:false};
+try{ const t = JSON.parse(localStorage.getItem("tri_clients2") || "null"); if (t && ["nom","points","mois","visite"].includes(t.cle)) TRI = {cle:t.cle, inverse:!!t.inverse}; }catch(e){}
+for (const th of document.querySelectorAll("th[data-tri]")) th.onclick = ()=>{
+  TRI = th.dataset.tri === TRI.cle ? {cle:TRI.cle, inverse:!TRI.inverse} : {cle:th.dataset.tri, inverse:false};
+  try{ localStorage.setItem("tri_clients2", JSON.stringify(TRI)); }catch(e){}
+  filtrerListe();
+};
 
 // ---------- Réglages ----------
 function remplirReglages(){
