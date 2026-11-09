@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="29">
+<meta name="app-version" content="30">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -97,6 +97,11 @@
   .bon .bonFin{font-size:14px;color:#6b5600;margin-bottom:8px}
   #tListe td:first-child b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:30vw}
   #tListe .pastille{font-size:11px;padding:1px 6px}
+  #tListe td:first-child b{max-width:26vw}
+  #tListe td,.tableau th{padding-left:4px;padding-right:4px}
+  .rechTri{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .rechTri input{flex:1 1 180px}
+  .rechTri select{flex:1 1 150px;font-size:15px;padding:10px;border:2px solid var(--bord);border-radius:12px;background:#fff;color:var(--texte)}
   tr.avecBon{background:#fff4c2}
   tr.avecBon:hover{background:#ffeea0}
   tr.avecBon td:first-child{box-shadow:inset 5px 0 0 #f0c400}
@@ -365,9 +370,17 @@
   <div class="carte">
     <h2>Mes clients (<span id="nbClients">0</span>)</h2>
     <div class="alerteBons cache" id="alerteBons"></div>
-    <input id="filtre" type="text" placeholder="Chercher un nom ou un numéro">
+    <div class="rechTri">
+      <input id="filtre" type="text" placeholder="Chercher un nom ou un numéro">
+      <select id="tri" aria-label="Classer les clients">
+        <option value="visite">Classer : dernière visite</option>
+        <option value="nom">Classer : nom (A → Z)</option>
+        <option value="points">Classer : points (petit → gros)</option>
+        <option value="mois">Classer : passages par mois</option>
+      </select>
+    </div>
     <div class="tableau"><table>
-      <thead><tr><th>Client</th><th class="n">Points</th><th class="n">Dernière<br>visite</th><th></th></tr></thead>
+      <thead><tr><th>Client</th><th class="n">Points</th><th class="n">Par<br>mois</th><th class="n">Dernière<br>visite</th><th></th></tr></thead>
       <tbody id="tListe"></tbody>
     </table></div>
   </div>
@@ -521,6 +534,8 @@ const joli = n => n.length===10 ? n.replace(/(\d{2})(?=\d)/g,"$1 ") : n;
 const dateFr = iso => { const d=new Date(iso); return d.toLocaleDateString("fr-FR")+" "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}); };
 const jourFr = iso => iso ? new Date(iso).toLocaleDateString("fr-FR") : "—";
 // date courte pour la liste des clients : 06/11 cette année, 06/11/25 avant
+const parMois = c => { const mois = Math.max(1, (Date.now() - new Date(c.cree_le || Date.now())) / (30.44*864e5)); return (c.visites || 0) / mois; };
+const parMoisFr = c => parMois(c).toLocaleString("fr-FR", {maximumFractionDigits:1});
 const dateCourte = iso => { if (!iso) return "—"; const d = new Date(iso); return d.toLocaleDateString("fr-FR", d.getFullYear() === new Date().getFullYear() ? {day:"2-digit",month:"2-digit"} : {day:"2-digit",month:"2-digit",year:"2-digit"}); };
 // Bons de la roue : valables jusqu'au dernier jour du mois où ils ont été gagnés
 const debutMois = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); };
@@ -1085,7 +1100,7 @@ async function ouvrirClient(c, ajoute = false){
   const r = SESSION.commerce;
   $("cNom").textContent = c.nom || "Client";
   $("bEmailClient").textContent = c.email ? "✉️ " + c.email : "Ajouter un e-mail";
-  $("cTel").textContent = joli(c.telephone) + " · " + pluriel(c.visites, "passage") +
+  $("cTel").textContent = joli(c.telephone) + " · " + pluriel(c.visites, "passage") + (c.visites ? " (" + parMoisFr(c) + " par mois)" : "") +
     (c.recompenses ? " · " + pluriel(c.recompenses, "réduction") + " utilisée" + (c.recompenses>1?"s":"") : "");
   $("cPoints").textContent = c.points;
   $("cSeuil").textContent = r.seuil;
@@ -1250,8 +1265,16 @@ let BONS = {};
 function filtrerListe(){
   const f = $("filtre").value.trim().toLowerCase(), fn = normaliser(f);
   // les clients qui ont un bon de la roue à utiliser passent en haut, surlignés
-  const lignes = LISTE.filter(c => !f || (c.nom||"").toLowerCase().includes(f) || (fn && c.telephone.includes(fn)))
-    .sort((a,b)=>(BONS[b.id]?1:0)-(BONS[a.id]?1:0));
+  const tri = $("tri").value;
+  try{ localStorage.setItem("tri_clients", tri); }catch(e){}
+  const comp = {
+    nom: (a,b)=>(a.nom||"").localeCompare(b.nom||"", "fr", {sensitivity:"base"}),
+    points: (a,b)=>a.points - b.points,
+    mois: (a,b)=>parMois(b) - parMois(a),
+    // par défaut : les clients qui ont un bon de la roue passent en haut, puis la visite la plus récente
+    visite: (a,b)=>((BONS[b.id]?1:0)-(BONS[a.id]?1:0)) || (b.derniere_visite||"").localeCompare(a.derniere_visite||"")
+  }[tri];
+  const lignes = LISTE.filter(c => !f || (c.nom||"").toLowerCase().includes(f) || (fn && c.telephone.includes(fn))).sort(comp);
   $("nbClients").textContent = LISTE.length;
   const nbB = Object.keys(BONS).length;
   $("alerteBons").innerHTML = nbB ? `🎟️ ${nbB} client${nbB>1?"s ont":" a"} un bon de la roue à utiliser avant le ${finMoisFr(new Date().toISOString())} (surligné${nbB>1?"s":""} en jaune)` : "";
@@ -1259,9 +1282,10 @@ function filtrerListe(){
   $("tListe").innerHTML = lignes.map(c=>`<tr class="clic${BONS[c.id]?" avecBon":""}" data-id="${c.id}">
       <td><b title="${echapper(c.nom||"")}">${echapper(c.nom||"Client")}</b><span style="color:var(--doux)">${joli(c.telephone)}</span></td>
       <td class="n">${c.points}${BONS[c.id] ? `<br><span class="pastille jaune" title="${echapper(BONS[c.id].map(t=>t.lot.nom || nomLot(t.lot)).join(" + "))}">🎟️ bon</span>` : c.points>=SESSION.commerce.seuil ? '<br><span class="pastille">réduction</span>' : ''}</td>
+      <td class="n">${parMoisFr(c)}</td>
       <td class="n">${dateCourte(c.derniere_visite)}</td>
       <td class="n"><button class="poubelle" data-suppr="${c.id}" title="Supprimer ce client">🗑</button></td></tr>`).join("")
-    || `<tr><td colspan="3" class="note">Aucun client.</td></tr>`;
+    || `<tr><td colspan="5" class="note">Aucun client.</td></tr>`;
   for (const b of $("tListe").querySelectorAll("button[data-suppr]")) b.onclick = async (ev)=>{
     ev.stopPropagation();
     const c = LISTE.find(x=>x.id==b.dataset.suppr);
@@ -1278,6 +1302,8 @@ function filtrerListe(){
   };
 }
 $("filtre").oninput = filtrerListe;
+try{ const t = localStorage.getItem("tri_clients"); if (t && [...$("tri").options].some(o=>o.value===t)) $("tri").value = t; }catch(e){}
+$("tri").onchange = filtrerListe;
 
 // ---------- Réglages ----------
 function remplirReglages(){
@@ -1337,10 +1363,10 @@ $("bEnregistrer").onclick = ()=> occupe($("bEnregistrer"), async ()=>{
   }catch(e){ message("msgReglages", e.message, "err"); }
 });
 $("bExporterCsv").onclick = ()=> occupe($("bExporterCsv"), async ()=>{
-  const l = [["Telephone","Nom","E-mail","Points","Passages","Reductions utilisees","Accord SMS","Derniere visite","Client depuis","Bon roue a utiliser"]];
+  const l = [["Telephone","Nom","E-mail","Points","Passages","Reductions utilisees","Accord SMS","Derniere visite","Client depuis","Bon roue a utiliser","Passages par mois"]];
   const bons = {}; try{ for (const t of await API.bonsActifs()) (bons[t.client_id] = bons[t.client_id] || []).push((t.lot.nom || nomLot(t.lot)) + " (jusqu'au " + finMoisFr(t.tire_le) + ")"); }catch(e){}
   for (const c of await API.liste())
-    l.push([c.telephone, c.nom, c.email||"", c.points, c.visites, c.recompenses, c.accord_sms?"oui":"non", jourFr(c.derniere_visite), jourFr(c.cree_le), (bons[c.id]||[]).join(" + ")]);
+    l.push([c.telephone, c.nom, c.email||"", c.points, c.visites, c.recompenses, c.accord_sms?"oui":"non", jourFr(c.derniere_visite), jourFr(c.cree_le), (bons[c.id]||[]).join(" + "), parMoisFr(c)]);
   const csv = "﻿" + l.map(r=>r.map(x=>`"${String(x??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
