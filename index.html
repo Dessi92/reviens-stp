@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="28">
+<meta name="app-version" content="29">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -95,6 +95,8 @@
   .bon .bonTitre{font-size:13px;font-weight:700;color:#8a6d00;text-transform:uppercase;letter-spacing:.04em}
   .bon .bonLot{font-family:var(--police);font-size:24px;font-weight:800;color:#2b2118;margin:2px 0}
   .bon .bonFin{font-size:14px;color:#6b5600;margin-bottom:8px}
+  #tListe td:first-child b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:30vw}
+  #tListe .pastille{font-size:11px;padding:1px 6px}
   tr.avecBon{background:#fff4c2}
   tr.avecBon:hover{background:#ffeea0}
   tr.avecBon td:first-child{box-shadow:inset 5px 0 0 #f0c400}
@@ -365,7 +367,7 @@
     <div class="alerteBons cache" id="alerteBons"></div>
     <input id="filtre" type="text" placeholder="Chercher un nom ou un numéro">
     <div class="tableau"><table>
-      <thead><tr><th>Client</th><th class="n">Points</th><th class="n">Dernière visite</th><th></th></tr></thead>
+      <thead><tr><th>Client</th><th class="n">Points</th><th class="n">Dernière<br>visite</th><th></th></tr></thead>
       <tbody id="tListe"></tbody>
     </table></div>
   </div>
@@ -518,6 +520,8 @@ function normaliser(t){
 const joli = n => n.length===10 ? n.replace(/(\d{2})(?=\d)/g,"$1 ") : n;
 const dateFr = iso => { const d=new Date(iso); return d.toLocaleDateString("fr-FR")+" "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}); };
 const jourFr = iso => iso ? new Date(iso).toLocaleDateString("fr-FR") : "—";
+// date courte pour la liste des clients : 06/11 cette année, 06/11/25 avant
+const dateCourte = iso => { if (!iso) return "—"; const d = new Date(iso); return d.toLocaleDateString("fr-FR", d.getFullYear() === new Date().getFullYear() ? {day:"2-digit",month:"2-digit"} : {day:"2-digit",month:"2-digit",year:"2-digit"}); };
 // Bons de la roue : valables jusqu'au dernier jour du mois où ils ont été gagnés
 const debutMois = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); };
 const finMoisFr = iso => { const d = new Date(iso); return new Date(d.getFullYear(), d.getMonth()+1, 0).toLocaleDateString("fr-FR", {day:"numeric", month:"long"}); };
@@ -1253,9 +1257,9 @@ function filtrerListe(){
   $("alerteBons").innerHTML = nbB ? `🎟️ ${nbB} client${nbB>1?"s ont":" a"} un bon de la roue à utiliser avant le ${finMoisFr(new Date().toISOString())} (surligné${nbB>1?"s":""} en jaune)` : "";
   $("alerteBons").classList.toggle("cache", !nbB);
   $("tListe").innerHTML = lignes.map(c=>`<tr class="clic${BONS[c.id]?" avecBon":""}" data-id="${c.id}">
-      <td><b>${echapper(c.nom||"Client")}</b><br><span style="color:var(--doux)">${joli(c.telephone)}</span>${(BONS[c.id]||[]).map(t=>`<br><span class="pastille jaune">🎟️ ${echapper(t.lot.nom || nomLot(t.lot))}</span>`).join("")}</td>
-      <td class="n">${c.points}${c.points>=SESSION.commerce.seuil?'<br><span class="pastille">réduction</span>':''}</td>
-      <td class="n">${jourFr(c.derniere_visite)}</td>
+      <td><b title="${echapper(c.nom||"")}">${echapper(c.nom||"Client")}</b><span style="color:var(--doux)">${joli(c.telephone)}</span></td>
+      <td class="n">${c.points}${BONS[c.id] ? `<br><span class="pastille jaune" title="${echapper(BONS[c.id].map(t=>t.lot.nom || nomLot(t.lot)).join(" + "))}">🎟️ bon</span>` : c.points>=SESSION.commerce.seuil ? '<br><span class="pastille">réduction</span>' : ''}</td>
+      <td class="n">${dateCourte(c.derniere_visite)}</td>
       <td class="n"><button class="poubelle" data-suppr="${c.id}" title="Supprimer ce client">🗑</button></td></tr>`).join("")
     || `<tr><td colspan="3" class="note">Aucun client.</td></tr>`;
   for (const b of $("tListe").querySelectorAll("button[data-suppr]")) b.onclick = async (ev)=>{
