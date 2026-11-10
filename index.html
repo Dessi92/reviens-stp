@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="39">
+<meta name="app-version" content="40">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -22,7 +22,8 @@
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:17px}
   header{background:var(--accent);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:5}
   header h1{font-family:var(--police);font-size:19px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  @media (max-width:430px){ header{padding:10px 10px;gap:6px} header button{padding:7px 8px} header h1{font-size:17px} }
+  @media (max-width:430px){ header{padding:10px 8px;gap:4px} header button{padding:7px 6px} header h1{font-size:17px} }
+  @media (max-width:400px){ .txtReset{display:none} }
   #bResetDemo{background:#fff!important;color:var(--accent)!important;font-weight:700;white-space:nowrap;flex:none}
   header button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:10px;padding:8px 11px;font-size:15px;cursor:pointer}
   .outilsGerant summary{font-weight:700;font-size:18px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
@@ -84,6 +85,25 @@
   .msg.info{background:var(--orclair);color:var(--or)}
   .msg.err{background:#fde8e8;color:var(--accent)}
   .cache{display:none !important}
+  .smsTel{background:#f2f2f5;border:1px solid var(--bord);border-radius:16px;padding:10px 12px;margin-top:10px}
+  .smsExp{font-size:12px;color:#666;font-weight:700;text-align:center;margin-bottom:4px}
+  .smsBulle{background:#e3e3e8;color:#111;border-radius:18px 18px 18px 4px;padding:10px 12px;font-size:15px;line-height:1.35;white-space:pre-wrap;word-wrap:break-word;max-width:88%}
+  .smsCompte{font-size:13px;color:var(--doux);margin-top:6px}
+  .smsCompte b{color:var(--texte)}
+  .smsCompte .att{color:#a15c00;font-weight:600}
+  .smsTags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .smsTags button{border:1px solid var(--bord);background:var(--carte);color:var(--texte);border-radius:99px;padding:4px 10px;font-size:13px;cursor:pointer}
+  .smsBloc{border:1px solid var(--bord);border-radius:14px;padding:12px;margin:12px 0;background:#fff}
+  .smsBloc .case{margin-top:0}
+  .smsBandeau{border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.4;margin:0 0 12px;background:var(--orclair)}
+  .smsLot{border-bottom:1px solid var(--bord);padding:10px 0}
+  .smsLot:last-child{border-bottom:0}
+  .smsLot .t{display:flex;justify-content:space-between;gap:8px;font-weight:700}
+  .smsLot .t span{font-weight:400;color:var(--doux);font-size:14px;white-space:nowrap}
+  .smsLot .m{font-size:14px;color:var(--doux);margin:2px 0 4px}
+  .smsLot .c{font-size:14px}
+  #smsChiffres{grid-template-columns:repeat(3,1fr);gap:8px}
+  @media (max-width:500px){ #smsChiffres .chiffre{padding:10px 8px} #smsChiffres .chiffre b{font-size:22px} #smsChiffres .chiffre span{font-size:12px} }
   .tableau{overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:15px}
   td,th{padding:8px 6px;border-bottom:1px solid var(--bord);text-align:left;vertical-align:top}
@@ -361,6 +381,17 @@
     <div id="msgTel"></div>
   </div>
 </div>
+<div id="smsFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="smsFondTitre">
+  <div class="boite" style="text-align:left">
+    <h2 id="smsFondTitre" style="margin-top:4px;text-align:center">📣 Envoyer la promo ?</h2>
+    <p id="smsFondTexte" style="font-size:17px"></p>
+    <div id="smsFondApercu"></div>
+    <div class="ligne">
+      <button class="btn gris" id="bSmsAnnuler">Annuler</button>
+      <button class="btn principal" id="bSmsValider">Envoyer</button>
+    </div>
+  </div>
+</div>
 <div id="viderFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="viderTitre">
   <div class="boite">
     <h2 id="viderTitre" style="margin-top:4px">🗑 Dernière vérification</h2>
@@ -375,11 +406,12 @@
 <div id="app" class="cache">
 <div id="deco" aria-hidden="true"></div>
 <header>
-  <button id="bResetDemo" class="cache" title="Remettre la démo au départ" onclick="recommencerDemo()">↺ Réinitialiser</button>
+  <button id="bResetDemo" class="cache" title="Remettre la démo au départ" onclick="recommencerDemo()">↺<span class="txtReset"> Réinitialiser</span></button>
   <img id="logoEntete" class="logoEntete cache" alt="">
   <h1 id="titreCommerce">Reviens STP</h1>
   <button id="bAccueil" title="Accueil">🏠</button>
   <button id="bListe" title="Mes clients">👥</button>
+  <button id="bSms" title="SMS">📱</button>
   <button id="bSupport" title="Support">💬<b class="badge cache" id="badgeSupport"></b></button>
   <button id="bGerant" class="cache" title="Espace gérant">📊<b class="badge cache" id="badgeGerant"></b></button>
   <button id="bReglages" title="Réglages">⚙️</button>
@@ -572,6 +604,55 @@
   </div>
 </main>
 
+<main id="ecranSms" class="cache">
+  <div class="carte">
+    <h2>📱 SMS à vos clients</h2>
+    <div id="smsBandeau" class="smsBandeau"></div>
+    <div class="chiffres" id="smsChiffres" style="margin-bottom:0"></div>
+  </div>
+  <div class="carte">
+    <h2>📣 Envoyer une promo</h2>
+    <p class="note" style="margin-top:-6px">Un SMS à tous les clients qui ont accepté les SMS. Idéal pour une offre du week-end, un nouveau produit, une fermeture…</p>
+    <textarea id="smsPromo" maxlength="400" placeholder="ex. Ce week-end chez {commerce} : -10 % sur les terrines maison !"></textarea>
+    <div class="smsTags" data-cible="smsPromo"><button data-tag="{nom}">+ nom du client</button><button data-tag="{commerce}">+ nom du commerce</button></div>
+    <div id="smsPromoInfo"></div>
+    <button class="btn principal" id="bSmsPromo">Envoyer</button>
+    <div id="msgSmsPromo"></div>
+  </div>
+  <div class="carte">
+    <h2>🤖 Envois automatiques</h2>
+    <p class="note" style="margin-top:-6px">Chaque jour à 10 h (sauf le dimanche et les jours fériés), l'application regarde qui relancer et envoie le SMS toute seule. Un client reçoit chaque message une seule fois, jusqu'à son prochain passage.</p>
+    <div class="smsBloc">
+      <label class="case"><input type="checkbox" id="smsRelActif">
+        <span><b>« Vous nous manquez »</b> : quand un client n'est pas venu depuis
+        <input id="smsRelJours" class="inline" type="number" min="7" max="365" step="1" inputmode="numeric" aria-label="Nombre de jours sans venir"> jours</span></label>
+      <textarea id="smsRelTexte" maxlength="300" style="min-height:90px;margin-top:10px"></textarea>
+      <div class="smsTags" data-cible="smsRelTexte"><button data-tag="{nom}">+ nom du client</button><button data-tag="{commerce}">+ nom du commerce</button></div>
+      <div id="smsRelInfo"></div>
+    </div>
+    <div class="smsBloc">
+      <label class="case"><input type="checkbox" id="smsPresActif">
+        <span><b>« Plus qu'un passage »</b> : quand il ne manque qu'un passage au client pour sa réduction et qu'il n'est pas venu depuis
+        <input id="smsPresJours" class="inline" type="number" min="3" max="365" step="1" inputmode="numeric" aria-label="Nombre de jours sans venir"> jours</span></label>
+      <textarea id="smsPresTexte" maxlength="300" style="min-height:90px;margin-top:10px"></textarea>
+      <div class="smsTags" data-cible="smsPresTexte"><button data-tag="{nom}">+ nom du client</button><button data-tag="{commerce}">+ nom du commerce</button><button data-tag="{remise}">+ % de réduction</button></div>
+      <div id="smsPresInfo"></div>
+    </div>
+    <label for="smsExp">Nom de l'expéditeur (ce que le client voit à la place d'un numéro)</label>
+    <input id="smsExp" type="text" maxlength="11" placeholder="ex. Terrine">
+    <p class="note" style="margin-top:4px">11 lettres ou chiffres au plus, sans accent.</p>
+    <div id="smsAutoTotal" class="smsCompte"></div>
+    <button class="btn principal" id="bSmsEnregistrer">Enregistrer</button>
+    <div id="msgSms"></div>
+  </div>
+  <div class="carte">
+    <h2>📊 Derniers envois</h2>
+    <div id="smsHisto"></div>
+    <p class="note">« Revenus en 7 j » : clients passés en caisse dans les 7 jours qui suivent le SMS. Certains seraient venus de toute façon : c'est un repère, pas une preuve.</p>
+  </div>
+  <p class="note" style="text-align:center">Seuls les clients qui ont accepté les SMS les reçoivent. « STOP » est ajouté à chaque message pour se désinscrire. Pas d'envoi le dimanche, les jours fériés, ni avant 10 h ou après 19 h. Les accents comme ê ou ç sont remplacés (é, è, à restent) pour qu'un message tienne dans un seul SMS.</p>
+</main>
+
 <main id="ecranSupport" class="cache">
   <div class="carte">
     <h2>💬 Besoin d'aide ?</h2>
@@ -713,6 +794,11 @@ function apiSupabase(sb){
     async saisirParrain(code){ return v(await sb.rpc("saisir_parrain", {p_code:code})); },
     async adminParrainages(){ return v(await sb.rpc("admin_parrainages")); },
     async adminContacts(){ return v(await sb.rpc("admin_contacts")); },
+    async smsEtat(){ return v(await sb.rpc("sms_etat")); },
+    async smsPromo(texte){ return v(await sb.rpc("sms_promo", {p_texte:texte})); },
+    async adminSmsListe(){ return v(await sb.rpc("admin_sms_liste")); },
+    async adminSms(id, actif){ v(await sb.rpc("admin_sms", {p_id:id, p_active:actif})); },
+    async adminSmsCredits(id, n){ return v(await sb.rpc("admin_sms_credits", {p_id:id, p_ajout:n})); },
     async adminParrainValider(id, ok){ v(await sb.rpc("admin_parrainage_valider", {p_filleul:id, p_valide:!!ok})); },
     async stats(){ return v(await sb.rpc("stats_commerces")); },
     async viderMesClients(){ v(await sb.from("clients").delete().eq("commerce_id", SESSION.commerce.id)); },
@@ -802,6 +888,8 @@ function apiDemo(){
   let D;
   try{ D = JSON.parse(localStorage.getItem(CLE)); }catch(e){}
   if (!D || !D.commerce) D = demoExemple();
+  if (D.commerce.sms_active === undefined) Object.assign(D.commerce, {sms_active:true, sms_credits:200, sms_inclus:50});
+  if (!D.sms_lots) D.sms_lots = smsLotsExemple(D);
   const sauver = ()=>{ try{ localStorage.setItem(CLE, JSON.stringify(D)); }catch(e){} };
   // Remet Lucas (et le compteur de la roue) comme au début de la démo, sans toucher aux autres clients
   function remettreClientDemo(tel){
@@ -922,6 +1010,33 @@ function apiDemo(){
               {filleul_id:"ex1", filleul:"Boulangerie (exemple)", parrain:D.commerce.nom, cree_le:j(40), valide_le:D.parValide.ex1||null}];
     },
     async adminContacts(){ return [{id:"demo", telephone:D.commerce.telephone || null}, {id:"ex1", telephone:"0600000101"}, {id:"ex2", telephone:null}]; },
+    async smsEtat(){
+      const co = D.commerce, debut = debutMois(), lots = D.sms_lots || [];
+      const utilises = lots.filter(l=>new Date(l.cree_le) >= debut).reduce((t,l)=>t+l.nb_sms, 0);
+      const vus = {};
+      for (const m of D.mouvements) if (m.type === "points") (vus[m.client_id] = vus[m.client_id] || []).push(new Date(m.le).getTime());
+      const revenus = l => { const t0 = new Date(l.envoye_le).getTime(), t1 = t0 + 7*864e5;
+        return (l.clients || []).filter(id => (vus[id] || []).some(t => t > t0 && t <= t1)).length; };
+      return {active:!!co.sms_active, inclus:co.sms_inclus ?? SMS_INCLUS, utilises, credits:co.sms_credits || 0,
+        lots: lots.slice().sort((a,b)=>new Date(b.cree_le)-new Date(a.cree_le)).slice(0,20)
+          .map(l=>({type:l.type, texte:l.texte, cree_le:l.cree_le, envoye_le:l.envoye_le, statut:l.statut, nb_clients:l.nb_clients, nb_sms:l.nb_sms, revenus:revenus(l)}))};
+    },
+    async smsPromo(texte){
+      const co = D.commerce, dest = D.clients.filter(c=>c.accord_sms);
+      if (!dest.length) throw new Error("Aucun client n'a accepté les SMS pour l'instant.");
+      const nb = dest.reduce((t,c)=>t + smsParts(smsTexte(texte, c.nom)), 0);
+      const e = await this.smsEtat(), dispoMois = Math.max(0, e.inclus - e.utilises);
+      if (nb > dispoMois + e.credits) throw new Error(`Il faut ${nb} SMS, il vous en reste ${dispoMois + e.credits}. Demandez un pack de SMS au support 💬.`);
+      co.sms_credits = e.credits - Math.max(0, nb - dispoMois);
+      const envoye_le = prochainCreneau().toISOString();
+      D.sms_lots = D.sms_lots || [];
+      D.sms_lots.push({type:"promo", texte, cree_le:new Date().toISOString(), envoye_le, statut:"demo", nb_clients:dest.length, nb_sms:nb, clients:dest.map(c=>c.id)});
+      sauver();
+      return {nb_clients:dest.length, nb_sms:nb, envoye_le};
+    },
+    async adminSmsListe(){ const e = await this.smsEtat(); return [{id:"demo", sms_active:!!D.commerce.sms_active, sms_credits:e.credits, sms_mois:e.utilises}]; },
+    async adminSms(id, actif){ if (id !== "demo") throw new Error("Commerce d'exemple"); D.commerce.sms_active = actif; sauver(); },
+    async adminSmsCredits(id, n){ if (id !== "demo") throw new Error("Commerce d'exemple"); D.commerce.sms_credits = Math.max(0, (D.commerce.sms_credits || 0) + n); sauver(); return D.commerce.sms_credits; },
     async adminParrainValider(id, ok){ D.parValide = D.parValide || {}; D.parValide[id] = ok ? new Date().toISOString() : null; sauver(); },
     async stats(){
       const il30 = Date.now() - 30*864e5;
@@ -958,14 +1073,214 @@ function adresseApp(){ return location.origin + location.pathname; }
 let API, SESSION = null, courant = null, enAttente = null, modeInscription = false;
 
 function montrer(ecran){
-  for (const e of ["ecranAccueil","ecranListe","ecranReglages","ecranGerant","ecranSupport"]) $(e).classList.toggle("cache", e!==ecran);
+  for (const e of ["ecranAccueil","ecranListe","ecranReglages","ecranGerant","ecranSupport","ecranSms"]) $(e).classList.toggle("cache", e!==ecran);
   window.scrollTo(0,0);
   if (ecran==="ecranListe") afficherListe();
   if (ecran==="ecranReglages") remplirReglages();
   else if (SESSION) appliquerTheme(SESSION.commerce.theme);   // annule un aperçu de thème non enregistré
   if (ecran==="ecranGerant") afficherGerant();
   if (ecran==="ecranSupport") afficherSupport();
+  if (ecran==="ecranSms") afficherSms();
 }
+
+// ======================================================================
+// SMS : promo, relances automatiques, compteur du mois
+// ======================================================================
+const SMS_INCLUS = 50;                 // SMS compris chaque mois (réglable par commerce dans la base)
+const SMS_STOP = "\nSTOP au 36xxx";    // mention de désinscription ajoutée à chaque SMS (numéro donné par le service SMS)
+const SMS_DEFAUT = {
+  relance:{actif:true, jours:30, texte:"Bonjour{nom}, cela fait un moment ! Toute l'équipe de {commerce} serait ravie de vous revoir. Vos points vous attendent."},
+  presque:{actif:true, jours:14, texte:"Bonjour{nom}, plus qu'un passage chez {commerce} et votre réduction de {remise} % est à vous !"}
+};
+// Alphabet des SMS « normaux » (160 caractères) ; un seul autre signe fait passer le SMS à 70 caractères
+const GSM7 = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+const GSM7_EXT = "^{}\\[~]|€";     // comptent pour 2
+const SMS_REMPL = {"ê":"e","ë":"e","â":"a","á":"a","î":"i","ï":"i","í":"i","ô":"o","ó":"o","û":"u","ú":"u","ç":"c","À":"A","Â":"A","Á":"A","Ê":"E","È":"E","Ë":"E","Î":"I","Ï":"I","Ô":"O","Û":"U","Ù":"U","œ":"oe","Œ":"OE",
+  "’":"'","‘":"'","«":"\"","»":"\"","“":"\"","”":"\"","…":"...","–":"-","—":"-","\u00a0":" ","\u202f":" "};
+const smsNettoyer = t => [...String(t)].map(ch => SMS_REMPL[ch] ?? ch).join("");
+function smsMesure(t){
+  let n = 0; const autres = new Set();
+  for (const ch of t){ if (GSM7.includes(ch)) n++; else if (GSM7_EXT.includes(ch)) n += 2; else autres.add(ch); }
+  if (autres.size){ const l = t.length; return {long:l, parts: l <= 70 ? 1 : Math.ceil(l/67), max:70, autres:[...autres]}; }
+  return {long:n, parts: n <= 160 ? 1 : Math.ceil(n/153), max:160, autres:[]};
+}
+const smsParts = t => smsMesure(t).parts;
+// Le texte exact reçu par un client : nom, commerce, réduction, accents remplacés, STOP
+function smsTexte(modele, nomClient){
+  const c = SESSION.commerce, nom = (nomClient || "").trim();
+  return smsNettoyer(String(modele || "").replace(/\s?\{nom\}/g, ()=> nom ? " " + nom : "").replace(/\{commerce\}/g, ()=> c.nom).replace(/\{remise\}/g, ()=> c.remise).trim()).replace(/\r/g, "") + SMS_STOP;
+}
+function smsExpediteur(nom){
+  const e = smsNettoyer(nom || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+  const e11 = e.length <= 11 ? e : (e.slice(0, 12).match(/^(.*\S)\s/) || [, e.slice(0, 11)])[1].trim();
+  if (/[A-Za-z]/.test(e11)) return e11;
+  return "Reviens STP";
+}
+function smsReglages(){
+  const s = SESSION.commerce.sms || {};
+  return {expediteur:s.expediteur || "", relance:{...SMS_DEFAUT.relance, ...(s.relance || {})}, presque:{...SMS_DEFAUT.presque, ...(s.presque || {})}};
+}
+// Jours fériés (France métropolitaine) et créneau d'envoi : du lundi au samedi, 10 h - 19 h
+function joursFeries(an){
+  const a = an % 19, b = Math.floor(an/100), c = an % 100, d = Math.floor(b/4), e = b % 4, f = Math.floor((b+8)/25), g = Math.floor((b-f+1)/3),
+    h = (19*a + b - d - g + 15) % 30, i = Math.floor(c/4), k = c % 4, l = (32 + 2*e + 2*i - h - k) % 7, m = Math.floor((a + 11*h + 22*l)/451),
+    mois = Math.floor((h + l - 7*m + 114)/31), jour = ((h + l - 7*m + 114) % 31) + 1;
+  const paques = new Date(an, mois-1, jour), plus = n => { const x = new Date(paques); x.setDate(x.getDate()+n); return `${x.getMonth()+1}-${x.getDate()}`; };
+  return new Set(["1-1","5-1","5-8","7-14","8-15","11-1","11-11","12-25", plus(1), plus(39), plus(50)]);
+}
+const estFerie = d => joursFeries(d.getFullYear()).has(`${d.getMonth()+1}-${d.getDate()}`);
+function prochainCreneau(d){
+  const x = new Date(d || Date.now());
+  for (let i = 0; i < 20; i++){
+    if (x.getDay() !== 0 && !estFerie(x)){
+      if (x.getHours() < 10){ x.setHours(10,0,0,0); return x; }
+      if (x.getHours() < 19) return x;
+    }
+    x.setDate(x.getDate()+1); x.setHours(10,0,0,0);
+  }
+  return x;
+}
+function creneauFr(d){
+  if (d - Date.now() < 60e3) return "tout de suite";
+  const auj = new Date(), dem = new Date(); dem.setDate(dem.getDate()+1);
+  const jour = d.toDateString() === auj.toDateString() ? "aujourd'hui" : d.toDateString() === dem.toDateString() ? "demain"
+    : d.toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"long"});
+  return `${jour} à ${d.getHours()} h${d.getMinutes() ? String(d.getMinutes()).padStart(2,"0") : ""}`;
+}
+// Démo : une promo il y a 12 jours et une relance automatique il y a 4 jours
+function smsLotsExemple(D){
+  const j = n => new Date(Date.now() - n*864e5).toISOString(), dest = D.clients.filter(c=>c.accord_sms);
+  const avant = n => { const t = Date.now() - n*864e5; return c => { const l = D.mouvements.filter(m=>m.client_id===c.id && m.type==="points").map(m=>new Date(m.le).getTime());
+    const av = l.filter(x=>x <= t), ap = l.filter(x=>x > t && x <= t + 7*864e5); return av.length && t - Math.max(...av) > 30*864e5 && ap.length; }; };
+  const rel = dest.filter(avant(4)).slice(0, 6), autres = dest.filter(c=>!rel.includes(c)).slice(0, 3), relClients = [...rel, ...autres];
+  const promo = "Ce week-end chez {commerce} : -10 % sur toute la boutique ! A tres vite.";
+  return [
+    {type:"promo", texte:promo, cree_le:j(12), envoye_le:j(12), statut:"demo", nb_clients:dest.length, nb_sms:dest.length, clients:dest.map(c=>c.id)},
+    {type:"relance", texte:SMS_DEFAUT.relance.texte, cree_le:j(4), envoye_le:j(4), statut:"demo", nb_clients:relClients.length, nb_sms:relClients.length, clients:relClients.map(c=>c.id)},
+  ];
+}
+let SMS_ETAT = null, SMS_DEST = [], SMS_ADMIN = {};
+const SMS_TYPES = {promo:"📣 Promo", relance:"🤖 Vous nous manquez", presque:"🤖 Plus qu'un passage"};
+function smsBulle(texte){
+  const exp = smsExpediteur($("smsExp").value.trim() || SESSION.commerce.nom);
+  return `<div class="smsTel"><div class="smsExp">${echapper(exp)}</div><div class="smsBulle">${echapper(texte)}</div></div>`;
+}
+function smsInfoTexte(modele, nomExemple){
+  const t = smsTexte(modele, nomExemple), m = smsMesure(t);
+  let l = `<b>${m.parts} SMS</b> par client · ${m.long} / ${m.parts > 1 ? (m.max === 70 ? 67 : 153) * m.parts : m.max} caractères, « STOP » compris`;
+  if (m.autres.length) l += `<br><span class="att">⚠️ ${m.autres.map(echapper).join(" ")} : ce signe (souvent un émoji) fait passer le SMS à 70 caractères, donc il coûte plus cher. Enlevez-le si possible.</span>`;
+  else if (m.parts > 1) l += `<br><span class="att">⚠️ Message long : il compte pour ${m.parts} SMS par client. Raccourcissez-le pour n'en utiliser qu'un.</span>`;
+  return {html:`<div class="smsCompte">${l}</div>`, parts:m.parts, texte:t};
+}
+const nomExemple = ()=> (SMS_DEST.find(c=>c.nom && !/^(M\.|Mme)/.test(c.nom)) || {}).nom || "Sophie";
+const jAvant = iso => iso ? (Date.now() - new Date(iso)) / 864e5 : Infinity;
+// Estimation : clients dont l'absence atteint le seuil au cours des 30 derniers jours (= SMS par mois environ)
+function smsEstimeMois(regle, seulementPresque){
+  const c = SESSION.commerce;
+  return SMS_DEST.filter(x => { const a = jAvant(x.derniere_visite);
+    return a >= regle.jours && a < regle.jours + 30 && (!seulementPresque || (x.points + c.points_par_passage >= c.seuil)); }).length;
+}
+function majSmsApercus(){
+  if (!SESSION || $("ecranSms").classList.contains("cache")) return;
+  const nomEx = nomExemple(), e = SMS_ETAT || {inclus:SMS_INCLUS, utilises:0, credits:0, active:false};
+  // Promo
+  const promo = $("smsPromo").value.trim(), n = SMS_DEST.length;
+  if (promo){
+    const i = smsInfoTexte(promo, nomEx), total = SMS_DEST.reduce((t,c)=>t + smsParts(smsTexte(promo, c.nom)), 0);
+    const dispoMois = Math.max(0, e.inclus - e.utilises), reserve = Math.max(0, total - dispoMois);
+    $("smsPromoInfo").innerHTML = smsBulle(i.texte) + i.html + `<div class="smsCompte">Envoyé à <b>${pluriel(n, "client")}</b> · <b>${total} SMS</b>`
+      + (reserve ? ` (${Math.min(total, dispoMois)} compris dans votre mois + ${reserve} pris sur la réserve)` : " compris dans votre mois")
+      + ` · envoi <b>${creneauFr(prochainCreneau())}</b></div>`;
+    $("bSmsPromo").textContent = `Envoyer à ${pluriel(n, "client")}`;
+  } else { $("smsPromoInfo").innerHTML = ""; $("bSmsPromo").textContent = "Envoyer"; }
+  $("bSmsPromo").disabled = !promo || !n || (!DEMO && !e.active);
+  // Automatiques
+  const r = lireSmsForm();
+  const iR = smsInfoTexte(r.relance.texte, nomEx), iP = smsInfoTexte(r.presque.texte, nomEx);
+  const nR = r.relance.actif ? smsEstimeMois(r.relance) : 0, nP = r.presque.actif ? smsEstimeMois(r.presque, true) : 0;
+  $("smsRelInfo").innerHTML = smsBulle(iR.texte) + iR.html + (r.relance.actif ? `<div class="smsCompte">Environ <b>${pluriel(nR, "client")}</b> par mois avec vos clients actuels.</div>` : "");
+  $("smsPresInfo").innerHTML = smsBulle(iP.texte) + iP.html + (r.presque.actif ? `<div class="smsCompte">Environ <b>${pluriel(nP, "client")}</b> par mois avec vos clients actuels.</div>` : "");
+  const totalAuto = nR * iR.parts + nP * iP.parts;
+  $("smsAutoTotal").innerHTML = r.relance.actif || r.presque.actif
+    ? `Ces relances utiliseraient environ <b>${totalAuto} SMS par mois</b> (vous en avez ${e.inclus} compris chaque mois${e.credits ? `, plus ${e.credits} en réserve` : ""}).`
+      + (totalAuto > e.inclus ? ` <span class="att">C'est plus que votre forfait : quand il est épuisé, les relances passent sur la réserve, puis s'arrêtent jusqu'au mois suivant.</span>` : "")
+    : "Aucune relance automatique.";
+}
+function lireSmsForm(){
+  const nb = (id, def) => { const v = parseInt($(id).value, 10); return Number.isFinite(v) ? v : def; };
+  return {
+    expediteur: $("smsExp").value.trim(),
+    relance:{actif:$("smsRelActif").checked, jours:nb("smsRelJours", 30), texte:$("smsRelTexte").value.trim()},
+    presque:{actif:$("smsPresActif").checked, jours:nb("smsPresJours", 14), texte:$("smsPresTexte").value.trim()},
+  };
+}
+async function afficherSms(){
+  const c = SESSION.commerce, r = smsReglages();
+  $("smsExp").value = r.expediteur || smsExpediteur(c.nom);
+  $("smsRelActif").checked = !!r.relance.actif; $("smsRelJours").value = r.relance.jours; $("smsRelTexte").value = r.relance.texte;
+  $("smsPresActif").checked = !!r.presque.actif; $("smsPresJours").value = r.presque.jours; $("smsPresTexte").value = r.presque.texte;
+  message("msgSms", ""); message("msgSmsPromo", "");
+  $("smsChiffres").innerHTML = `<p class="note">Chargement…</p>`;
+  let liste;
+  try{ [SMS_ETAT, liste] = await Promise.all([API.smsEtat(), API.liste()]); }
+  catch(e){ SMS_ETAT = null; liste = []; $("smsChiffres").innerHTML = `<p class="note">${echapper(e.message)}</p>`; }
+  SMS_DEST = (liste || []).filter(x=>x.accord_sms);
+  const e = SMS_ETAT;
+  $("smsBandeau").innerHTML = DEMO ? "🎬 <b>Démo</b> : aucun SMS n'est vraiment envoyé. Essayez d'écrire une promo pour voir ce que reçoit le client."
+    : e && e.active ? "✅ <b>Service SMS actif.</b> Envois du lundi au samedi, de 10 h à 19 h, jamais les jours fériés."
+    : "🚀 <b>Les SMS arrivent très bientôt.</b> Préparez vos messages dès maintenant : les envois démarreront dès l'ouverture du service.";
+  if (e){
+    const reste = Math.max(0, e.inclus - e.utilises);
+    $("smsChiffres").innerHTML = [[SMS_DEST.length, "clients ont accepté les SMS"], [`${reste} / ${e.inclus}`, "SMS restants ce mois-ci"], [e.credits, "SMS en réserve (packs)"]]
+      .map(([n,t])=>`<div class="chiffre"><b>${n}</b><span>${t}</span></div>`).join("");
+    $("smsHisto").innerHTML = (e.lots || []).map(l=>{
+      const d = l.envoye_le || l.cree_le, futur = l.statut === "attente" || new Date(d) > Date.now(), recent = jAvant(d) < 7;
+      const quand = l.statut === "annule" ? "annulé" : futur ? `prévu ${creneauFr(new Date(d))}` : dateCourte(d);
+      const texte = smsNettoyer(String(l.texte).replace(/\s?\{nom\}/g, "").replace(/\{commerce\}/g, c.nom).replace(/\{remise\}/g, c.remise));
+      const rev = futur || recent ? "revenus en 7 j : en cours" : `<b>${l.revenus}</b> revenu${l.revenus > 1 ? "s" : ""} en 7 j${l.nb_clients ? ` (${Math.round(100*l.revenus/l.nb_clients)} %)` : ""}`;
+      return `<div class="smsLot"><div class="t">${SMS_TYPES[l.type] || echapper(l.type)}<span>${quand}</span></div>
+        <div class="m">${echapper(texte.length > 110 ? texte.slice(0, 107) + "…" : texte)}</div>
+        <div class="c">${pluriel(l.nb_clients, "client")} · ${l.nb_sms} SMS · ${rev}</div></div>`;
+    }).join("") || `<p class="note">Aucun SMS envoyé pour l'instant.</p>`;
+  }
+  majSmsApercus();
+}
+for (const id of ["smsPromo","smsRelTexte","smsPresTexte","smsExp","smsRelJours","smsPresJours"]) $(id).addEventListener("input", majSmsApercus);
+for (const id of ["smsRelActif","smsPresActif"]) $(id).addEventListener("change", majSmsApercus);
+for (const z of document.querySelectorAll(".smsTags")) for (const b of z.querySelectorAll("button")) b.onclick = ()=>{
+  const t = $(z.dataset.cible), a = t.selectionStart ?? t.value.length, f = t.selectionEnd ?? a, tag = b.dataset.tag;
+  const avant = t.value.slice(0, a), esp = tag === "{nom}" || !avant || /\s$/.test(avant) ? "" : " ";
+  t.value = avant + esp + tag + t.value.slice(f); t.focus(); const pos = a + esp.length + tag.length; t.setSelectionRange(pos, pos);
+  majSmsApercus();
+};
+$("bSmsEnregistrer").onclick = ()=> occupe($("bSmsEnregistrer"), async ()=>{
+  const r = lireSmsForm();
+  for (const [k, nom, min] of [["relance","« Vous nous manquez »",7], ["presque","« Plus qu'un passage »",3]]){
+    if (!r[k].texte) return message("msgSms", `Écrivez le message ${nom}.`, "err");
+    if (!(r[k].jours >= min && r[k].jours <= 365)) return message("msgSms", `${nom} : choisissez entre ${min} et 365 jours.`, "err");
+  }
+  r.expediteur = smsExpediteur(r.expediteur || SESSION.commerce.nom); $("smsExp").value = r.expediteur;
+  try{ SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {sms:r}); message("msgSms", "✓ Relances enregistrées.", "ok"); majSmsApercus(); }
+  catch(e){ message("msgSms", e.message, "err"); }
+});
+$("bSmsPromo").onclick = ()=>{
+  const t = $("smsPromo").value.trim();
+  if (!t) return;
+  const total = SMS_DEST.reduce((s,c)=>s + smsParts(smsTexte(t, c.nom)), 0);
+  $("smsFondTexte").innerHTML = `Ce SMS part à <b>${pluriel(SMS_DEST.length, "client")}</b> (${total} SMS), <b>${creneauFr(prochainCreneau())}</b>. Impossible de l'annuler après l'envoi.`;
+  $("smsFondApercu").innerHTML = smsBulle(smsTexte(t, nomExemple()));
+  $("smsFond").classList.remove("cache"); $("bSmsAnnuler").focus();
+};
+$("bSmsAnnuler").onclick = ()=> $("smsFond").classList.add("cache");
+$("smsFond").onclick = e=>{ if (e.target === $("smsFond")) $("smsFond").classList.add("cache"); };
+$("bSmsValider").onclick = ()=> occupe($("bSmsValider"), async ()=>{
+  try{
+    const r = await API.smsPromo($("smsPromo").value.trim());
+    $("smsFond").classList.add("cache"); $("smsPromo").value = "";
+    await afficherSms();
+    message("msgSmsPromo", `✓ ${r.nb_sms} SMS ${DEMO ? "enregistrés (démo : rien n'est vraiment envoyé)" : "prêts"} pour ${pluriel(r.nb_clients, "client")}, envoi ${creneauFr(new Date(r.envoye_le))}.`, "ok");
+  }catch(e){ $("smsFond").classList.add("cache"); message("msgSmsPromo", e.message, "err"); }
+});
 
 const TEL_OK = t => /^0[67]\d{8}$/.test(t);
 async function enregistrerTelCommerce(brut){
@@ -1215,6 +1530,7 @@ function afficherThemes(){
 // ---------- Navigation ----------
 $("bAccueil").onclick = ()=>montrer("ecranAccueil");
 $("bListe").onclick = ()=>montrer("ecranListe");
+$("bSms").onclick = ()=>montrer("ecranSms");
 $("bReglages").onclick = ()=>montrer("ecranReglages");
 $("bGerant").onclick = ()=>montrer("ecranGerant");
 $("bSupport").onclick = ()=>montrer("ecranSupport");
@@ -1594,6 +1910,7 @@ function etapesTuto(){
   if (roue) e.push({ecran:"ecranAccueil", titre:"La roue de la fortune 🎡", texte:"De temps en temps, la roue s'affiche pour le client en caisse. Il la lance, et son cadeau est noté sur sa fiche jusqu'à la fin du mois. Ses cadeaux se règlent aussi, juste après."});
   e.push(
     {cible:"bListe", titre:"Mes clients 👥", texte:"La liste de vos clients : points, passages par mois, dernière visite. Touchez un titre de colonne pour les classer."},
+    {cible:"bSms", titre:"SMS 📱", texte:"Envoyez une promo à vos clients en un geste, ou laissez l'application relancer toute seule ceux qui ne sont pas venus depuis longtemps."},
     {cible:"bSupport", titre:"Support 💬", texte:"Une question, un souci ? Écrivez-nous ici : on vous répond directement dans l'application."},
     {ecran:"ecranAccueil", cible:"bReglages", titre:"Réglages ⚙️", texte:"Tout se personnalise ici. Allons-y !"},
     {ecran:R, cible:"#ecranReglages .etape", titre:"Votre programme", texte:"Points gagnés à chaque passage, palier à atteindre, pourcentage de réduction, et en option un bonus pour les gros paniers : tout se règle comme vous voulez, à tout moment."},
@@ -1742,10 +2059,10 @@ async function afficherGerant(){
     [somme("nb_clients"), "clients au total"], [somme("passages_30j"), "passages ces 30 jours"],
   ].map(([n,t])=>`<div class="chiffre"><b>${n}</b><span>${t}</span></div>`).join("");
   $("gListe").innerHTML = s.map(x=>`<tr>
-      <td><b>${echapper(x.commerce)}</b><br><span class="note">${echapper(x.email)}</span><br><span class="note" data-tel="${x.id}">…</span></td>
+      <td><b>${echapper(x.commerce)}</b><br><span class="note">${echapper(x.email)}</span><br><span class="note" data-tel="${x.id}">…</span><br><span class="note" data-smsinfo="${x.id}"></span></td>
       <td class="n">${x.nb_clients}</td><td class="n">${x.nb_accord_sms}</td><td class="n">${x.passages_30j}</td>
       <td class="n">${x.nb_reductions}</td><td class="n">${jourFr(x.derniere_activite)}</td><td class="n">${jourFr(x.inscrit_le)}</td>
-      <td><button class="petitbtn roue" data-roue="${x.id}">${x.roue_active ? "🎡 Couper la roue" : "🎡 Activer la roue"}</button><button class="petitbtn vider" data-vider="${x.id}">Vider</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer</button></td></tr>`).join("")
+      <td><button class="petitbtn roue" data-roue="${x.id}">${x.roue_active ? "🎡 Couper la roue" : "🎡 Activer la roue"}</button><button class="petitbtn" data-sms="${x.id}">📱 SMS…</button><button class="petitbtn vider" data-vider="${x.id}">Vider</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer</button></td></tr>`).join("")
     || `<tr><td colspan="8" class="note">Aucun commerce inscrit pour l'instant.</td></tr>`;
   for (const b of $("gListe").querySelectorAll("button")) b.onclick = ()=> actionCommerce(b);
   afficherParrainagesGerant();
@@ -1754,6 +2071,12 @@ async function afficherGerant(){
   for (const sp of $("gListe").querySelectorAll("[data-tel]")){
     const t = tels[sp.dataset.tel];
     sp.innerHTML = t ? `📞 <a href="tel:${t}">${joli(t)}</a>` : "📞 pas encore de numéro";
+  }
+  SMS_ADMIN = {};
+  try{ for (const c of await API.adminSmsListe()) SMS_ADMIN[c.id] = c; }catch(e){}
+  for (const sp of $("gListe").querySelectorAll("[data-smsinfo]")){
+    const x = SMS_ADMIN[sp.dataset.smsinfo];
+    sp.textContent = x ? `📱 SMS ${x.sms_active ? "actifs" : "coupés"} · ${x.sms_mois} ce mois · ${x.sms_credits} en réserve` : "";
   }
 }
 async function afficherParrainagesGerant(){
@@ -1958,10 +2281,23 @@ $("bViderValider").onclick = ()=> occupe($("bViderValider"), async ()=>{
 // Gérant : vider ou supprimer un commerce
 async function actionCommerce(b){
   const s = DERNIERES_STATS || [];
-  const id = b.dataset.vider || b.dataset.suppr || b.dataset.roue, x = s.find(c=>String(c.id)===String(id));
+  const id = b.dataset.vider || b.dataset.suppr || b.dataset.roue || b.dataset.sms, x = s.find(c=>String(c.id)===String(id));
   if (!x) return;
   try{
-    if (b.dataset.roue){
+    if (b.dataset.sms){
+      const etat = SMS_ADMIN[x.id] || {sms_active:false, sms_credits:0};
+      const r = prompt(`SMS de « ${x.commerce} » : ${etat.sms_active ? "actifs" : "coupés"}, ${etat.sms_credits} SMS en réserve.\n\nTapez :\n  A pour ${etat.sms_active ? "couper" : "activer"} les SMS\n  un nombre pour ajouter des SMS en réserve (pack payé), ex. 100\n  un nombre négatif pour en retirer, ex. -100`);
+      if (r === null || !r.trim()) return;
+      if (r.trim().toUpperCase() === "A"){
+        await API.adminSms(x.id, !etat.sms_active);
+        alerte(!etat.sms_active ? `📱 SMS activés pour ${x.commerce}` : `SMS coupés pour ${x.commerce}`);
+      } else {
+        const n = parseInt(r, 10);
+        if (!Number.isFinite(n) || n === 0 || Math.abs(n) > 100000) return alert("Rien n'a changé : tapez A ou un nombre, ex. 100.");
+        const total = await API.adminSmsCredits(x.id, n);
+        alerte(`📱 ${x.commerce} : ${total} SMS en réserve`);
+      }
+    } else if (b.dataset.roue){
       const activer = !x.roue_active;
       if (!confirm(activer ? `Activer la roue de la fortune pour « ${x.commerce} » ? Des cadeaux d'exemple sont proposés, le commerçant les modifie dans ⚙️.` : `Couper la roue de la fortune pour « ${x.commerce} » ?`)) return;
       await API.adminRoue(x.id, activer);
