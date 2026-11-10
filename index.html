@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="34">
+<meta name="app-version" content="35">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -1500,20 +1500,26 @@ async function afficherParrainage(){
 
 // ---------- Tutoriel (proposé à la création du compte, revu depuis ⚙️) ----------
 function etapesTuto(){
-  const c = SESSION.commerce, pts = c.points_par_passage, roue = !!c.roue_active;
+  const c = SESSION.commerce, pts = c.points_par_passage, roue = !!c.roue_active, R = "ecranReglages";
   const e = [
-    {titre:"Bienvenue 👋", texte:"En 1 minute, voici comment fidéliser vos clients avec Reviens STP. Touchez « Suivant »."},
-    {ecran:"ecranAccueil", cible:"tel", titre:"1. Le numéro du client", texte:"En caisse, demandez son numéro de téléphone et tapez-le ici avec le clavier. Pas de carte, rien à installer pour le client."},
-    {ecran:"ecranAccueil", cible:"bChercher", titre:"2. Valider", texte:"Touchez « Valider ». Nouveau client ? Une fiche s'ouvre : son prénom, son accord pour les SMS, et sa carte est créée avec ses premiers points."},
-    {ecran:"ecranAccueil", titre:"3. Client déjà connu", texte:`Sa carte s'affiche : touchez « +${pts} points ». Une erreur ? « Annuler ces points » juste en dessous. Quand il atteint ${c.seuil} points, un bouton vert « Réduction faite » apparaît : faites-lui sa remise de ${c.remise} %, puis touchez-le.`},
+    {ecran:"ecranAccueil", cible:"tel", titre:"Le numéro du client", texte:"En caisse, demandez son numéro de téléphone et tapez-le ici avec le clavier. Pas de carte, rien à installer pour le client."},
+    {ecran:"ecranAccueil", cible:"bChercher", titre:"Valider", texte:"Touchez « Valider ». Nouveau client ? Une fiche s'ouvre : son prénom, son accord pour les SMS, et sa carte est créée avec ses premiers points."},
+    {ecran:"ecranAccueil", titre:"Client déjà connu", texte:`Sa carte s'affiche : touchez « +${pts} points ». Une erreur ? « Annuler ces points » juste en dessous. Au palier (${c.seuil} points), un bouton vert « Réduction faite » apparaît : faites-lui sa remise (${c.remise} %), puis touchez-le. Les points, le palier et la réduction se règlent entièrement comme vous voulez, on va voir où.`},
   ];
-  if (roue) e.push({ecran:"ecranAccueil", titre:"4. La roue 🎡", texte:"De temps en temps, la roue s'affiche pour le client en caisse. Il la lance, et son cadeau est noté sur sa fiche jusqu'à la fin du mois."});
+  if (roue) e.push({ecran:"ecranAccueil", titre:"La roue de la fortune 🎡", texte:"De temps en temps, la roue s'affiche pour le client en caisse. Il la lance, et son cadeau est noté sur sa fiche jusqu'à la fin du mois. Ses cadeaux se règlent aussi, juste après."});
   e.push(
-    {cible:"bListe", titre:`${e.length}. Mes clients 👥`, texte:"La liste de vos clients : points, passages par mois, dernière visite. Touchez un titre de colonne pour les classer."},
-    {cible:"bSupport", titre:`${e.length + 1}. Support 💬`, texte:"Une question, un souci ? Écrivez-nous ici : on vous répond directement dans l'application."},
-    {cible:"bReglages", titre:`${e.length + 2}. Réglages ⚙️`, texte:"Votre programme (points, palier, réduction), le thème, le parrainage (1 mois offert), l'export Excel et votre mot de passe."},
-    {titre:"C'est parti ! 🎉", texte:"Tapez le numéro de votre premier client. Vous pourrez revoir ce tutoriel dans ⚙️ Réglages."});
-  return e;
+    {cible:"bListe", titre:"Mes clients 👥", texte:"La liste de vos clients : points, passages par mois, dernière visite. Touchez un titre de colonne pour les classer."},
+    {cible:"bSupport", titre:"Support 💬", texte:"Une question, un souci ? Écrivez-nous ici : on vous répond directement dans l'application."},
+    {ecran:"ecranAccueil", cible:"bReglages", titre:"Réglages ⚙️", texte:"Tout se personnalise ici. Allons-y !"},
+    {ecran:R, cible:"#ecranReglages .etape", titre:"Votre programme", texte:"Points gagnés à chaque passage, palier à atteindre, pourcentage de réduction, et en option un bonus pour les gros paniers : tout se règle comme vous voulez, à tout moment."},
+    {ecran:R, cible:"rThemes", titre:"Vos thèmes 🎨", texte:"Choisissez le décor et les couleurs qui ressemblent à votre commerce : boulangerie, pizzeria, charcuterie… Un thème sur mesure, avec votre logo et vos couleurs, est possible sur demande."},
+    roue ? {ecran:R, cible:"carteRoue", titre:"Votre roue de la fortune 🎡", texte:"Vous choisissez tout : le texte des cadeaux, leurs chances de tomber, et tous les combien de passages la roue apparaît. Le règlement du jeu est prêt à imprimer."}
+         : {ecran:R, titre:"La roue de la fortune 🎡", texte:"En option : tous les X passages, le client en caisse fait tourner une roue et gagne un cadeau. Vous choisissez entièrement les cadeaux, leurs chances et la fréquence. Pour l'activer, écrivez-nous au support 💬."},
+    {ecran:R, cible:"carteParrain", titre:"Parrainage 🤝", texte:"Présentez Reviens STP à un commerçant que vous connaissez : quand il paie son premier mois, vous gagnez chacun 1 mois offert."});
+  e.forEach((x, i)=> x.titre = `${i + 1}. ${x.titre}`);
+  return [{titre:"Bienvenue 👋", texte:"En 1 minute, voici comment fidéliser vos clients avec Reviens STP, et tout ce que vous pouvez personnaliser. Touchez « Suivant »."},
+    ...e,
+    {titre:"C'est parti ! 🎉", texte:"Tapez le numéro de votre premier client. Vous pourrez revoir ce tutoriel dans ⚙️ Réglages, tout en bas."}];
 }
 let TUTO = null;
 function proposerTuto(){ $("tutoFond").classList.remove("cache"); $("bTutoFaire").focus(); }
@@ -1535,18 +1541,25 @@ function montrerEtape(){
   $("tPasser").classList.toggle("cache", t.i === n - 1);
   $("tSuiv").textContent = t.i === n - 1 ? "Terminer" : "Suivant ›";
   const trou = document.querySelector("#tuto .tTrou"), voile = document.querySelector("#tuto .tVoile"), bulle = document.querySelector("#tuto .tBulle");
-  const cible = e.cible && $(e.cible);
+  const cible = e.cible && (document.getElementById(e.cible) || document.querySelector(e.cible));
   trou.classList.toggle("vide", !cible); voile.classList.toggle("plein", !cible);
   const placer = ()=>{
     if (!cible){ bulle.style.top = "50%"; bulle.style.transform = "translate(-50%,-50%)"; return; }
     const r = cible.getBoundingClientRect(), m = 6;
     Object.assign(trou.style, {left:(r.left - m) + "px", top:(r.top - m) + "px", width:(r.width + 2*m) + "px", height:(r.height + 2*m) + "px"});
     bulle.style.transform = "translateX(-50%)";
-    const h = bulle.offsetHeight, bas = r.bottom + m + 12;
-    bulle.style.top = (bas + h < innerHeight ? bas : Math.max(12, r.top - m - 12 - h)) + "px";
+    const h = bulle.offsetHeight, bas = r.bottom + m + 12, haut = r.top - m - 12 - h;
+    bulle.style.top = (bas + h < innerHeight ? bas : haut > 70 ? haut : Math.max(70, innerHeight - h - 12)) + "px";
   };
-  if (cible && (cible.getBoundingClientRect().bottom > innerHeight || cible.getBoundingClientRect().top < 0)) cible.scrollIntoView({block:"center"});
+  if (cible){
+    const r = cible.getBoundingClientRect();
+    if (r.bottom > innerHeight || r.top < 70){
+      if (r.height > innerHeight * 0.45){ cible.scrollIntoView({block:"start"}); scrollBy(0, -80); }
+      else cible.scrollIntoView({block:"center"});
+    }
+  }
   requestAnimationFrame(placer);
+  setTimeout(()=>{ if (TUTO && TUTO.etapes[TUTO.i] === e) placer(); }, 450);   // la page peut bouger (chargement du parrainage)
   $("tSuiv").focus();
 }
 $("tSuiv").onclick = ()=>{ if (!TUTO) return; if (TUTO.i >= TUTO.etapes.length - 1) return finirTuto(); TUTO.i++; montrerEtape(); };
