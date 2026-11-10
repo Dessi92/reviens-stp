@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="33">
+<meta name="app-version" content="34">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -107,6 +107,20 @@
   .parFil{list-style:none;padding:0;margin:8px 0 0}
   .parFil li{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--bord)}
   .parInvite{background:var(--orclair,#fdf3e1);border-radius:12px;padding:10px 12px;margin:0 0 12px;font-size:15px}
+  #tuto{position:fixed;inset:0;z-index:70}
+  #tuto .tTrou{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(20,14,8,.68);transition:all .25s;pointer-events:none;outline:3px solid #fff}
+  #tuto .tTrou.vide{box-shadow:none;outline:0}
+  #tuto .tVoile{position:fixed;inset:0}
+  #tuto .tVoile.plein{background:rgba(20,14,8,.68)}
+  #tuto .tBulle{position:fixed;left:50%;transform:translateX(-50%);width:min(92vw,380px);background:var(--carte);color:var(--texte);border-radius:16px;padding:16px;box-shadow:0 10px 36px rgba(0,0,0,.4)}
+  #tuto .tBulle h3{margin:0 0 6px;font-size:19px}
+  #tuto .tBulle p{margin:0;font-size:16px;line-height:1.45}
+  #tuto .tPied{display:flex;align-items:center;gap:8px;margin-top:14px}
+  #tuto .tPied .n{flex:1;color:var(--doux);font-size:14px}
+  #tuto .tPied button{border:0;border-radius:10px;padding:10px 14px;font-size:15px;font-weight:700;cursor:pointer}
+  #tuto .tPasser{background:transparent;color:var(--doux);text-decoration:underline}
+  #tuto .tPrec{background:var(--fond2,#efe6da);color:var(--texte)}
+  #tuto .tSuiv{background:var(--accent);color:#fff}
   th.tri{cursor:pointer;user-select:none;color:var(--accent);text-decoration:underline dotted;text-underline-offset:3px}
   th.tri.actif{background:var(--orclair,#fdf3e1);text-decoration:none;border-radius:8px 8px 0 0}
   th.tri .fl{display:block;font-size:12px;line-height:1}
@@ -291,6 +305,31 @@
     <div class="ligne pasImpr">
       <button class="btn gris" id="bReglImprimer">🖨 Imprimer</button>
       <button class="btn principal" id="bReglFermer">Fermer</button>
+    </div>
+  </div>
+</div>
+<div id="tutoFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="tutoTitre">
+  <div class="boite">
+    <h2 id="tutoTitre" style="margin-top:4px">👋 Bienvenue !</h2>
+    <p style="font-size:17px">Voulez-vous une visite rapide de l'application ? Elle dure <b>1 minute</b>.</p>
+    <div class="ligne">
+      <button class="btn gris" id="bTutoPasser">Passer</button>
+      <button class="btn principal" id="bTutoFaire">Faire le tutoriel</button>
+    </div>
+    <p class="note">Vous pourrez le revoir à tout moment dans ⚙️ Réglages.</p>
+  </div>
+</div>
+<div id="tuto" class="cache" role="dialog" aria-modal="true" aria-live="polite">
+  <div class="tVoile"></div>
+  <div class="tTrou"></div>
+  <div class="tBulle">
+    <h3 id="tTitre"></h3>
+    <p id="tTexte"></p>
+    <div class="tPied">
+      <span class="n" id="tNum"></span>
+      <button class="tPasser" id="tPasser">Passer</button>
+      <button class="tPrec" id="tPrec">‹</button>
+      <button class="tSuiv" id="tSuiv">Suivant ›</button>
     </div>
   </div>
 </div>
@@ -495,7 +534,8 @@
     <div id="msgEmail"></div>
   </div>
   <div class="carte">
-    <button class="btn gris" id="bDeconnexion" style="margin-top:0">Se déconnecter</button>
+    <button class="btn gris" id="bRevoirTuto" style="margin-top:0">❓ Revoir le tutoriel</button>
+    <button class="btn gris" id="bDeconnexion">Se déconnecter</button>
   </div>
   </div>
 </main>
@@ -1458,6 +1498,63 @@ async function afficherParrainage(){
   }catch(e){ if ($("parQr")) $("parQr").innerHTML = ""; }
 }
 
+// ---------- Tutoriel (proposé à la création du compte, revu depuis ⚙️) ----------
+function etapesTuto(){
+  const c = SESSION.commerce, pts = c.points_par_passage, roue = !!c.roue_active;
+  const e = [
+    {titre:"Bienvenue 👋", texte:"En 1 minute, voici comment fidéliser vos clients avec Reviens STP. Touchez « Suivant »."},
+    {ecran:"ecranAccueil", cible:"tel", titre:"1. Le numéro du client", texte:"En caisse, demandez son numéro de téléphone et tapez-le ici avec le clavier. Pas de carte, rien à installer pour le client."},
+    {ecran:"ecranAccueil", cible:"bChercher", titre:"2. Valider", texte:"Touchez « Valider ». Nouveau client ? Une fiche s'ouvre : son prénom, son accord pour les SMS, et sa carte est créée avec ses premiers points."},
+    {ecran:"ecranAccueil", titre:"3. Client déjà connu", texte:`Sa carte s'affiche : touchez « +${pts} points ». Une erreur ? « Annuler ces points » juste en dessous. Quand il atteint ${c.seuil} points, un bouton vert « Réduction faite » apparaît : faites-lui sa remise de ${c.remise} %, puis touchez-le.`},
+  ];
+  if (roue) e.push({ecran:"ecranAccueil", titre:"4. La roue 🎡", texte:"De temps en temps, la roue s'affiche pour le client en caisse. Il la lance, et son cadeau est noté sur sa fiche jusqu'à la fin du mois."});
+  e.push(
+    {cible:"bListe", titre:`${e.length}. Mes clients 👥`, texte:"La liste de vos clients : points, passages par mois, dernière visite. Touchez un titre de colonne pour les classer."},
+    {cible:"bSupport", titre:`${e.length + 1}. Support 💬`, texte:"Une question, un souci ? Écrivez-nous ici : on vous répond directement dans l'application."},
+    {cible:"bReglages", titre:`${e.length + 2}. Réglages ⚙️`, texte:"Votre programme (points, palier, réduction), le thème, le parrainage (1 mois offert), l'export Excel et votre mot de passe."},
+    {titre:"C'est parti ! 🎉", texte:"Tapez le numéro de votre premier client. Vous pourrez revoir ce tutoriel dans ⚙️ Réglages."});
+  return e;
+}
+let TUTO = null;
+function proposerTuto(){ $("tutoFond").classList.remove("cache"); $("bTutoFaire").focus(); }
+$("bTutoPasser").onclick = ()=>{ $("tutoFond").classList.add("cache"); $("tel").focus(); };
+$("bTutoFaire").onclick = ()=>{ $("tutoFond").classList.add("cache"); lancerTuto(); };
+$("bRevoirTuto").onclick = ()=> lancerTuto();
+function lancerTuto(){ TUTO = {etapes:etapesTuto(), i:0}; $("tuto").classList.remove("cache"); montrerEtape(); }
+function finirTuto(){
+  TUTO = null; $("tuto").classList.add("cache");
+  if ($("ecranAccueil").classList.contains("cache")) montrer("ecranAccueil");
+  $("tel").focus();
+}
+function montrerEtape(){
+  const t = TUTO, e = t.etapes[t.i], n = t.etapes.length;
+  if (e.ecran && $(e.ecran).classList.contains("cache")) montrer(e.ecran);
+  $("tTitre").textContent = e.titre; $("tTexte").textContent = e.texte;
+  $("tNum").textContent = `${t.i + 1} / ${n}`;
+  $("tPrec").classList.toggle("cache", t.i === 0);
+  $("tPasser").classList.toggle("cache", t.i === n - 1);
+  $("tSuiv").textContent = t.i === n - 1 ? "Terminer" : "Suivant ›";
+  const trou = document.querySelector("#tuto .tTrou"), voile = document.querySelector("#tuto .tVoile"), bulle = document.querySelector("#tuto .tBulle");
+  const cible = e.cible && $(e.cible);
+  trou.classList.toggle("vide", !cible); voile.classList.toggle("plein", !cible);
+  const placer = ()=>{
+    if (!cible){ bulle.style.top = "50%"; bulle.style.transform = "translate(-50%,-50%)"; return; }
+    const r = cible.getBoundingClientRect(), m = 6;
+    Object.assign(trou.style, {left:(r.left - m) + "px", top:(r.top - m) + "px", width:(r.width + 2*m) + "px", height:(r.height + 2*m) + "px"});
+    bulle.style.transform = "translateX(-50%)";
+    const h = bulle.offsetHeight, bas = r.bottom + m + 12;
+    bulle.style.top = (bas + h < innerHeight ? bas : Math.max(12, r.top - m - 12 - h)) + "px";
+  };
+  if (cible && (cible.getBoundingClientRect().bottom > innerHeight || cible.getBoundingClientRect().top < 0)) cible.scrollIntoView({block:"center"});
+  requestAnimationFrame(placer);
+  $("tSuiv").focus();
+}
+$("tSuiv").onclick = ()=>{ if (!TUTO) return; if (TUTO.i >= TUTO.etapes.length - 1) return finirTuto(); TUTO.i++; montrerEtape(); };
+$("tPrec").onclick = ()=>{ if (!TUTO || TUTO.i === 0) return; TUTO.i--; montrerEtape(); };
+$("tPasser").onclick = finirTuto;
+addEventListener("resize", ()=>{ if (TUTO) montrerEtape(); });
+addEventListener("keydown", e=>{ if (!TUTO) return; if (e.key === "Escape") finirTuto(); else if (e.key === "ArrowRight") $("tSuiv").click(); else if (e.key === "ArrowLeft") $("tPrec").click(); });
+
 function lireReglages(){
   const n = id => Number(String($(id).value).replace(",", "."));
   return {p:n("rPoints"), s:n("rSeuil"), r:n("rRemise"), bonus:$("rBonusActif").checked, m:n("rMontant"), pb:n("rPointsBonus")};
@@ -1490,7 +1587,7 @@ $("bEnregistrer").onclick = ()=> occupe($("bEnregistrer"), async ()=>{
       montant_bonus: x.bonus ? x.m : null, points_bonus: x.bonus ? x.pb : null, programme_choisi:true, theme:themeChoisi});
     appliquerTheme(SESSION.commerce.theme);
     majAccroche();
-    if (premier){ montrer("ecranAccueil"); message("msgAccueil","Votre programme est prêt ! Tapez le numéro d'un client pour commencer.","ok"); $("tel").focus(); return; }
+    if (premier){ montrer("ecranAccueil"); message("msgAccueil","Votre programme est prêt ! Tapez le numéro d'un client pour commencer.","ok"); proposerTuto(); return; }
     message("msgReglages","Réglages enregistrés.","ok");
   }catch(e){ message("msgReglages", e.message, "err"); }
 });
