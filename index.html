@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="38">
+<meta name="app-version" content="39">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -265,7 +265,7 @@
 <main id="ecranConnexion" class="cache">
   <div class="logo"><img id="cxLogo" src="icone.svg" alt=""><h1 id="cxTitre">Reviens STP</h1><p id="cxSous">Le programme de fidélité de votre commerce</p></div>
   <div class="carte">
-    <p class="parInvite cache" id="cxInvite">🤝 Un commerçant vous a invité : <b>1 mois offert</b> pour vous et pour lui, dès votre premier mois payé.</p>
+    <p class="parInvite cache" id="cxInvite">🤝 Un commerçant vous a invité : votre <b>1er mois est offert</b>.</p>
     <div class="onglets">
       <button id="ongConnexion" class="actif">Se connecter</button>
       <button id="ongInscription">Créer un compte</button>
@@ -531,7 +531,7 @@
   </div>
   <div class="carte" id="carteParrain">
     <h2>🤝 Parrainer un commerçant</h2>
-    <p class="note" style="margin-top:-6px">Présentez Reviens STP à un commerçant que vous connaissez. Quand il paie son <b>premier mois</b>, vous gagnez chacun <b>1 mois offert</b>. Pas de limite : 12 commerces présentés, un an gratuit.</p>
+    <p class="note" style="margin-top:-6px">Présentez Reviens STP à un commerçant que vous connaissez : son <b>1er mois est offert</b>, et vous gagnez <b>1 mois offert</b> dès qu'il paie sa première facture. Pas de limite : 12 commerces présentés, un an gratuit.</p>
     <div id="parContenu"><p class="note">Chargement…</p></div>
     <div id="msgParrain"></div>
   </div>
@@ -611,10 +611,10 @@
   <div class="carte">
     <h2>🤝 Parrainages</h2>
     <div class="tableau"><table>
-      <thead><tr><th>Nouveau commerce</th><th>Présenté par</th><th class="n">Inscrit le</th><th class="n">1er mois payé</th></tr></thead>
+      <thead><tr><th>Nouveau commerce</th><th>Présenté par</th><th class="n">Inscrit le</th><th class="n">1re facture payée</th></tr></thead>
       <tbody id="gParrains"></tbody>
     </table></div>
-    <p class="note">Quand un commerce présenté paie son premier mois, touchez « Valider » : il gagne 1 mois offert, et celui qui l'a présenté aussi. Les mois offerts se retirent des prochaines factures.</p>
+    <p class="note">Le nouveau commerce a son 1er mois offert dès le départ. Quand il a payé sa première facture, touchez « 1re facture payée » : la prochaine facture de celui qui l'a présenté passe à 0 €. Les mois offerts comptent dans l'année (pas d'année à 13 mois).</p>
   </div>
 </main>
 </div>
@@ -903,7 +903,7 @@ function apiDemo(){
     async liste(){ return copie(D.clients).sort((a,b)=>(b.derniere_visite||"").localeCompare(a.derniere_visite||"")); },
     async historique(id){ return copie(D.mouvements.filter(m=>m.client_id===id)).reverse().slice(0,30); },
     async estAdmin(){ return new URLSearchParams(location.search).has("gerant"); },   // démo commerçant : pas d'espace gérant
-    // Parrainage (démo) : deux commerces fictifs présentés, dont un qui a payé son premier mois
+    // Parrainage (démo) : deux commerces fictifs présentés, dont un qui a payé sa première facture
     async monParrainage(){
       const j = n => new Date(Date.now()-n*864e5).toISOString();
       return {code:"A1B2C3", parrain:D.parrain || null, mon_mois_valide:false, peut_saisir:!D.parrain,
@@ -1554,9 +1554,9 @@ async function afficherParrainage(){
       <div class="chiffre"><b>${f.length}</b><span>${f.length > 1 ? "commerces présentés" : "commerce présenté"}</span></div>
       <div class="chiffre"><b>${p.mois_gagnes}</b><span>${p.mois_gagnes > 1 ? "mois offerts gagnés" : "mois offert gagné"}</span></div>
     </div>
-    ${f.length ? `<ul class="parFil">${f.map(x=>`<li><span>${echapper(x.nom)}</span><span class="note">${x.valide_le ? "✓ 1 mois offert" : "en essai"}</span></li>`).join("")}</ul>` : ""}
-    ${f.length && payes < f.length ? `<p class="note">« En essai » : le mois offert arrive quand ce commerce paie son premier mois.</p>` : ""}
-    ${p.parrain ? `<p class="note" style="margin-top:14px">Vous avez été présenté par <b>${echapper(p.parrain)}</b>${p.mon_mois_valide ? " : votre mois offert est compté." : " : 1 mois offert pour vous après votre premier mois payé."}</p>` : ""}
+    ${f.length ? `<ul class="parFil">${f.map(x=>`<li><span>${echapper(x.nom)}</span><span class="note">${x.valide_le ? "✓ 1 mois offert" : "en attente"}</span></li>`).join("")}</ul>` : ""}
+    ${f.length && payes < f.length ? `<p class="note">« En attente » : votre mois offert arrive quand ce commerce paie sa première facture.</p>` : ""}
+    ${p.parrain ? `<p class="note" style="margin-top:14px">Vous avez été présenté par <b>${echapper(p.parrain)}</b> : votre 1er mois est offert.</p>` : ""}
     ${p.peut_saisir ? `
       <label for="parSaisie" style="margin-top:16px">Un commerçant vous a présenté Reviens STP ? Entrez son code</label>
       <div class="parBtns"><input id="parSaisie" type="text" maxlength="6" placeholder="ex. 3F9A2C" autocapitalize="characters" autocomplete="off" style="flex:1 1 140px">
@@ -1566,7 +1566,7 @@ async function afficherParrainage(){
     catch(e){ prompt("Copiez ce lien :", lien); }
   };
   $("bParPartager").onclick = async ()=>{
-    const texte = `Je fidélise mes clients avec Reviens STP, une carte de fidélité simple sur tablette ou téléphone. Avec mon code ${p.code}, on gagne chacun 1 mois offert :`;
+    const texte = `Je fidélise mes clients avec Reviens STP, une carte de fidélité simple sur tablette ou téléphone. Avec mon code ${p.code}, ton 1er mois est offert :`;
     if (navigator.share){ try{ await navigator.share({title:"Reviens STP", text:texte, url:lien}); }catch(e){} }
     else $("bParCopier").click();
   };
@@ -1600,7 +1600,7 @@ function etapesTuto(){
     {ecran:R, cible:"rThemes", titre:"Vos thèmes 🎨", texte:"Choisissez le décor et les couleurs qui ressemblent à votre commerce : boulangerie, pizzeria, charcuterie… Un thème sur mesure, avec votre logo et vos couleurs, est possible sur demande."},
     roue ? {ecran:R, cible:"carteRoue", titre:"Votre roue de la fortune 🎡", texte:"Vous choisissez tout : le texte des cadeaux, leurs chances de tomber, et tous les combien de passages la roue apparaît. Le règlement du jeu est prêt à imprimer."}
          : {ecran:R, titre:"La roue de la fortune 🎡", texte:"En option : tous les X passages, le client en caisse fait tourner une roue et gagne un cadeau. Vous choisissez entièrement les cadeaux, leurs chances et la fréquence. Pour l'activer, écrivez-nous au support 💬."},
-    {ecran:R, cible:"carteParrain", titre:"Parrainage 🤝", texte:"Présentez Reviens STP à un commerçant que vous connaissez : quand il paie son premier mois, vous gagnez chacun 1 mois offert."});
+    {ecran:R, cible:"carteParrain", titre:"Parrainage 🤝", texte:"Présentez Reviens STP à un commerçant que vous connaissez : son 1er mois est offert, et vous gagnez 1 mois offert dès qu'il paie sa première facture."});
   e.forEach((x, i)=> x.titre = `${i + 1}. ${x.titre}`);
   return [{titre:"Bienvenue 👋", texte:"En 1 minute, voici comment fidéliser vos clients avec Reviens STP, et tout ce que vous pouvez personnaliser. Touchez « Suivant »."},
     ...e,
@@ -1763,11 +1763,11 @@ async function afficherParrainagesGerant(){
   catch(e){ t.innerHTML = `<tr><td colspan="4" class="note">${echapper(e.message)}</td></tr>`; return; }
   t.innerHTML = l.map(x=>`<tr><td><b>${echapper(x.filleul)}</b></td><td>${echapper(x.parrain)}</td><td class="n">${jourFr(x.cree_le)}</td>
       <td class="n">${x.valide_le ? `✓ ${jourFr(x.valide_le)}<br><button class="petitbtn" data-par="${x.filleul_id}" data-ok="0">Annuler</button>`
-                                   : `<button class="petitbtn roue" data-par="${x.filleul_id}" data-ok="1">Valider</button>`}</td></tr>`).join("")
+                                   : `<button class="petitbtn roue" data-par="${x.filleul_id}" data-ok="1">1re facture payée</button>`}</td></tr>`).join("")
     || `<tr><td colspan="4" class="note">Aucun parrainage pour l'instant.</td></tr>`;
   for (const b of t.querySelectorAll("button[data-par]")) b.onclick = async ()=>{
     const ok = b.dataset.ok === "1";
-    if (ok && !confirm("Ce commerce a bien payé son premier mois ? Il gagne 1 mois offert, et celui qui l'a présenté aussi.")) return;
+    if (ok && !confirm("Ce commerce a bien payé sa première facture ? La prochaine facture de celui qui l'a présenté passe à 0 €.")) return;
     try{ await API.adminParrainValider(b.dataset.par, ok); }catch(e){ alert(e.message); }
     afficherParrainagesGerant();
   };
