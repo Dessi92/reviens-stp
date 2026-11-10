@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="32">
+<meta name="app-version" content="33">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -291,6 +291,17 @@
     <div class="ligne pasImpr">
       <button class="btn gris" id="bReglImprimer">🖨 Imprimer</button>
       <button class="btn principal" id="bReglFermer">Fermer</button>
+    </div>
+  </div>
+</div>
+<div id="viderFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="viderTitre">
+  <div class="boite">
+    <h2 id="viderTitre" style="margin-top:4px">🗑 Dernière vérification</h2>
+    <p id="viderTexte" style="font-size:17px"></p>
+    <p class="note" style="margin-top:0">C'est définitif : impossible de revenir en arrière. Votre compte, vos réglages et votre thème sont gardés.</p>
+    <div class="ligne">
+      <button class="btn gris" id="bViderAnnuler">Annuler</button>
+      <button class="btn rouge" id="bViderValider">Valider</button>
     </div>
   </div>
 </div>
@@ -1679,16 +1690,31 @@ $("bEmail").onclick = ()=> occupe($("bEmail"), async ()=>{
 });
 
 // ---------- Repartir à zéro ----------
+// Effacer tous mes clients : mot de passe vérifié, puis dernière vérification « Valider / Annuler »
 $("bVider").onclick = ()=> occupe($("bVider"), async ()=>{
   const m = $("mdpVider").value;
   if (!m) return message("msgVider","Tapez votre mot de passe actuel.","err");
-  if (!confirm("Effacer TOUS vos clients, leurs points et leur historique ? C'est définitif.")) return;
   try{
     await API.verifierMdp(SESSION.email, m);
+    let n = null; try{ n = (await API.liste()).length; }catch(e){}
+    if (n === 0){ $("mdpVider").value = ""; return message("msgVider","Vous n'avez aucun client à effacer.","info"); }
+    $("viderTexte").innerHTML = n == null ? "Effacer <b>tous vos clients</b>, leurs points et leur historique ?"
+      : `Effacer vos <b>${n} client${n > 1 ? "s" : ""}</b>, leurs points et leur historique ?`;
+    message("msgVider","");
+    $("viderFond").classList.remove("cache");
+    $("bViderAnnuler").focus();
+  }catch(e){ message("msgVider", e.message, "err"); }
+});
+function fermerVider(){ $("viderFond").classList.add("cache"); }
+$("bViderAnnuler").onclick = ()=>{ fermerVider(); $("mdpVider").value = ""; message("msgVider","Rien n'a été effacé.","info"); };
+$("viderFond").onclick = e=>{ if (e.target === $("viderFond")) $("bViderAnnuler").click(); };
+$("bViderValider").onclick = ()=> occupe($("bViderValider"), async ()=>{
+  try{
     await API.viderMesClients();
+    fermerVider();
     $("mdpVider").value = "";
     message("msgVider","✓ Tous les clients ont été effacés. Vous repartez à zéro.","ok");
-  }catch(e){ message("msgVider", e.message, "err"); }
+  }catch(e){ fermerVider(); message("msgVider", e.message, "err"); }
 });
 
 // Gérant : vider ou supprimer un commerce
