@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="31">
+<meta name="app-version" content="32">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -99,6 +99,14 @@
   #tListe .pastille{font-size:11px;padding:1px 6px}
   #tListe td:first-child b{max-width:26vw}
   #tListe td,.tableau th{padding-left:4px;padding-right:4px}
+  .parCode{font-size:30px;font-weight:800;letter-spacing:4px;text-align:center;padding:10px;border:2px dashed var(--accent);border-radius:14px;margin:8px 0;color:var(--texte)}
+  .parQr{display:flex;justify-content:center;margin:10px 0}
+  .parQr svg{width:180px;height:180px;background:#fff;border-radius:10px}
+  .parBtns{display:flex;gap:8px;flex-wrap:wrap}
+  .parBtns .btn{flex:1 1 140px;margin-top:6px}
+  .parFil{list-style:none;padding:0;margin:8px 0 0}
+  .parFil li{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--bord)}
+  .parInvite{background:var(--orclair,#fdf3e1);border-radius:12px;padding:10px 12px;margin:0 0 12px;font-size:15px}
   th.tri{cursor:pointer;user-select:none;color:var(--accent);text-decoration:underline dotted;text-underline-offset:3px}
   th.tri.actif{background:var(--orclair,#fdf3e1);text-decoration:none;border-radius:8px 8px 0 0}
   th.tri .fl{display:block;font-size:12px;line-height:1}
@@ -243,6 +251,7 @@
 <main id="ecranConnexion" class="cache">
   <div class="logo"><img id="cxLogo" src="icone.svg" alt=""><h1 id="cxTitre">Reviens STP</h1><p id="cxSous">Le programme de fidélité de votre commerce</p></div>
   <div class="carte">
+    <p class="parInvite cache" id="cxInvite">🤝 Un commerçant vous a invité : <b>1 mois offert</b> pour vous et pour lui, dès votre premier mois payé.</p>
     <div class="onglets">
       <button id="ongConnexion" class="actif">Se connecter</button>
       <button id="ongInscription">Créer un compte</button>
@@ -250,6 +259,8 @@
     <div id="champNomCommerce" class="cache">
       <label for="cxNom">Nom du commerce</label>
       <input id="cxNom" type="text" placeholder="ex. Terrine" autocomplete="organization">
+      <label for="cxParrain">Code de parrainage <span class="note">(facultatif)</span></label>
+      <input id="cxParrain" type="text" maxlength="6" placeholder="ex. 3F9A2C" autocapitalize="characters" autocomplete="off">
     </div>
     <label for="cxEmail">Adresse e-mail</label>
     <input id="cxEmail" type="email" autocomplete="username" placeholder="contact@moncommerce.fr">
@@ -440,6 +451,12 @@
     <p class="note" id="roueInfo"></p>
     <button class="btn gris" id="bRoueVoirRegl">📄 Voir / imprimer le règlement</button>
   </div>
+  <div class="carte" id="carteParrain">
+    <h2>🤝 Parrainer un commerçant</h2>
+    <p class="note" style="margin-top:-6px">Présentez Reviens STP à un commerçant que vous connaissez. Quand il paie son <b>premier mois</b>, vous gagnez chacun <b>1 mois offert</b>. Pas de limite : 12 commerces présentés, un an gratuit.</p>
+    <div id="parContenu"><p class="note">Chargement…</p></div>
+    <div id="msgParrain"></div>
+  </div>
   <div class="carte">
     <h2>Mes données</h2>
     <p class="note" style="margin-top:0">Vos clients sont enregistrés en ligne, dans votre compte. Vous seul y avez accès. Vous pouvez télécharger la liste à tout moment.</p>
@@ -506,6 +523,14 @@
       <tbody id="gListe"></tbody>
     </table></div>
     <p class="note">Espace gérant : seulement des chiffres. Les numéros et les noms des clients restent visibles par leur commerce uniquement.</p>
+  </div>
+  <div class="carte">
+    <h2>🤝 Parrainages</h2>
+    <div class="tableau"><table>
+      <thead><tr><th>Nouveau commerce</th><th>Présenté par</th><th class="n">Inscrit le</th><th class="n">1er mois payé</th></tr></thead>
+      <tbody id="gParrains"></tbody>
+    </table></div>
+    <p class="note">Quand un commerce présenté paie son premier mois, touchez « Valider » : il gagne 1 mois offert, et celui qui l'a présenté aussi. Les mois offerts se retirent des prochaines factures.</p>
   </div>
 </main>
 </div>
@@ -574,8 +599,8 @@ function apiSupabase(sb){
       return {email: session.user.email, commerce};
     },
     async connexion(email, mdp){ v(await sb.auth.signInWithPassword({email, password:mdp})); },
-    async inscription(email, mdp, nom){
-      const d = v(await sb.auth.signUp({email, password:mdp, options:{data:{nom_commerce:nom}, emailRedirectTo: adresseApp()}}));
+    async inscription(email, mdp, nom, code){
+      const d = v(await sb.auth.signUp({email, password:mdp, options:{data:{nom_commerce:nom, code_parrain:code||""}, emailRedirectTo: adresseApp()}}));
       return {aConfirmer: !d.session};
     },
     async oubli(email){ v(await sb.auth.resetPasswordForEmail(email, {redirectTo: adresseApp()})); },
@@ -600,6 +625,10 @@ function apiSupabase(sb){
     async liste(){ return v(await sb.from("clients").select("*").order("derniere_visite", {ascending:false, nullsFirst:false}).limit(5000)); },
     async historique(id){ return v(await sb.from("mouvements").select("*").eq("client_id", id).order("le", {ascending:false}).order("id", {ascending:false}).limit(30)); },
     async estAdmin(){ return v(await sb.rpc("est_admin")) === true; },
+    async monParrainage(){ return v(await sb.rpc("mon_parrainage")); },
+    async saisirParrain(code){ return v(await sb.rpc("saisir_parrain", {p_code:code})); },
+    async adminParrainages(){ return v(await sb.rpc("admin_parrainages")); },
+    async adminParrainValider(id, ok){ v(await sb.rpc("admin_parrainage_valider", {p_filleul:id, p_valide:!!ok})); },
     async stats(){ return v(await sb.rpc("stats_commerces")); },
     async viderMesClients(){ v(await sb.from("clients").delete().eq("commerce_id", SESSION.commerce.id)); },
     async adminVider(id){ return v(await sb.rpc("admin_vider_commerce", {p_id:id})); },
@@ -677,7 +706,7 @@ function apiDemo(){
   const api = {
     async session(){ return D.connecte ? {email:D.email, commerce:copie(D.commerce)} : null; },
     async connexion(email, mdp){ D.connecte = true; D.email = email; if (!D.mdp) D.mdp = mdp; sauver(); },
-    async inscription(email, mdp, nom){ D.connecte = true; D.email = email; D.mdp = mdp; if (nom) D.commerce.nom = nom; sauver(); return {aConfirmer:false}; },
+    async inscription(email, mdp, nom, code){ D.connecte = true; D.email = email; D.mdp = mdp; if (nom) D.commerce.nom = nom; sauver(); return {aConfirmer:false}; },
     async oubli(){ },
     async nouveauMdp(mdp){ D.mdp = mdp; sauver(); },
     async nouvelEmail(email){ D.email = email; sauver(); },
@@ -762,6 +791,25 @@ function apiDemo(){
     async liste(){ return copie(D.clients).sort((a,b)=>(b.derniere_visite||"").localeCompare(a.derniere_visite||"")); },
     async historique(id){ return copie(D.mouvements.filter(m=>m.client_id===id)).reverse().slice(0,30); },
     async estAdmin(){ return new URLSearchParams(location.search).has("gerant"); },   // démo commerçant : pas d'espace gérant
+    // Parrainage (démo) : deux commerces fictifs présentés, dont un qui a payé son premier mois
+    async monParrainage(){
+      const j = n => new Date(Date.now()-n*864e5).toISOString();
+      return {code:"A1B2C3", parrain:D.parrain || null, mon_mois_valide:false, peut_saisir:!D.parrain,
+        filleuls:[{nom:"Fleuriste (exemple)", inscrit_le:j(12), valide_le:null}, {nom:"Boulangerie (exemple)", inscrit_le:j(40), valide_le:j(10)}],
+        mois_gagnes:1};
+    },
+    async saisirParrain(code){
+      if (!/^[0-9A-F]{6}$/.test(code)) throw new Error("Code inconnu : vérifiez les 6 caractères");
+      if (code === "A1B2C3") throw new Error("C'est votre propre code");
+      D.parrain = "Pizzeria (exemple)"; sauver(); return D.parrain;
+    },
+    async adminParrainages(){
+      const j = n => new Date(Date.now()-n*864e5).toISOString();
+      D.parValide = D.parValide || {ex1:j(10)};
+      return [{filleul_id:"ex2", filleul:"Fleuriste (exemple)", parrain:D.commerce.nom, cree_le:j(12), valide_le:D.parValide.ex2||null},
+              {filleul_id:"ex1", filleul:"Boulangerie (exemple)", parrain:D.commerce.nom, cree_le:j(40), valide_le:D.parValide.ex1||null}];
+    },
+    async adminParrainValider(id, ok){ D.parValide = D.parValide || {}; D.parValide[id] = ok ? new Date().toISOString() : null; sauver(); },
     async stats(){
       const il30 = Date.now() - 30*864e5;
       const moi = {id:"demo", roue_active:!!D.commerce.roue_active, commerce:D.commerce.nom, email:D.email, inscrit_le:D.commerce.cree_le,
@@ -805,6 +853,15 @@ function montrer(ecran){
   if (ecran==="ecranSupport") afficherSupport();
 }
 
+// Code de parrainage reçu par un lien d'invitation (index.html?parrain=3F9A2C ou depuis la plaquette)
+const CODE_OK = c => /^[0-9A-F]{6}$/.test(c);
+function codeInvitation(){
+  let c = (new URLSearchParams(location.search).get("parrain") || "").trim().toUpperCase();
+  if (CODE_OK(c)){ try{ localStorage.setItem("code_parrain", c); }catch(e){} return c; }
+  try{ c = (localStorage.getItem("code_parrain") || "").toUpperCase(); }catch(e){ c = ""; }
+  return CODE_OK(c) ? c : "";
+}
+
 async function demarrer(){
   if (DEMO){
     $("bandeauDemo").classList.remove("cache"); $("bResetDemo").classList.remove("cache");
@@ -838,7 +895,10 @@ function afficherConnexion(){
   $("app").classList.add("cache");
   $("ecranConnexion").classList.remove("cache");
   marqueConnexion();
-  ongletConnexion(false);
+  const code = codeInvitation();
+  $("cxParrain").value = code;
+  $("cxInvite").classList.toggle("cache", !code);
+  ongletConnexion(!!code);   // invité par un commerçant : on ouvre directement « Créer un compte »
 }
 function ongletConnexion(inscr){
   modeInscription = inscr;
@@ -853,13 +913,16 @@ $("ongConnexion").onclick = ()=>{ ongletConnexion(false); message("msgConnexion"
 $("ongInscription").onclick = ()=>{ ongletConnexion(true); message("msgConnexion",""); };
 $("bConnexion").onclick = ()=> occupe($("bConnexion"), async ()=>{
   const email = $("cxEmail").value.trim(), mdp = $("cxMdp").value, nom = $("cxNom").value.trim();
+  const code = $("cxParrain").value.trim().toUpperCase();
+  if (modeInscription && code && !CODE_OK(code)) return message("msgConnexion","Code de parrainage : 6 caractères (chiffres et lettres A à F), ou laissez vide.","err");
   if (!/^\S+@\S+\.\S+$/.test(email)) return message("msgConnexion","Adresse e-mail invalide.","err");
   if (!mdp) return message("msgConnexion","Tapez votre mot de passe.","err");
   if (modeInscription && mdp.length < 6) return message("msgConnexion","Mot de passe : 6 caractères minimum.","err");
   if (modeInscription && !nom) return message("msgConnexion","Indiquez le nom du commerce.","err");
   try{
     if (modeInscription){
-      const r = await API.inscription(email, mdp, nom);
+      const r = await API.inscription(email, mdp, nom, code);
+      try{ localStorage.removeItem("code_parrain"); }catch(e){}
       if (r.aConfirmer){ ongletConnexion(false); return message("msgConnexion","Compte créé ! Un e-mail de confirmation vient d'être envoyé : cliquez sur le lien, puis connectez-vous.","ok"); }
     } else {
       await API.connexion(email, mdp);
@@ -1329,9 +1392,61 @@ function remplirReglages(){
   themeChoisi = (c.theme === "perso" && c.perso) || THEMES[c.theme] ? c.theme : "defaut";
   afficherReglagesRoue();
   afficherThemes();
+  afficherParrainage();
   message("msgReglages","");
   majResume();
 }
+// ---------- Parrainage entre commerçants ----------
+function lienParrain(code){ return location.origin + location.pathname.replace(/[^/]*$/, "") + "presentation.html?parrain=" + code; }
+async function afficherParrainage(){
+  const z = $("parContenu"); message("msgParrain","");
+  let p;
+  try{ p = await API.monParrainage(); }
+  catch(e){ z.innerHTML = `<p class="note">Parrainage indisponible pour l'instant.</p>`; return; }
+  const lien = lienParrain(p.code), f = p.filleuls || [];
+  const payes = f.filter(x=>x.valide_le).length;
+  z.innerHTML = `
+    <label style="margin-top:4px">Votre code</label>
+    <div class="parCode">${echapper(p.code)}</div>
+    <div class="parQr" id="parQr"></div>
+    <p class="note" style="text-align:center;margin-top:0">Le commerçant scanne ce QR code avec son téléphone : il découvre Reviens STP, et votre code est déjà rempli à son inscription.</p>
+    <div class="parBtns">
+      <button class="btn principal" id="bParPartager">📤 Envoyer mon lien</button>
+      <button class="btn gris" id="bParCopier">📋 Copier le lien</button>
+    </div>
+    <div class="chiffres" style="margin-top:14px">
+      <div class="chiffre"><b>${f.length}</b><span>${f.length > 1 ? "commerces présentés" : "commerce présenté"}</span></div>
+      <div class="chiffre"><b>${p.mois_gagnes}</b><span>${p.mois_gagnes > 1 ? "mois offerts gagnés" : "mois offert gagné"}</span></div>
+    </div>
+    ${f.length ? `<ul class="parFil">${f.map(x=>`<li><span>${echapper(x.nom)}</span><span class="note">${x.valide_le ? "✓ 1 mois offert" : "en essai"}</span></li>`).join("")}</ul>` : ""}
+    ${f.length && payes < f.length ? `<p class="note">« En essai » : le mois offert arrive quand ce commerce paie son premier mois.</p>` : ""}
+    ${p.parrain ? `<p class="note" style="margin-top:14px">Vous avez été présenté par <b>${echapper(p.parrain)}</b>${p.mon_mois_valide ? " : votre mois offert est compté." : " : 1 mois offert pour vous après votre premier mois payé."}</p>` : ""}
+    ${p.peut_saisir ? `
+      <label for="parSaisie" style="margin-top:16px">Un commerçant vous a présenté Reviens STP ? Entrez son code</label>
+      <div class="parBtns"><input id="parSaisie" type="text" maxlength="6" placeholder="ex. 3F9A2C" autocapitalize="characters" autocomplete="off" style="flex:1 1 140px">
+      <button class="btn gris" id="bParSaisir" style="flex:0 1 auto">Valider</button></div>` : ""}`;
+  $("bParCopier").onclick = async ()=>{
+    try{ await navigator.clipboard.writeText(lien); message("msgParrain","Lien copié : collez-le dans un SMS ou sur WhatsApp.","ok"); }
+    catch(e){ prompt("Copiez ce lien :", lien); }
+  };
+  $("bParPartager").onclick = async ()=>{
+    const texte = `Je fidélise mes clients avec Reviens STP, une carte de fidélité simple sur tablette ou téléphone. Avec mon code ${p.code}, on gagne chacun 1 mois offert :`;
+    if (navigator.share){ try{ await navigator.share({title:"Reviens STP", text:texte, url:lien}); }catch(e){} }
+    else $("bParCopier").click();
+  };
+  if ($("bParSaisir")) $("bParSaisir").onclick = ()=> occupe($("bParSaisir"), async ()=>{
+    const c = $("parSaisie").value.trim().toUpperCase();
+    if (!CODE_OK(c)) return message("msgParrain","Le code fait 6 caractères (chiffres et lettres A à F).","err");
+    try{ const nom = await API.saisirParrain(c); await afficherParrainage(); message("msgParrain", `C'est noté : vous avez été présenté par ${nom}.`, "ok"); }
+    catch(e){ message("msgParrain", e.message, "err"); }
+  });
+  try{
+    if (!window.qrcode) await chargerScript("https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js");
+    const q = qrcode(0, "M"); q.addData(lien); q.make();
+    if ($("parQr")) $("parQr").innerHTML = q.createSvgTag({cellSize:4, margin:2, scalable:true});
+  }catch(e){ if ($("parQr")) $("parQr").innerHTML = ""; }
+}
+
 function lireReglages(){
   const n = id => Number(String($(id).value).replace(",", "."));
   return {p:n("rPoints"), s:n("rSeuil"), r:n("rRemise"), bonus:$("rBonusActif").checked, m:n("rMontant"), pb:n("rPointsBonus")};
@@ -1406,6 +1521,23 @@ async function afficherGerant(){
       <td><button class="petitbtn roue" data-roue="${x.id}">${x.roue_active ? "🎡 Couper la roue" : "🎡 Activer la roue"}</button><button class="petitbtn vider" data-vider="${x.id}">Vider</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer</button></td></tr>`).join("")
     || `<tr><td colspan="8" class="note">Aucun commerce inscrit pour l'instant.</td></tr>`;
   for (const b of $("gListe").querySelectorAll("button")) b.onclick = ()=> actionCommerce(b);
+  afficherParrainagesGerant();
+}
+async function afficherParrainagesGerant(){
+  const t = $("gParrains");
+  let l;
+  try{ l = await API.adminParrainages(); }
+  catch(e){ t.innerHTML = `<tr><td colspan="4" class="note">${echapper(e.message)}</td></tr>`; return; }
+  t.innerHTML = l.map(x=>`<tr><td><b>${echapper(x.filleul)}</b></td><td>${echapper(x.parrain)}</td><td class="n">${jourFr(x.cree_le)}</td>
+      <td class="n">${x.valide_le ? `✓ ${jourFr(x.valide_le)}<br><button class="petitbtn" data-par="${x.filleul_id}" data-ok="0">Annuler</button>`
+                                   : `<button class="petitbtn roue" data-par="${x.filleul_id}" data-ok="1">Valider</button>`}</td></tr>`).join("")
+    || `<tr><td colspan="4" class="note">Aucun parrainage pour l'instant.</td></tr>`;
+  for (const b of t.querySelectorAll("button[data-par]")) b.onclick = async ()=>{
+    const ok = b.dataset.ok === "1";
+    if (ok && !confirm("Ce commerce a bien payé son premier mois ? Il gagne 1 mois offert, et celui qui l'a présenté aussi.")) return;
+    try{ await API.adminParrainValider(b.dataset.par, ok); }catch(e){ alert(e.message); }
+    afficherParrainagesGerant();
+  };
 }
 
 // ---------- Mise à jour automatique ----------

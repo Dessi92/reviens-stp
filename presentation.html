@@ -25,6 +25,11 @@
   .btn{display:inline-block;background:#fff;color:var(--accent);font-weight:700;text-decoration:none;padding:15px 24px;border-radius:14px;font-size:18px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
   .btn.second{background:transparent;color:#fff;border:2px solid rgba(255,255,255,.6);box-shadow:none;margin-left:8px}
   .petit{font-size:14px;opacity:.85;margin-top:12px}
+  .invite{background:var(--orclair);color:var(--texte);border-bottom:2px solid var(--or)}
+  .invite .bloc{padding-top:12px;padding-bottom:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .invite span{flex:1 1 260px}
+  .invite a{background:var(--accent);color:#fff;text-decoration:none;font-weight:700;padding:10px 16px;border-radius:12px;white-space:nowrap}
+  .parr{margin-top:14px;background:var(--orclair);border-radius:12px;padding:10px 14px;font-size:16px}
   /* Maquette de tablette */
   .ecran{background:#1d1714;border-radius:28px;padding:12px;box-shadow:0 20px 40px rgba(0,0,0,.35);max-width:330px;margin:0 auto;width:100%}
   .ecran .in{background:var(--bg);border-radius:18px;overflow:hidden;color:var(--texte)}
@@ -86,6 +91,11 @@
   <a href="index.html?demo">Essayer la démo</a>
 </div></header>
 
+<div class="invite" id="invite" hidden><div class="bloc">
+  <span>🤝 Un commerçant vous a invité avec le code <b id="inviteCode"></b> : <b>1 mois offert</b> pour vous et pour lui, dès votre premier mois payé.</span>
+  <a id="inviteLien" href="index.html">Créer mon compte</a>
+</div></div>
+
 <div class="hero"><div class="bloc">
   <div>
     <h1>La carte de fidélité qui fait revenir vos clients.</h1>
@@ -142,6 +152,7 @@
     <div>Abonnement mensuel</div>
     <div class="gros">Premier mois offert</div>
     <div style="color:var(--doux)">Sans engagement · tarif sur demande</div>
+    <div class="parr">🤝 <b>Parrainage</b> : présentez Reviens STP à un autre commerçant. Quand il paie son premier mois, vous gagnez chacun 1 mois offert.</div>
     <ul>
       <li>Clients et passages illimités</li>
       <li>Thèmes, réglages du programme, export Excel</li>
@@ -161,5 +172,16 @@
 </div></section>
 
 <footer>Reviens STP · la carte de fidélité des commerces de quartier</footer>
+<script>
+// Lien d'invitation : presentation.html?parrain=3F9A2C. Le code est gardé sur l'appareil et rempli à l'inscription.
+(function(){
+  var c = (new URLSearchParams(location.search).get("parrain") || "").trim().toUpperCase();
+  if (!/^[0-9A-F]{6}$/.test(c)) return;
+  try{ localStorage.setItem("code_parrain", c); }catch(e){}
+  document.getElementById("inviteCode").textContent = c;
+  document.getElementById("inviteLien").href = "index.html?parrain=" + c;
+  document.getElementById("invite").hidden = false;
+})();
+</script>
 </body>
 </html>
