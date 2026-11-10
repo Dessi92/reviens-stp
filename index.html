@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="36">
+<meta name="app-version" content="37">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -333,6 +333,17 @@
     </div>
   </div>
 </div>
+<div id="supSupFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="supSupTitre">
+  <div class="boite">
+    <h2 id="supSupTitre" style="margin-top:4px">🗑 Supprimer les conversations</h2>
+    <p id="supSupTexte" style="font-size:17px"></p>
+    <p class="note" style="margin-top:0">C'est définitif : les messages disparaissent aussi chez les commerces.</p>
+    <div class="ligne">
+      <button class="btn gris" id="bSupSupAnnuler">Annuler</button>
+      <button class="btn rouge" id="bSupSupValider">Valider</button>
+    </div>
+  </div>
+</div>
 <div id="viderFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="viderTitre">
   <div class="boite">
     <h2 id="viderTitre" style="margin-top:4px">🗑 Dernière vérification</h2>
@@ -565,6 +576,7 @@
   <div class="carte">
     <h2>🔔 Messages du support <span id="gNonLus"></span></h2>
     <div id="gSupport"></div>
+    <button class="btn gris cache" id="bSupToutSuppr">🗑 Supprimer toutes les conversations</button>
   </div>
   <div class="chiffres" id="gChiffres"></div>
   <div class="carte">
@@ -699,6 +711,7 @@ function apiSupabase(sb){
     async adminSupNonLus(){ return v(await sb.rpc("support_non_lus")); },
     async adminSupLu(id){ v(await sb.rpc("support_marquer_lu", {p_id:id})); },
     async adminSupRepondre(id, texte){ v(await sb.rpc("support_repondre", {p_id:id, p_texte:texte})); },
+    async adminSupToutSupprimer(){ return v(await sb.rpc("admin_support_tout_supprimer")); },
   };
 }
 
@@ -881,6 +894,7 @@ function apiDemo(){
     async adminSupListe(){ return copie(D.support || []).map(m=>({...m, commerce:D.commerce.nom, email:D.email})); },
     async adminSupNonLus(){ return (D.support || []).filter(m=>!m.lu).length; },
     async adminSupLu(id){ const m = (D.support||[]).find(m=>m.id===id); if (m){ m.lu = true; sauver(); } },
+    async adminSupToutSupprimer(){ const n = (D.support || []).length; D.support = []; sauver(); return n; },
     async adminSupRepondre(id, texte){ const m = (D.support||[]).find(m=>m.id===id); if (m){ Object.assign(m, {reponse:texte, repondu_le:new Date().toISOString(), lu:true, reponse_vue:false}); sauver(); } },
   };
   return api;
@@ -1734,6 +1748,8 @@ async function afficherSupportGerant(){
   try{ l = await API.adminSupListe(); }
   catch(e){ $("gSupport").innerHTML = `<p class="note">${echapper(e.message)}</p>`; return; }
   const nonLus = l.filter(m=>!m.lu).length;
+  $("bSupToutSuppr").classList.toggle("cache", !l.length);
+  $("bSupToutSuppr").dataset.n = l.length;
   $("gNonLus").textContent = nonLus ? `(${nonLus} non lu${nonLus>1?"s":""})` : "";
   $("gSupport").innerHTML = l.map(m=>`<div class="msgsup ${m.lu?"":"nonlu"}" data-id="${m.id}">
       <div class="quand"><b>${echapper(m.commerce)}</b> · ${echapper(m.email)} · ${dateFr(m.cree_le)}</div>
@@ -1755,6 +1771,20 @@ async function afficherSupportGerant(){
     }catch(e){ alert(e.message); }
   };
 }
+
+// Gérant : supprimer toutes les conversations, après « Valider / Annuler »
+$("bSupToutSuppr").onclick = ()=>{
+  const n = Number($("bSupToutSuppr").dataset.n) || 0;
+  $("supSupTexte").innerHTML = `Supprimer <b>${n} message${n > 1 ? "s" : ""}</b> de tous les commerces, avec tes réponses ?`;
+  $("supSupFond").classList.remove("cache"); $("bSupSupAnnuler").focus();
+};
+$("bSupSupAnnuler").onclick = ()=> $("supSupFond").classList.add("cache");
+$("supSupFond").onclick = e=>{ if (e.target === $("supSupFond")) $("supSupFond").classList.add("cache"); };
+$("bSupSupValider").onclick = ()=> occupe($("bSupSupValider"), async ()=>{
+  try{ const n = await API.adminSupToutSupprimer(); $("supSupFond").classList.add("cache"); alerte(`🗑 ${n} message${n > 1 ? "s" : ""} supprimé${n > 1 ? "s" : ""}`); }
+  catch(e){ $("supSupFond").classList.add("cache"); alert(e.message); }
+  await afficherSupportGerant(); verifierNotifs();
+});
 
 // Compteurs : messages non lus (gérant) et réponses non vues (commerce)
 function badge(id, n){ $(id).textContent = n > 9 ? "9+" : n; $(id).classList.toggle("cache", !n); }
