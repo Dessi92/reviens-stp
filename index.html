@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="37">
+<meta name="app-version" content="38">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -273,6 +273,9 @@
     <div id="champNomCommerce" class="cache">
       <label for="cxNom">Nom du commerce</label>
       <input id="cxNom" type="text" placeholder="ex. Terrine" autocomplete="organization">
+      <label for="cxTel">Téléphone portable du commerce</label>
+      <input id="cxTel" type="tel" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78">
+      <p class="note" style="margin-top:4px">Pour vous joindre au sujet de votre compte et vous informer des nouveautés de Reviens STP (SMS ou appel). Jamais transmis à personne.</p>
       <label for="cxParrain">Code de parrainage <span class="note">(facultatif)</span></label>
       <input id="cxParrain" type="text" maxlength="6" placeholder="ex. 3F9A2C" autocapitalize="characters" autocomplete="off">
     </div>
@@ -342,6 +345,20 @@
       <button class="btn gris" id="bSupSupAnnuler">Annuler</button>
       <button class="btn rouge" id="bSupSupValider">Valider</button>
     </div>
+  </div>
+</div>
+<div id="telFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="telTitre">
+  <div class="boite" style="text-align:left">
+    <h2 id="telTitre" style="margin-top:4px;text-align:center">💬 Message du support</h2>
+    <p style="font-size:17px">Bonjour ! Pour pouvoir vous joindre rapidement au sujet de votre compte, merci d'indiquer le <b>numéro de portable du commerce</b>.</p>
+    <label for="telSaisie">Téléphone portable</label>
+    <input id="telSaisie" type="tel" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78">
+    <p class="note" style="margin-top:4px">Pour vous joindre au sujet de votre compte et vous informer des nouveautés de Reviens STP (SMS ou appel). Jamais transmis à personne.</p>
+    <div class="ligne">
+      <button class="btn gris" id="bTelPlusTard">Plus tard</button>
+      <button class="btn principal" id="bTelEnregistrer">Enregistrer</button>
+    </div>
+    <div id="msgTel"></div>
   </div>
 </div>
 <div id="viderFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="viderTitre">
@@ -531,6 +548,10 @@
   <div class="carte">
     <h2>Mon compte</h2>
     <p class="note" style="margin-top:-6px">Connecté avec <b id="rEmail"></b></p>
+    <label for="rTel">Téléphone portable du commerce</label>
+    <input id="rTel" type="tel" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78">
+    <button class="btn gris" id="bTelReglages">Enregistrer le téléphone</button>
+    <div id="msgTelReglages"></div>
     <label for="mdp0">Mot de passe actuel</label>
     <input id="mdp0" type="password" autocomplete="current-password" placeholder="Obligatoire pour changer le mot de passe ou l'e-mail">
     <label for="mdp1">Nouveau mot de passe</label>
@@ -662,8 +683,8 @@ function apiSupabase(sb){
       return {email: session.user.email, commerce};
     },
     async connexion(email, mdp){ v(await sb.auth.signInWithPassword({email, password:mdp})); },
-    async inscription(email, mdp, nom, code){
-      const d = v(await sb.auth.signUp({email, password:mdp, options:{data:{nom_commerce:nom, code_parrain:code||""}, emailRedirectTo: adresseApp()}}));
+    async inscription(email, mdp, nom, code, tel){
+      const d = v(await sb.auth.signUp({email, password:mdp, options:{data:{nom_commerce:nom, code_parrain:code||"", telephone:tel||""}, emailRedirectTo: adresseApp()}}));
       return {aConfirmer: !d.session};
     },
     async oubli(email){ v(await sb.auth.resetPasswordForEmail(email, {redirectTo: adresseApp()})); },
@@ -691,6 +712,7 @@ function apiSupabase(sb){
     async monParrainage(){ return v(await sb.rpc("mon_parrainage")); },
     async saisirParrain(code){ return v(await sb.rpc("saisir_parrain", {p_code:code})); },
     async adminParrainages(){ return v(await sb.rpc("admin_parrainages")); },
+    async adminContacts(){ return v(await sb.rpc("admin_contacts")); },
     async adminParrainValider(id, ok){ v(await sb.rpc("admin_parrainage_valider", {p_filleul:id, p_valide:!!ok})); },
     async stats(){ return v(await sb.rpc("stats_commerces")); },
     async viderMesClients(){ v(await sb.from("clients").delete().eq("commerce_id", SESSION.commerce.id)); },
@@ -720,7 +742,7 @@ function demoExemple(){
   const j = (n, h) => new Date(Date.now() - n*864e5 - (h||0)*36e5).toISOString();
   const D = {connecte:true, email:"demo@reviens-stp", suivant:1, mouvements:[], clients:[], tirages:[],
     commerce:{id:"demo", nom:"Votre commerce", points_par_passage:10, seuil:100, remise:10, montant_bonus:50, points_bonus:20,
-      programme_choisi:true, theme:"defaut", cree_le:j(60), roue_active:true, roue:{...ROUE_EXEMPLE(), frequence:30}, roue_compteur:12, roue_depuis:j(20)}};
+      programme_choisi:true, theme:"defaut", cree_le:j(400), roue_active:true, roue:{...ROUE_EXEMPLE(), frequence:30}, roue_compteur:12, roue_depuis:j(20)}};
   // [téléphone fictif, prénom, passages (jours écoulés), gros paniers, réductions déjà obtenues, accord SMS]
   const ex = [["0600000001","Sophie",[1,8,15,22,29,36,43,50,57],[8],0,true],
               ["0600000002","Karim",[0,7,14,21,28],[],1,true],
@@ -739,6 +761,32 @@ function demoExemple(){
     }
     D.clients.push(c);
   }
+  // 244 autres clients fictifs (toujours les mêmes) : la démo ressemble à un vrai commerce de quartier, 250 clients
+  let graine = 7;
+  const hasard = ()=>{ graine = (graine * 16807) % 2147483647; return (graine - 1) / 2147483646; };
+  const entre = (a, b)=> a + Math.floor(hasard() * (b - a + 1));
+  const prenoms = ["Emma","Léa","Chloé","Manon","Inès","Camille","Sarah","Jade","Louise","Alice","Lina","Zoé","Clara","Julie","Laura","Mélanie","Nadia","Fatima","Yasmine","Amandine",
+    "Thomas","Nicolas","Julien","Maxime","Hugo","Antoine","Mehdi","Yanis","Romain","Kevin","Alexandre","Mathis","Nathan","Rayan","Bruno","Pascal","Didier","Olivier","Sébastien","Karim"];
+  const noms = ["Martin","Bernard","Dubois","Thomas","Robert","Richard","Petit","Moreau","Laurent","Simon","Michel","Lefebvre","Leroy","Roux","Garcia","Fournier","Girard","Bonnet","Mercier","Lambert"];
+  for (let k = 7; k <= 250; k++){
+    const r = hasard(), nomC = hasard() < 0.12 ? "" : hasard() < 0.25 ? (hasard() < 0.6 ? "Mme " : "M. ") + noms[entre(0, noms.length - 1)] : prenoms[entre(0, prenoms.length - 1)];
+    // habitués (chaque semaine), réguliers (chaque mois), occasionnels (1 à 4 passages)
+    const ecart = r < 0.18 ? [5, 9] : r < 0.55 ? [18, 40] : null;
+    const debut = ecart ? entre(30, r < 0.18 ? 200 : 360) : entre(0, 360);
+    const passages = [];
+    if (ecart){ for (let n = debut; n >= 0; n -= entre(ecart[0], ecart[1])) passages.push(n); }
+    else { let n = debut; for (let q = entre(1, 4); q > 0 && n >= 0; q--){ passages.push(n); n -= entre(10, 90); } }
+    const sms = hasard() < 0.6, id = D.suivant++;
+    const c = {id, telephone:"06" + String(k).padStart(8, "0"), nom:nomC, points:0, visites:0, recompenses:0, accord_sms:sms,
+      accord_sms_le: sms ? j(passages[0]) : null, cree_le:j(passages[0]), derniere_visite:null};
+    for (const n of passages){
+      const g = hasard() < 0.15, pt = g ? 20 : 10, h = entre(1, 9);
+      c.points += pt; c.visites++; c.derniere_visite = j(n, h);
+      D.mouvements.push({id:D.suivant++, client_id:id, type:"points", points:pt, gros_panier:g, le:j(n, h)});
+      if (c.points >= 100){ D.mouvements.push({id:D.suivant++, client_id:id, type:"reduction", points:-100, remise:10, le:j(n, h)}); c.points -= 100; c.recompenses++; }
+    }
+    D.clients.push(c);
+  }
   // Mme Durand a gagné un bon à la roue ce mois-ci, pas encore utilisé (surligné dans la liste)
   const durand = D.clients.find(c=>c.telephone==="0600000003"), auj = new Date(Math.max(debutMois().getTime(), Date.now() - 36e5));
   D.tirages.push({id:D.suivant++, client_id:durand.id, numero:12, cree_le:auj.toISOString(), tire_le:auj.toISOString(), utilise_le:null,
@@ -747,10 +795,10 @@ function demoExemple(){
   return D;
 }
 const DEMO_LUCAS = "0600000005", DEMO_MADAME = "0600000006";   // démo en 2 étapes : Lucas → réduction, Mme Martin → roue
-function recommencerDemo(){ try{ localStorage.removeItem("fidelite_demo_v1"); }catch(e){} location.replace(location.pathname + location.search); }
+function recommencerDemo(){ try{ localStorage.removeItem("fidelite_demo_v2"); }catch(e){} location.replace(location.pathname + location.search); }
 
 function apiDemo(){
-  const CLE = "fidelite_demo_v1";
+  const CLE = "fidelite_demo_v2";
   let D;
   try{ D = JSON.parse(localStorage.getItem(CLE)); }catch(e){}
   if (!D || !D.commerce) D = demoExemple();
@@ -770,7 +818,7 @@ function apiDemo(){
   const api = {
     async session(){ return D.connecte ? {email:D.email, commerce:copie(D.commerce)} : null; },
     async connexion(email, mdp){ D.connecte = true; D.email = email; if (!D.mdp) D.mdp = mdp; sauver(); },
-    async inscription(email, mdp, nom, code){ D.connecte = true; D.email = email; D.mdp = mdp; if (nom) D.commerce.nom = nom; sauver(); return {aConfirmer:false}; },
+    async inscription(email, mdp, nom, code, tel){ if (tel) D.commerce.telephone = tel; D.connecte = true; D.email = email; D.mdp = mdp; if (nom) D.commerce.nom = nom; sauver(); return {aConfirmer:false}; },
     async oubli(){ },
     async nouveauMdp(mdp){ D.mdp = mdp; sauver(); },
     async nouvelEmail(email){ D.email = email; sauver(); },
@@ -873,6 +921,7 @@ function apiDemo(){
       return [{filleul_id:"ex2", filleul:"Fleuriste (exemple)", parrain:D.commerce.nom, cree_le:j(12), valide_le:D.parValide.ex2||null},
               {filleul_id:"ex1", filleul:"Boulangerie (exemple)", parrain:D.commerce.nom, cree_le:j(40), valide_le:D.parValide.ex1||null}];
     },
+    async adminContacts(){ return [{id:"demo", telephone:D.commerce.telephone || null}, {id:"ex1", telephone:"0600000101"}, {id:"ex2", telephone:null}]; },
     async adminParrainValider(id, ok){ D.parValide = D.parValide || {}; D.parValide[id] = ok ? new Date().toISOString() : null; sauver(); },
     async stats(){
       const il30 = Date.now() - 30*864e5;
@@ -917,6 +966,25 @@ function montrer(ecran){
   if (ecran==="ecranGerant") afficherGerant();
   if (ecran==="ecranSupport") afficherSupport();
 }
+
+const TEL_OK = t => /^0[67]\d{8}$/.test(t);
+async function enregistrerTelCommerce(brut){
+  const t = normaliser(brut);
+  if (!TEL_OK(t)) throw new Error("Numéro de portable invalide : 06 ou 07, 10 chiffres.");
+  SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {telephone:t});
+  return t;
+}
+function demanderTelCommerce(){ $("telSaisie").value = ""; message("msgTel",""); $("telFond").classList.remove("cache"); $("telSaisie").focus(); }
+$("bTelPlusTard").onclick = ()=> $("telFond").classList.add("cache");
+$("bTelEnregistrer").onclick = ()=> occupe($("bTelEnregistrer"), async ()=>{
+  try{ await enregistrerTelCommerce($("telSaisie").value); $("telFond").classList.add("cache"); alerte("✓ Merci, numéro enregistré"); }
+  catch(e){ message("msgTel", e.message, "err"); }
+});
+$("telSaisie").addEventListener("keydown", e=>{ if (e.key === "Enter") $("bTelEnregistrer").click(); });
+$("bTelReglages").onclick = ()=> occupe($("bTelReglages"), async ()=>{
+  try{ const t = await enregistrerTelCommerce($("rTel").value); $("rTel").value = joli(t); message("msgTelReglages","Téléphone enregistré.","ok"); }
+  catch(e){ message("msgTelReglages", e.message, "err"); }
+});
 
 // Code de parrainage reçu par un lien d'invitation (index.html?parrain=3F9A2C ou depuis la plaquette)
 const CODE_OK = c => /^[0-9A-F]{6}$/.test(c);
@@ -978,7 +1046,8 @@ $("ongConnexion").onclick = ()=>{ ongletConnexion(false); message("msgConnexion"
 $("ongInscription").onclick = ()=>{ ongletConnexion(true); message("msgConnexion",""); };
 $("bConnexion").onclick = ()=> occupe($("bConnexion"), async ()=>{
   const email = $("cxEmail").value.trim(), mdp = $("cxMdp").value, nom = $("cxNom").value.trim();
-  const code = $("cxParrain").value.trim().toUpperCase();
+  const code = $("cxParrain").value.trim().toUpperCase(), telCo = normaliser($("cxTel").value);
+  if (modeInscription && !TEL_OK(telCo)) return message("msgConnexion","Indiquez le téléphone portable du commerce (06 ou 07, 10 chiffres).","err");
   if (modeInscription && code && !CODE_OK(code)) return message("msgConnexion","Code de parrainage : 6 caractères (chiffres et lettres A à F), ou laissez vide.","err");
   if (!/^\S+@\S+\.\S+$/.test(email)) return message("msgConnexion","Adresse e-mail invalide.","err");
   if (!mdp) return message("msgConnexion","Tapez votre mot de passe.","err");
@@ -986,7 +1055,7 @@ $("bConnexion").onclick = ()=> occupe($("bConnexion"), async ()=>{
   if (modeInscription && !nom) return message("msgConnexion","Indiquez le nom du commerce.","err");
   try{
     if (modeInscription){
-      const r = await API.inscription(email, mdp, nom, code);
+      const r = await API.inscription(email, mdp, nom, code, telCo);
       try{ localStorage.removeItem("code_parrain"); }catch(e){}
       if (r.aConfirmer){ ongletConnexion(false); return message("msgConnexion","Compte créé ! Un e-mail de confirmation vient d'être envoyé : cliquez sur le lien, puis connectez-vous.","ok"); }
     } else {
@@ -1014,6 +1083,7 @@ async function entrer(){
   $("bGerant").classList.toggle("cache", !admin);
   ADMIN = admin; dernierNonLus = null;
   verifierNotifs();
+  if (!DEMO && !admin && !SESSION.commerce.telephone) setTimeout(demanderTelCommerce, 600);   // comptes créés avant le 10/11/2026
   if (!SESSION.commerce.programme_choisi) return montrer("ecranReglages");   // premier passage : choisir son programme
   montrer("ecranAccueil");
   $("tel").focus();
@@ -1454,6 +1524,7 @@ function remplirReglages(){
   $("rMontant").value = c.montant_bonus ?? 70;
   $("rPointsBonus").value = c.points_bonus ?? c.points_par_passage * 2;
   $("rEmail").textContent = SESSION.email;
+  $("rTel").value = c.telephone ? joli(c.telephone) : ""; message("msgTelReglages","");
   themeChoisi = (c.theme === "perso" && c.perso) || THEMES[c.theme] ? c.theme : "defaut";
   afficherReglagesRoue();
   afficherThemes();
@@ -1671,13 +1742,19 @@ async function afficherGerant(){
     [somme("nb_clients"), "clients au total"], [somme("passages_30j"), "passages ces 30 jours"],
   ].map(([n,t])=>`<div class="chiffre"><b>${n}</b><span>${t}</span></div>`).join("");
   $("gListe").innerHTML = s.map(x=>`<tr>
-      <td><b>${echapper(x.commerce)}</b><br><span class="note">${echapper(x.email)}</span></td>
+      <td><b>${echapper(x.commerce)}</b><br><span class="note">${echapper(x.email)}</span><br><span class="note" data-tel="${x.id}">…</span></td>
       <td class="n">${x.nb_clients}</td><td class="n">${x.nb_accord_sms}</td><td class="n">${x.passages_30j}</td>
       <td class="n">${x.nb_reductions}</td><td class="n">${jourFr(x.derniere_activite)}</td><td class="n">${jourFr(x.inscrit_le)}</td>
       <td><button class="petitbtn roue" data-roue="${x.id}">${x.roue_active ? "🎡 Couper la roue" : "🎡 Activer la roue"}</button><button class="petitbtn vider" data-vider="${x.id}">Vider</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer</button></td></tr>`).join("")
     || `<tr><td colspan="8" class="note">Aucun commerce inscrit pour l'instant.</td></tr>`;
   for (const b of $("gListe").querySelectorAll("button")) b.onclick = ()=> actionCommerce(b);
   afficherParrainagesGerant();
+  let tels = {};
+  try{ for (const c of await API.adminContacts()) tels[c.id] = c.telephone; }catch(e){}
+  for (const sp of $("gListe").querySelectorAll("[data-tel]")){
+    const t = tels[sp.dataset.tel];
+    sp.innerHTML = t ? `📞 <a href="tel:${t}">${joli(t)}</a>` : "📞 pas encore de numéro";
+  }
 }
 async function afficherParrainagesGerant(){
   const t = $("gParrains");
