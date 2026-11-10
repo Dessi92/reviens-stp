@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="35">
+<meta name="app-version" content="36">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -108,7 +108,7 @@
   .parFil li{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--bord)}
   .parInvite{background:var(--orclair,#fdf3e1);border-radius:12px;padding:10px 12px;margin:0 0 12px;font-size:15px}
   #tuto{position:fixed;inset:0;z-index:70}
-  #tuto .tTrou{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(20,14,8,.68);transition:all .25s;pointer-events:none;outline:3px solid #fff}
+  #tuto .tTrou{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(20,14,8,.68);transition:width .25s,height .25s;pointer-events:none;outline:3px solid #fff}
   #tuto .tTrou.vide{box-shadow:none;outline:0}
   #tuto .tVoile{position:fixed;inset:0}
   #tuto .tVoile.plein{background:rgba(20,14,8,.68)}
@@ -1543,13 +1543,21 @@ function montrerEtape(){
   const trou = document.querySelector("#tuto .tTrou"), voile = document.querySelector("#tuto .tVoile"), bulle = document.querySelector("#tuto .tBulle");
   const cible = e.cible && (document.getElementById(e.cible) || document.querySelector(e.cible));
   trou.classList.toggle("vide", !cible); voile.classList.toggle("plein", !cible);
+  t.cible = cible || null; t.lim = null;
   const placer = ()=>{
-    if (!cible){ bulle.style.top = "50%"; bulle.style.transform = "translate(-50%,-50%)"; return; }
+    if (!cible){ bulle.style.top = "50%"; bulle.style.transform = "translate(-50%,-50%)"; t.lim = [scrollY, scrollY]; return; }
     const r = cible.getBoundingClientRect(), m = 6;
-    Object.assign(trou.style, {left:(r.left - m) + "px", top:(r.top - m) + "px", width:(r.width + 2*m) + "px", height:(r.height + 2*m) + "px"});
+    majTrou();
     bulle.style.transform = "translateX(-50%)";
     const h = bulle.offsetHeight, bas = r.bottom + m + 12, haut = r.top - m - 12 - h;
-    bulle.style.top = (bas + h < innerHeight ? bas : haut > 70 ? haut : Math.max(70, innerHeight - h - 12)) + "px";
+    const top = bas + h < innerHeight ? bas : haut > 70 ? haut : Math.max(70, innerHeight - h - 12);
+    bulle.style.top = top + "px";
+    // Défilement limité à la zone éclairée : on peut seulement la parcourir, pas aller au-delà.
+    if (cible.closest("header")){ t.lim = [scrollY, scrollY]; return; }
+    const vis = top >= r.bottom ? [70, top - 8] : top + h <= r.top ? [top + h + 8, innerHeight] : [70, top - 8];
+    const T = r.top + scrollY - m, B = r.bottom + scrollY + m;
+    t.lim = B - T <= vis[1] - vis[0] ? [scrollY, scrollY] : [Math.max(0, T - vis[0]), Math.max(0, B - vis[1])];
+    garderDansZone();
   };
   if (cible){
     const r = cible.getBoundingClientRect();
@@ -1562,6 +1570,19 @@ function montrerEtape(){
   setTimeout(()=>{ if (TUTO && TUTO.etapes[TUTO.i] === e) placer(); }, 450);   // la page peut bouger (chargement du parrainage)
   $("tSuiv").focus();
 }
+// Le trou suit la zone éclairée quand on fait défiler la page
+function majTrou(){
+  const c = TUTO && TUTO.cible; if (!c) return;
+  const r = c.getBoundingClientRect(), m = 6;
+  Object.assign(document.querySelector("#tuto .tTrou").style, {left:(r.left - m) + "px", top:(r.top - m) + "px", width:(r.width + 2*m) + "px", height:(r.height + 2*m) + "px"});
+}
+function garderDansZone(){
+  const l = TUTO && TUTO.lim; if (!l) return;
+  const y = Math.min(Math.max(scrollY, l[0]), l[1]);
+  if (Math.abs(y - scrollY) > 0.5) scrollTo({top:y, behavior:"instant"});
+  majTrou();
+}
+addEventListener("scroll", ()=>{ if (TUTO) garderDansZone(); }, {passive:true});
 $("tSuiv").onclick = ()=>{ if (!TUTO) return; if (TUTO.i >= TUTO.etapes.length - 1) return finirTuto(); TUTO.i++; montrerEtape(); };
 $("tPrec").onclick = ()=>{ if (!TUTO || TUTO.i === 0) return; TUTO.i--; montrerEtape(); };
 $("tPasser").onclick = finirTuto;
