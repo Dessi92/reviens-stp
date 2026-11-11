@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="40">
+<meta name="app-version" content="41">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -625,7 +625,7 @@
     <div class="smsBloc">
       <label class="case"><input type="checkbox" id="smsRelActif">
         <span><b>« Vous nous manquez »</b> : quand un client n'est pas venu depuis
-        <input id="smsRelJours" class="inline" type="number" min="7" max="365" step="1" inputmode="numeric" aria-label="Nombre de jours sans venir"> jours</span></label>
+        <input id="smsRelJours" class="inline" type="number" min="30" max="365" step="1" inputmode="numeric" aria-label="Nombre de jours sans venir"> jours</span></label>
       <textarea id="smsRelTexte" maxlength="300" style="min-height:90px;margin-top:10px"></textarea>
       <div class="smsTags" data-cible="smsRelTexte"><button data-tag="{nom}">+ nom du client</button><button data-tag="{commerce}">+ nom du commerce</button></div>
       <div id="smsRelInfo"></div>
@@ -633,7 +633,7 @@
     <div class="smsBloc">
       <label class="case"><input type="checkbox" id="smsPresActif">
         <span><b>« Plus qu'un passage »</b> : quand il ne manque qu'un passage au client pour sa réduction et qu'il n'est pas venu depuis
-        <input id="smsPresJours" class="inline" type="number" min="3" max="365" step="1" inputmode="numeric" aria-label="Nombre de jours sans venir"> jours</span></label>
+        <input id="smsPresJours" class="inline" type="number" min="7" max="365" step="1" inputmode="numeric" aria-label="Nombre de jours sans venir"> jours</span></label>
       <textarea id="smsPresTexte" maxlength="300" style="min-height:90px;margin-top:10px"></textarea>
       <div class="smsTags" data-cible="smsPresTexte"><button data-tag="{nom}">+ nom du client</button><button data-tag="{commerce}">+ nom du commerce</button><button data-tag="{remise}">+ % de réduction</button></div>
       <div id="smsPresInfo"></div>
@@ -650,7 +650,7 @@
     <div id="smsHisto"></div>
     <p class="note">« Revenus en 7 j » : clients passés en caisse dans les 7 jours qui suivent le SMS. Certains seraient venus de toute façon : c'est un repère, pas une preuve.</p>
   </div>
-  <p class="note" style="text-align:center">Seuls les clients qui ont accepté les SMS les reçoivent. « STOP » est ajouté à chaque message pour se désinscrire. Pas d'envoi le dimanche, les jours fériés, ni avant 10 h ou après 19 h. Les accents comme ê ou ç sont remplacés (é, è, à restent) pour qu'un message tienne dans un seul SMS.</p>
+  <p class="note" style="text-align:center">Environ 6 centimes le SMS, achetés d'avance par packs auprès du support. Un client reçoit au plus 2 SMS par mois de votre commerce, et une promo part au plus une fois par semaine. Seuls les clients qui ont accepté les SMS les reçoivent. « STOP » est ajouté à chaque message pour se désinscrire. Pas d'envoi le dimanche, les jours fériés, ni avant 10 h ou après 19 h. Les accents comme ê ou ç sont remplacés (é, è, à restent) pour qu'un message tienne dans un seul SMS.</p>
 </main>
 
 <main id="ecranSupport" class="cache">
@@ -888,7 +888,7 @@ function apiDemo(){
   let D;
   try{ D = JSON.parse(localStorage.getItem(CLE)); }catch(e){}
   if (!D || !D.commerce) D = demoExemple();
-  if (D.commerce.sms_active === undefined) Object.assign(D.commerce, {sms_active:true, sms_credits:200, sms_inclus:50});
+  if (D.commerce.sms_active === undefined || D.commerce.sms_inclus) Object.assign(D.commerce, {sms_active:true, sms_credits:500, sms_inclus:0});
   if (!D.sms_lots) D.sms_lots = smsLotsExemple(D);
   const sauver = ()=>{ try{ localStorage.setItem(CLE, JSON.stringify(D)); }catch(e){} };
   // Remet Lucas (et le compteur de la roue) comme au début de la démo, sans toucher aux autres clients
@@ -1017,17 +1017,22 @@ function apiDemo(){
       for (const m of D.mouvements) if (m.type === "points") (vus[m.client_id] = vus[m.client_id] || []).push(new Date(m.le).getTime());
       const revenus = l => { const t0 = new Date(l.envoye_le).getTime(), t1 = t0 + 7*864e5;
         return (l.clients || []).filter(id => (vus[id] || []).some(t => t > t0 && t <= t1)).length; };
-      return {active:!!co.sms_active, inclus:co.sms_inclus ?? SMS_INCLUS, utilises, credits:co.sms_credits || 0,
+      const parClient = {};
+      for (const l of lots) if (new Date(l.cree_le) >= debut) for (const id of l.clients || []) parClient[id] = (parClient[id] || 0) + 1;
+      const promos = lots.filter(l=>l.type === "promo").map(l=>l.cree_le).sort();
+      return {active:!!co.sms_active, inclus:0, utilises, credits:co.sms_credits || 0,
+        plafond:Object.keys(parClient).filter(id=>parClient[id] >= SMS_MAX_CLIENT).map(Number), derniere_promo:promos.length ? promos[promos.length-1] : null,
         lots: lots.slice().sort((a,b)=>new Date(b.cree_le)-new Date(a.cree_le)).slice(0,20)
           .map(l=>({type:l.type, texte:l.texte, cree_le:l.cree_le, envoye_le:l.envoye_le, statut:l.statut, nb_clients:l.nb_clients, nb_sms:l.nb_sms, revenus:revenus(l)}))};
     },
     async smsPromo(texte){
-      const co = D.commerce, dest = D.clients.filter(c=>c.accord_sms);
-      if (!dest.length) throw new Error("Aucun client n'a accepté les SMS pour l'instant.");
+      const co = D.commerce, e = await this.smsEtat(), pl = new Set(e.plafond);
+      if (smsPromoAttente(e)) throw new Error(`Une promo par semaine au plus : prochaine promo possible ${smsPromoAttente(e)}.`);
+      const dest = D.clients.filter(c=>c.accord_sms && !pl.has(c.id));
+      if (!dest.length) throw new Error("Aucun client à prévenir pour l'instant.");
       const nb = dest.reduce((t,c)=>t + smsParts(smsTexte(texte, c.nom)), 0);
-      const e = await this.smsEtat(), dispoMois = Math.max(0, e.inclus - e.utilises);
-      if (nb > dispoMois + e.credits) throw new Error(`Il faut ${nb} SMS, il vous en reste ${dispoMois + e.credits}. Demandez un pack de SMS au support 💬.`);
-      co.sms_credits = e.credits - Math.max(0, nb - dispoMois);
+      if (nb > e.credits) throw new Error(`Il faut ${nb} SMS, il vous en reste ${e.credits}. Demandez un pack de SMS au support 💬.`);
+      co.sms_credits = e.credits - nb;
       const envoye_le = prochainCreneau().toISOString();
       D.sms_lots = D.sms_lots || [];
       D.sms_lots.push({type:"promo", texte, cree_le:new Date().toISOString(), envoye_le, statut:"demo", nb_clients:dest.length, nb_sms:nb, clients:dest.map(c=>c.id)});
@@ -1086,11 +1091,15 @@ function montrer(ecran){
 // ======================================================================
 // SMS : promo, relances automatiques, compteur du mois
 // ======================================================================
-const SMS_INCLUS = 50;                 // SMS compris chaque mois (réglable par commerce dans la base)
+const SMS_INCLUS = 0;                  // plus de SMS compris : le commerçant achète ses SMS d'avance (11/11/2026)
+const SMS_PRIX = 0.06;                 // prix INDICATIF d'un SMS (environ 6 centimes) : prix exact connu avec le fournisseur
+const SMS_MAX_CLIENT = 2;              // un client reçoit au plus 2 SMS par mois de ce commerce
+const PROMO_JOURS = 7;                 // une promo par semaine au plus
+const eurosSms = n => n.toLocaleString("fr-FR", {minimumFractionDigits:2, maximumFractionDigits:2}) + " €";
 const SMS_STOP = "\nSTOP au 36xxx";    // mention de désinscription ajoutée à chaque SMS (numéro donné par le service SMS)
 const SMS_DEFAUT = {
-  relance:{actif:true, jours:30, texte:"Bonjour{nom}, cela fait un moment ! Toute l'équipe de {commerce} serait ravie de vous revoir. Vos points vous attendent."},
-  presque:{actif:true, jours:14, texte:"Bonjour{nom}, plus qu'un passage chez {commerce} et votre réduction de {remise} % est à vous !"}
+  relance:{actif:false, jours:30, texte:"Bonjour{nom}, cela fait un moment ! Toute l'équipe de {commerce} serait ravie de vous revoir. Vos points vous attendent."},
+  presque:{actif:false, jours:14, texte:"Bonjour{nom}, plus qu'un passage chez {commerce} et votre réduction de {remise} % est à vous !"}
 };
 // Alphabet des SMS « normaux » (160 caractères) ; un seul autre signe fait passer le SMS à 70 caractères
 const GSM7 = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
@@ -1184,16 +1193,18 @@ function majSmsApercus(){
   if (!SESSION || $("ecranSms").classList.contains("cache")) return;
   const nomEx = nomExemple(), e = SMS_ETAT || {inclus:SMS_INCLUS, utilises:0, credits:0, active:false};
   // Promo
-  const promo = $("smsPromo").value.trim(), n = SMS_DEST.length;
+  const promo = $("smsPromo").value.trim(), dest = smsDestPromo(), n = dest.length, saut = SMS_DEST.length - n;
+  const attente = smsPromoAttente(e);
   if (promo){
-    const i = smsInfoTexte(promo, nomEx), total = SMS_DEST.reduce((t,c)=>t + smsParts(smsTexte(promo, c.nom)), 0);
-    const dispoMois = Math.max(0, e.inclus - e.utilises), reserve = Math.max(0, total - dispoMois);
-    $("smsPromoInfo").innerHTML = smsBulle(i.texte) + i.html + `<div class="smsCompte">Envoyé à <b>${pluriel(n, "client")}</b> · <b>${total} SMS</b>`
-      + (reserve ? ` (${Math.min(total, dispoMois)} compris dans votre mois + ${reserve} pris sur la réserve)` : " compris dans votre mois")
-      + ` · envoi <b>${creneauFr(prochainCreneau())}</b></div>`;
+    const i = smsInfoTexte(promo, nomEx), total = dest.reduce((t,c)=>t + smsParts(smsTexte(promo, c.nom)), 0);
+    $("smsPromoInfo").innerHTML = smsBulle(i.texte) + i.html + `<div class="smsCompte">Envoyé à <b>${pluriel(n, "client")}</b> · <b>${total} SMS</b>, soit <b>environ ${eurosSms(total * SMS_PRIX)}</b>`
+      + ` · envoi <b>${creneauFr(prochainCreneau())}</b>`
+      + (saut ? `<br>${pluriel(saut, "client")} déjà prévenu${saut > 1 ? "s" : ""} ${SMS_MAX_CLIENT} fois ce mois-ci : ${saut > 1 ? "ils ne recevront" : "il ne recevra"} pas ce SMS.` : "")
+      + (total > e.credits ? `<br><span class="att">Il vous reste ${pluriel(e.credits, "SMS")} en réserve : demandez un pack de SMS au support 💬.</span>` : "") + `</div>`;
     $("bSmsPromo").textContent = `Envoyer à ${pluriel(n, "client")}`;
   } else { $("smsPromoInfo").innerHTML = ""; $("bSmsPromo").textContent = "Envoyer"; }
-  $("bSmsPromo").disabled = !promo || !n || (!DEMO && !e.active);
+  if (attente) $("smsPromoInfo").innerHTML += `<div class="smsCompte"><span class="att">Une promo par semaine au plus, pour ne pas lasser vos clients : prochaine promo possible ${attente}.</span></div>`;
+  $("bSmsPromo").disabled = !promo || !n || !!attente || (!DEMO && !e.active);
   // Automatiques
   const r = lireSmsForm();
   const iR = smsInfoTexte(r.relance.texte, nomEx), iP = smsInfoTexte(r.presque.texte, nomEx);
@@ -1202,9 +1213,14 @@ function majSmsApercus(){
   $("smsPresInfo").innerHTML = smsBulle(iP.texte) + iP.html + (r.presque.actif ? `<div class="smsCompte">Environ <b>${pluriel(nP, "client")}</b> par mois avec vos clients actuels.</div>` : "");
   const totalAuto = nR * iR.parts + nP * iP.parts;
   $("smsAutoTotal").innerHTML = r.relance.actif || r.presque.actif
-    ? `Ces relances utiliseraient environ <b>${totalAuto} SMS par mois</b> (vous en avez ${e.inclus} compris chaque mois${e.credits ? `, plus ${e.credits} en réserve` : ""}).`
-      + (totalAuto > e.inclus ? ` <span class="att">C'est plus que votre forfait : quand il est épuisé, les relances passent sur la réserve, puis s'arrêtent jusqu'au mois suivant.</span>` : "")
-    : "Aucune relance automatique.";
+    ? `Ces relances utiliseraient environ <b>${totalAuto} SMS par mois</b>, soit <b>environ ${eurosSms(totalAuto * SMS_PRIX)}</b>, pris sur votre réserve. Quand la réserve est vide, elles s'arrêtent toutes seules.`
+    : "Relances automatiques éteintes : cochez celles que vous voulez.";
+}
+const smsDestPromo = ()=>{ const pl = new Set((SMS_ETAT && SMS_ETAT.plafond) || []); return SMS_DEST.filter(c=>!pl.has(c.id)); };
+function smsPromoAttente(e){
+  if (!e || !e.derniere_promo) return "";
+  const d = new Date(new Date(e.derniere_promo).getTime() + PROMO_JOURS*864e5);
+  return d > Date.now() ? "le " + d.toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"long"}) : "";
 }
 function lireSmsForm(){
   const nb = (id, def) => { const v = parseInt($(id).value, 10); return Number.isFinite(v) ? v : def; };
@@ -1230,8 +1246,7 @@ async function afficherSms(){
     : e && e.active ? "✅ <b>Service SMS actif.</b> Envois du lundi au samedi, de 10 h à 19 h, jamais les jours fériés."
     : "🚀 <b>Les SMS arrivent très bientôt.</b> Préparez vos messages dès maintenant : les envois démarreront dès l'ouverture du service.";
   if (e){
-    const reste = Math.max(0, e.inclus - e.utilises);
-    $("smsChiffres").innerHTML = [[SMS_DEST.length, "clients ont accepté les SMS"], [`${reste} / ${e.inclus}`, "SMS restants ce mois-ci"], [e.credits, "SMS en réserve (packs)"]]
+    $("smsChiffres").innerHTML = [[SMS_DEST.length, "clients ont accepté les SMS"], [e.credits, "SMS en réserve"], [e.utilises, "SMS envoyés ce mois-ci"]]
       .map(([n,t])=>`<div class="chiffre"><b>${n}</b><span>${t}</span></div>`).join("");
     $("smsHisto").innerHTML = (e.lots || []).map(l=>{
       const d = l.envoye_le || l.cree_le, futur = l.statut === "attente" || new Date(d) > Date.now(), recent = jAvant(d) < 7;
@@ -1255,7 +1270,7 @@ for (const z of document.querySelectorAll(".smsTags")) for (const b of z.querySe
 };
 $("bSmsEnregistrer").onclick = ()=> occupe($("bSmsEnregistrer"), async ()=>{
   const r = lireSmsForm();
-  for (const [k, nom, min] of [["relance","« Vous nous manquez »",7], ["presque","« Plus qu'un passage »",3]]){
+  for (const [k, nom, min] of [["relance","« Vous nous manquez »",30], ["presque","« Plus qu'un passage »",7]]){
     if (!r[k].texte) return message("msgSms", `Écrivez le message ${nom}.`, "err");
     if (!(r[k].jours >= min && r[k].jours <= 365)) return message("msgSms", `${nom} : choisissez entre ${min} et 365 jours.`, "err");
   }
@@ -1266,8 +1281,8 @@ $("bSmsEnregistrer").onclick = ()=> occupe($("bSmsEnregistrer"), async ()=>{
 $("bSmsPromo").onclick = ()=>{
   const t = $("smsPromo").value.trim();
   if (!t) return;
-  const total = SMS_DEST.reduce((s,c)=>s + smsParts(smsTexte(t, c.nom)), 0);
-  $("smsFondTexte").innerHTML = `Ce SMS part à <b>${pluriel(SMS_DEST.length, "client")}</b> (${total} SMS), <b>${creneauFr(prochainCreneau())}</b>. Impossible de l'annuler après l'envoi.`;
+  const dest = smsDestPromo(), total = dest.reduce((s,c)=>s + smsParts(smsTexte(t, c.nom)), 0);
+  $("smsFondTexte").innerHTML = `Ce SMS part à <b>${pluriel(dest.length, "client")}</b> (${total} SMS, environ ${eurosSms(total * SMS_PRIX)}), <b>${creneauFr(prochainCreneau())}</b>. Impossible de l'annuler après l'envoi.`;
   $("smsFondApercu").innerHTML = smsBulle(smsTexte(t, nomExemple()));
   $("smsFond").classList.remove("cache"); $("bSmsAnnuler").focus();
 };
