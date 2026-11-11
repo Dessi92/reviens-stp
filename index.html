@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="42">
+<meta name="app-version" content="43">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -619,7 +619,7 @@
   </div>
   <div class="carte">
     <h2>💳 Recharger mon porte-monnaie SMS</h2>
-    <p class="note" style="margin-top:-6px">Rechargez d'avance, puis envoyez : chaque SMS est payé avec ce solde (<b id="smsPrixTxt">7 centimes</b> le SMS au plus). Le solde n'expire jamais.</p>
+    <p class="note" style="margin-top:-6px">Rechargez d'avance, puis envoyez : chaque SMS est payé avec ce solde (<b id="smsPrixTxt">7 centimes</b> le SMS). Le solde n'expire jamais.</p>
     <div class="smsRech" id="smsRechChoix"></div>
     <label for="smsRechAutre">Ou un autre montant (10 € minimum)</label>
     <input id="smsRechAutre" type="number" min="10" max="2000" step="1" inputmode="decimal" placeholder="ex. 25">
@@ -668,7 +668,7 @@
     <div id="smsHisto"></div>
     <p class="note">« Revenus en 7 j » : clients passés en caisse dans les 7 jours qui suivent le SMS. Certains seraient venus de toute façon : c'est un repère, pas une preuve.</p>
   </div>
-  <p class="note" style="text-align:center">7 centimes le SMS au plus, payés avec votre porte-monnaie SMS (recharge de 10 € minimum). Un client reçoit au plus 2 SMS par mois de votre commerce, et une promo part au plus une fois par semaine. Seuls les clients qui ont accepté les SMS les reçoivent. « STOP » est ajouté à chaque message pour se désinscrire. Pas d'envoi le dimanche, les jours fériés, ni avant 10 h ou après 19 h. Les accents comme ê ou ç sont remplacés (é, è, à restent) pour qu'un message tienne dans un seul SMS.</p>
+  <p class="note" style="text-align:center">Environ 7 centimes le SMS (le prix exact est affiché avant chaque recharge et chaque envoi), payés avec votre porte-monnaie SMS (recharge de 10 € minimum). Un client reçoit au plus 2 SMS par mois de votre commerce, et une promo part au plus une fois par semaine. Seuls les clients qui ont accepté les SMS les reçoivent. « STOP » est ajouté à chaque message pour se désinscrire. Pas d'envoi le dimanche, les jours fériés, ni avant 10 h ou après 19 h. Les accents comme ê ou ç sont remplacés (é, è, à restent) pour qu'un message tienne dans un seul SMS.</p>
 </main>
 
 <main id="ecranSupport" class="cache">
@@ -1115,7 +1115,7 @@ function montrer(ecran){
 // SMS : promo, relances automatiques, compteur du mois
 // ======================================================================
 const SMS_INCLUS = 0;                  // plus de SMS compris : le commerçant achète ses SMS d'avance (11/11/2026)
-let SMS_PRIX = 0.07;                   // prix compté par SMS (7 centimes au plus, choisi par Dessi le 11/11 ; la base envoie le vrai prix)
+let SMS_PRIX = 0.07;                   // prix compté par SMS (7 centimes, commission comprise, choisi par Dessi le 11/11 ; la base envoie le vrai prix)
 const RECH_MIN = 10;                   // recharge minimum du porte-monnaie SMS (frais de carte)
 const SMS_MAX_CLIENT = 2;              // un client reçoit au plus 2 SMS par mois de ce commerce
 const PROMO_JOURS = 7;                 // une promo par semaine au plus
