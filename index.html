@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="41">
+<meta name="app-version" content="42">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -96,6 +96,13 @@
   .smsBloc{border:1px solid var(--bord);border-radius:14px;padding:12px;margin:12px 0;background:#fff}
   .smsBloc .case{margin-top:0}
   .smsBandeau{border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.4;margin:0 0 12px;background:var(--orclair)}
+  .smsRech{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+  .smsRech button{border:2px solid var(--bord);background:#fff;color:var(--texte);border-radius:14px;padding:10px 8px;cursor:pointer;text-align:center;font:inherit;line-height:1.25}
+  .smsRech button b{display:block;font-size:22px}
+  .smsRech button span{font-size:13px;color:var(--doux)}
+  .smsRech button.actif{border-color:var(--accent);background:var(--orclair)}
+  .smsRech button.tous{grid-column:1 / -1}
+  .smsRech button:disabled{opacity:.55;cursor:default}
   .smsLot{border-bottom:1px solid var(--bord);padding:10px 0}
   .smsLot:last-child{border-bottom:0}
   .smsLot .t{display:flex;justify-content:space-between;gap:8px;font-weight:700}
@@ -611,6 +618,17 @@
     <div class="chiffres" id="smsChiffres" style="margin-bottom:0"></div>
   </div>
   <div class="carte">
+    <h2>💳 Recharger mon porte-monnaie SMS</h2>
+    <p class="note" style="margin-top:-6px">Rechargez d'avance, puis envoyez : chaque SMS est payé avec ce solde (<b id="smsPrixTxt">7 centimes</b> le SMS au plus). Le solde n'expire jamais.</p>
+    <div class="smsRech" id="smsRechChoix"></div>
+    <label for="smsRechAutre">Ou un autre montant (10 € minimum)</label>
+    <input id="smsRechAutre" type="number" min="10" max="2000" step="1" inputmode="decimal" placeholder="ex. 25">
+    <div id="smsRechInfo" class="smsCompte"></div>
+    <button class="btn principal" id="bSmsRecharger" disabled>Choisissez un montant</button>
+    <div id="msgSmsRech"></div>
+    <div id="smsRechHisto" class="note"></div>
+  </div>
+  <div class="carte">
     <h2>📣 Envoyer une promo</h2>
     <p class="note" style="margin-top:-6px">Un SMS à tous les clients qui ont accepté les SMS. Idéal pour une offre du week-end, un nouveau produit, une fermeture…</p>
     <textarea id="smsPromo" maxlength="400" placeholder="ex. Ce week-end chez {commerce} : -10 % sur les terrines maison !"></textarea>
@@ -650,7 +668,7 @@
     <div id="smsHisto"></div>
     <p class="note">« Revenus en 7 j » : clients passés en caisse dans les 7 jours qui suivent le SMS. Certains seraient venus de toute façon : c'est un repère, pas une preuve.</p>
   </div>
-  <p class="note" style="text-align:center">Environ 6 centimes le SMS, achetés d'avance par packs auprès du support. Un client reçoit au plus 2 SMS par mois de votre commerce, et une promo part au plus une fois par semaine. Seuls les clients qui ont accepté les SMS les reçoivent. « STOP » est ajouté à chaque message pour se désinscrire. Pas d'envoi le dimanche, les jours fériés, ni avant 10 h ou après 19 h. Les accents comme ê ou ç sont remplacés (é, è, à restent) pour qu'un message tienne dans un seul SMS.</p>
+  <p class="note" style="text-align:center">7 centimes le SMS au plus, payés avec votre porte-monnaie SMS (recharge de 10 € minimum). Un client reçoit au plus 2 SMS par mois de votre commerce, et une promo part au plus une fois par semaine. Seuls les clients qui ont accepté les SMS les reçoivent. « STOP » est ajouté à chaque message pour se désinscrire. Pas d'envoi le dimanche, les jours fériés, ni avant 10 h ou après 19 h. Les accents comme ê ou ç sont remplacés (é, è, à restent) pour qu'un message tienne dans un seul SMS.</p>
 </main>
 
 <main id="ecranSupport" class="cache">
@@ -798,7 +816,8 @@ function apiSupabase(sb){
     async smsPromo(texte){ return v(await sb.rpc("sms_promo", {p_texte:texte})); },
     async adminSmsListe(){ return v(await sb.rpc("admin_sms_liste")); },
     async adminSms(id, actif){ v(await sb.rpc("admin_sms", {p_id:id, p_active:actif})); },
-    async adminSmsCredits(id, n){ return v(await sb.rpc("admin_sms_credits", {p_id:id, p_ajout:n})); },
+    async adminSmsSolde(id, montant){ return Number(v(await sb.rpc("admin_sms_solde", {p_id:id, p_montant:montant}))); },
+    async smsRecharger(){ throw new Error("Le paiement par carte arrive très bientôt. En attendant, écrivez au support 💬 pour recharger votre porte-monnaie SMS."); },
     async adminParrainValider(id, ok){ v(await sb.rpc("admin_parrainage_valider", {p_filleul:id, p_valide:!!ok})); },
     async stats(){ return v(await sb.rpc("stats_commerces")); },
     async viderMesClients(){ v(await sb.from("clients").delete().eq("commerce_id", SESSION.commerce.id)); },
@@ -888,7 +907,8 @@ function apiDemo(){
   let D;
   try{ D = JSON.parse(localStorage.getItem(CLE)); }catch(e){}
   if (!D || !D.commerce) D = demoExemple();
-  if (D.commerce.sms_active === undefined || D.commerce.sms_inclus) Object.assign(D.commerce, {sms_active:true, sms_credits:500, sms_inclus:0});
+  if (D.commerce.sms_active === undefined || D.commerce.sms_solde === undefined) Object.assign(D.commerce, {sms_active:true, sms_solde:2.1, sms_inclus:0});
+  if (!D.sms_recharges) D.sms_recharges = [{montant:20, mode:"carte", cree_le:new Date(Date.now() - 13*864e5).toISOString()}];
   if (!D.sms_lots) D.sms_lots = smsLotsExemple(D);
   const sauver = ()=>{ try{ localStorage.setItem(CLE, JSON.stringify(D)); }catch(e){} };
   // Remet Lucas (et le compteur de la roue) comme au début de la démo, sans toucher aux autres clients
@@ -1020,7 +1040,8 @@ function apiDemo(){
       const parClient = {};
       for (const l of lots) if (new Date(l.cree_le) >= debut) for (const id of l.clients || []) parClient[id] = (parClient[id] || 0) + 1;
       const promos = lots.filter(l=>l.type === "promo").map(l=>l.cree_le).sort();
-      return {active:!!co.sms_active, inclus:0, utilises, credits:co.sms_credits || 0,
+      return {active:!!co.sms_active, utilises, solde:co.sms_solde || 0, prix:SMS_PRIX,
+        recharges:(D.sms_recharges || []).slice().sort((a,b)=>new Date(b.cree_le)-new Date(a.cree_le)).slice(0, 10),
         plafond:Object.keys(parClient).filter(id=>parClient[id] >= SMS_MAX_CLIENT).map(Number), derniere_promo:promos.length ? promos[promos.length-1] : null,
         lots: lots.slice().sort((a,b)=>new Date(b.cree_le)-new Date(a.cree_le)).slice(0,20)
           .map(l=>({type:l.type, texte:l.texte, cree_le:l.cree_le, envoye_le:l.envoye_le, statut:l.statut, nb_clients:l.nb_clients, nb_sms:l.nb_sms, revenus:revenus(l)}))};
@@ -1031,17 +1052,19 @@ function apiDemo(){
       const dest = D.clients.filter(c=>c.accord_sms && !pl.has(c.id));
       if (!dest.length) throw new Error("Aucun client à prévenir pour l'instant.");
       const nb = dest.reduce((t,c)=>t + smsParts(smsTexte(texte, c.nom)), 0);
-      if (nb > e.credits) throw new Error(`Il faut ${nb} SMS, il vous en reste ${e.credits}. Demandez un pack de SMS au support 💬.`);
-      co.sms_credits = e.credits - nb;
+      const cout = Math.round(nb * SMS_PRIX * 1000) / 1000;
+      if (cout > e.solde + 1e-9) throw new Error(`Cette promo coûte ${eurosSms(cout)}, votre porte-monnaie SMS contient ${eurosSms(e.solde)}. Rechargez-le pour l'envoyer.`);
+      co.sms_solde = Math.round((e.solde - cout) * 1000) / 1000;
       const envoye_le = prochainCreneau().toISOString();
       D.sms_lots = D.sms_lots || [];
-      D.sms_lots.push({type:"promo", texte, cree_le:new Date().toISOString(), envoye_le, statut:"demo", nb_clients:dest.length, nb_sms:nb, clients:dest.map(c=>c.id)});
+      D.sms_lots.push({type:"promo", texte, cree_le:new Date().toISOString(), envoye_le, statut:"demo", nb_clients:dest.length, nb_sms:nb, cout, clients:dest.map(c=>c.id)});
       sauver();
       return {nb_clients:dest.length, nb_sms:nb, envoye_le};
     },
-    async adminSmsListe(){ const e = await this.smsEtat(); return [{id:"demo", sms_active:!!D.commerce.sms_active, sms_credits:e.credits, sms_mois:e.utilises}]; },
+    async adminSmsListe(){ const e = await this.smsEtat(); return [{id:"demo", sms_active:!!D.commerce.sms_active, sms_solde:e.solde, sms_mois:e.utilises}]; },
+    async smsRecharger(m){ D.commerce.sms_solde = Math.round(((D.commerce.sms_solde || 0) + m) * 1000) / 1000; (D.sms_recharges = D.sms_recharges || []).push({montant:m, mode:"carte", cree_le:new Date().toISOString()}); sauver(); },
     async adminSms(id, actif){ if (id !== "demo") throw new Error("Commerce d'exemple"); D.commerce.sms_active = actif; sauver(); },
-    async adminSmsCredits(id, n){ if (id !== "demo") throw new Error("Commerce d'exemple"); D.commerce.sms_credits = Math.max(0, (D.commerce.sms_credits || 0) + n); sauver(); return D.commerce.sms_credits; },
+    async adminSmsSolde(id, m){ if (id !== "demo") throw new Error("Commerce d'exemple"); D.commerce.sms_solde = Math.max(0, Math.round(((D.commerce.sms_solde || 0) + m) * 100) / 100); (D.sms_recharges = D.sms_recharges || []).push({montant:m, mode:"manuel", cree_le:new Date().toISOString()}); sauver(); return D.commerce.sms_solde; },
     async adminParrainValider(id, ok){ D.parValide = D.parValide || {}; D.parValide[id] = ok ? new Date().toISOString() : null; sauver(); },
     async stats(){
       const il30 = Date.now() - 30*864e5;
@@ -1092,7 +1115,8 @@ function montrer(ecran){
 // SMS : promo, relances automatiques, compteur du mois
 // ======================================================================
 const SMS_INCLUS = 0;                  // plus de SMS compris : le commerçant achète ses SMS d'avance (11/11/2026)
-const SMS_PRIX = 0.06;                 // prix INDICATIF d'un SMS (environ 6 centimes) : prix exact connu avec le fournisseur
+let SMS_PRIX = 0.07;                   // prix compté par SMS (7 centimes au plus, choisi par Dessi le 11/11 ; la base envoie le vrai prix)
+const RECH_MIN = 10;                   // recharge minimum du porte-monnaie SMS (frais de carte)
 const SMS_MAX_CLIENT = 2;              // un client reçoit au plus 2 SMS par mois de ce commerce
 const PROMO_JOURS = 7;                 // une promo par semaine au plus
 const eurosSms = n => n.toLocaleString("fr-FR", {minimumFractionDigits:2, maximumFractionDigits:2}) + " €";
@@ -1191,20 +1215,21 @@ function smsEstimeMois(regle, seulementPresque){
 }
 function majSmsApercus(){
   if (!SESSION || $("ecranSms").classList.contains("cache")) return;
-  const nomEx = nomExemple(), e = SMS_ETAT || {inclus:SMS_INCLUS, utilises:0, credits:0, active:false};
+  const nomEx = nomExemple(), e = SMS_ETAT || {utilises:0, solde:0, active:false};
   // Promo
   const promo = $("smsPromo").value.trim(), dest = smsDestPromo(), n = dest.length, saut = SMS_DEST.length - n;
   const attente = smsPromoAttente(e);
   if (promo){
     const i = smsInfoTexte(promo, nomEx), total = dest.reduce((t,c)=>t + smsParts(smsTexte(promo, c.nom)), 0);
-    $("smsPromoInfo").innerHTML = smsBulle(i.texte) + i.html + `<div class="smsCompte">Envoyé à <b>${pluriel(n, "client")}</b> · <b>${total} SMS</b>, soit <b>environ ${eurosSms(total * SMS_PRIX)}</b>`
+    $("smsPromoInfo").innerHTML = smsBulle(i.texte) + i.html + `<div class="smsCompte">Envoyé à <b>${pluriel(n, "client")}</b> · <b>${total} SMS</b>, soit <b>${eurosSms(total * SMS_PRIX)}</b>`
       + ` · envoi <b>${creneauFr(prochainCreneau())}</b>`
       + (saut ? `<br>${pluriel(saut, "client")} déjà prévenu${saut > 1 ? "s" : ""} ${SMS_MAX_CLIENT} fois ce mois-ci : ${saut > 1 ? "ils ne recevront" : "il ne recevra"} pas ce SMS.` : "")
-      + (total > e.credits ? `<br><span class="att">Il vous reste ${pluriel(e.credits, "SMS")} en réserve : demandez un pack de SMS au support 💬.</span>` : "") + `</div>`;
+      + (total * SMS_PRIX > e.solde + 1e-9 ? `<br><span class="att">Votre porte-monnaie contient ${eurosSms(e.solde)} : rechargez-le ci-dessus pour envoyer cette promo.</span>` : "") + `</div>`;
     $("bSmsPromo").textContent = `Envoyer à ${pluriel(n, "client")}`;
   } else { $("smsPromoInfo").innerHTML = ""; $("bSmsPromo").textContent = "Envoyer"; }
   if (attente) $("smsPromoInfo").innerHTML += `<div class="smsCompte"><span class="att">Une promo par semaine au plus, pour ne pas lasser vos clients : prochaine promo possible ${attente}.</span></div>`;
   $("bSmsPromo").disabled = !promo || !n || !!attente || (!DEMO && !e.active);
+  majRecharge();
   // Automatiques
   const r = lireSmsForm();
   const iR = smsInfoTexte(r.relance.texte, nomEx), iP = smsInfoTexte(r.presque.texte, nomEx);
@@ -1213,9 +1238,56 @@ function majSmsApercus(){
   $("smsPresInfo").innerHTML = smsBulle(iP.texte) + iP.html + (r.presque.actif ? `<div class="smsCompte">Environ <b>${pluriel(nP, "client")}</b> par mois avec vos clients actuels.</div>` : "");
   const totalAuto = nR * iR.parts + nP * iP.parts;
   $("smsAutoTotal").innerHTML = r.relance.actif || r.presque.actif
-    ? `Ces relances utiliseraient environ <b>${totalAuto} SMS par mois</b>, soit <b>environ ${eurosSms(totalAuto * SMS_PRIX)}</b>, pris sur votre réserve. Quand la réserve est vide, elles s'arrêtent toutes seules.`
+    ? `Ces relances utiliseraient environ <b>${totalAuto} SMS par mois</b>, soit environ <b>${eurosSms(totalAuto * SMS_PRIX)}</b>, pris sur votre porte-monnaie. Quand il est vide, elles s'arrêtent toutes seules.`
     : "Relances automatiques éteintes : cochez celles que vous voulez.";
 }
+// Porte-monnaie SMS : montant choisi, équivalent en SMS, bouton « tous mes clients »
+let RECH = null;   // {montant, cle}
+const nbSmsPour = euros => Math.floor((Number(euros) + 1e-9) / SMS_PRIX);
+const arrondiHaut = v => Math.ceil(v * 100 - 1e-6) / 100;
+const nbSmsFr = euros => nbSmsPour(euros).toLocaleString("fr-FR") + " SMS";
+function montantTous(){
+  const e = SMS_ETAT || {solde:0}, besoin = arrondiHaut(SMS_DEST.length * SMS_PRIX - e.solde);
+  return besoin <= 0 ? 0 : Math.max(RECH_MIN, besoin);
+}
+function majRecharge(){
+  const e = SMS_ETAT || {solde:0}, nTous = SMS_DEST.length, mTous = montantTous();
+  const choix = [10, 20, 50].map(m=>`<button data-m="${m}" class="${RECH && RECH.cle === String(m) ? "actif" : ""}"><b>${m} €</b><span>${nbSmsFr(m)}</span></button>`).join("")
+    + `<button data-m="tous" class="tous ${RECH && RECH.cle === "tous" ? "actif" : ""}" ${nTous && mTous ? "" : "disabled"}><b>👥 Tous mes clients</b><span>${
+      !nTous ? "aucun client n'accepte encore les SMS"
+      : !mTous ? `votre solde couvre déjà un SMS à vos ${pluriel(nTous, "client")} ✓`
+      : `un SMS à vos ${pluriel(nTous, "client")} qui acceptent les SMS : ${eurosSms(mTous)}`
+        + (e.solde > 0 ? ` (en plus des ${eurosSms(e.solde)} déjà dans le porte-monnaie)` : "")
+        + (arrondiHaut(nTous * SMS_PRIX - e.solde) < RECH_MIN ? ` · il manque ${eurosSms(arrondiHaut(nTous * SMS_PRIX - e.solde))}, recharge minimum ${RECH_MIN} €` : "")}</span></button>`;
+  $("smsRechChoix").innerHTML = choix;
+  for (const b of $("smsRechChoix").querySelectorAll("button")) b.onclick = ()=>{
+    const m = b.dataset.m === "tous" ? montantTous() : Number(b.dataset.m);
+    RECH = {montant:m, cle:b.dataset.m}; $("smsRechAutre").value = ""; message("msgSmsRech", ""); majRecharge();
+  };
+  const m = RECH ? RECH.montant : 0;
+  if (m >= RECH_MIN){
+    const apres = e.solde + m;
+    $("smsRechInfo").innerHTML = `Vous payez <b>${eurosSms(m)}</b> = <b>${nbSmsFr(m)}</b>. Après la recharge : ${eurosSms(apres)} dans le porte-monnaie, soit ${nbSmsFr(apres)}.`;
+    $("bSmsRecharger").textContent = `Recharger ${eurosSms(m)}`; $("bSmsRecharger").disabled = false;
+  } else {
+    $("smsRechInfo").innerHTML = m ? `<span class="att">${RECH_MIN} € minimum.</span>` : "";
+    $("bSmsRecharger").textContent = "Choisissez un montant"; $("bSmsRecharger").disabled = true;
+  }
+}
+$("smsRechAutre").addEventListener("input", ()=>{
+  const v = Math.round(Number(String($("smsRechAutre").value).replace(",", ".")) * 100) / 100;
+  RECH = v > 0 ? {montant:Math.min(v, 2000), cle:"autre"} : null; majRecharge();
+});
+$("bSmsRecharger").onclick = ()=> occupe($("bSmsRecharger"), async ()=>{
+  if (!RECH || RECH.montant < RECH_MIN) return;
+  const m = RECH.montant;
+  if (DEMO && !confirm(`Démo : paiement simulé de ${eurosSms(m)} (${nbSmsFr(m)}). Avec un vrai compte, une page de paiement par carte s'ouvre ici.`)) return;
+  try{
+    await API.smsRecharger(m);
+    await afficherSms();
+    message("msgSmsRech", `✓ ${eurosSms(m)} ajoutés : ${nbSmsFr(m)} de plus.`, "ok");
+  }catch(err){ message("msgSmsRech", err.message, "err"); }
+});
 const smsDestPromo = ()=>{ const pl = new Set((SMS_ETAT && SMS_ETAT.plafond) || []); return SMS_DEST.filter(c=>!pl.has(c.id)); };
 function smsPromoAttente(e){
   if (!e || !e.derniere_promo) return "";
@@ -1241,12 +1313,18 @@ async function afficherSms(){
   try{ [SMS_ETAT, liste] = await Promise.all([API.smsEtat(), API.liste()]); }
   catch(e){ SMS_ETAT = null; liste = []; $("smsChiffres").innerHTML = `<p class="note">${echapper(e.message)}</p>`; }
   SMS_DEST = (liste || []).filter(x=>x.accord_sms);
+  if (SMS_ETAT && SMS_ETAT.prix) SMS_PRIX = Number(SMS_ETAT.prix);
+  if (SMS_ETAT) SMS_ETAT.solde = Number(SMS_ETAT.solde) || 0;
+  $("smsPrixTxt").textContent = `${(SMS_PRIX * 100).toLocaleString("fr-FR", {maximumFractionDigits:1})} centimes`;
+  RECH = null; $("smsRechAutre").value = ""; message("msgSmsRech", "");
+  $("smsRechHisto").innerHTML = SMS_ETAT && (SMS_ETAT.recharges || []).length ? "Dernières recharges : " + SMS_ETAT.recharges.slice(0, 5)
+    .map(r=>`${dateCourte(r.cree_le)} ${Number(r.montant) > 0 ? "+" : ""}${eurosSms(Number(r.montant))}${r.mode === "manuel" ? " (support)" : ""}`).join(" · ") : "";
   const e = SMS_ETAT;
   $("smsBandeau").innerHTML = DEMO ? "🎬 <b>Démo</b> : aucun SMS n'est vraiment envoyé. Essayez d'écrire une promo pour voir ce que reçoit le client."
     : e && e.active ? "✅ <b>Service SMS actif.</b> Envois du lundi au samedi, de 10 h à 19 h, jamais les jours fériés."
     : "🚀 <b>Les SMS arrivent très bientôt.</b> Préparez vos messages dès maintenant : les envois démarreront dès l'ouverture du service.";
   if (e){
-    $("smsChiffres").innerHTML = [[SMS_DEST.length, "clients ont accepté les SMS"], [e.credits, "SMS en réserve"], [e.utilises, "SMS envoyés ce mois-ci"]]
+    $("smsChiffres").innerHTML = [[SMS_DEST.length, "clients ont accepté les SMS"], [eurosSms(e.solde), `dans le porte-monnaie, soit ${nbSmsFr(e.solde)}`], [e.utilises, "SMS envoyés ce mois-ci"]]
       .map(([n,t])=>`<div class="chiffre"><b>${n}</b><span>${t}</span></div>`).join("");
     $("smsHisto").innerHTML = (e.lots || []).map(l=>{
       const d = l.envoye_le || l.cree_le, futur = l.statut === "attente" || new Date(d) > Date.now(), recent = jAvant(d) < 7;
@@ -1282,7 +1360,7 @@ $("bSmsPromo").onclick = ()=>{
   const t = $("smsPromo").value.trim();
   if (!t) return;
   const dest = smsDestPromo(), total = dest.reduce((s,c)=>s + smsParts(smsTexte(t, c.nom)), 0);
-  $("smsFondTexte").innerHTML = `Ce SMS part à <b>${pluriel(dest.length, "client")}</b> (${total} SMS, environ ${eurosSms(total * SMS_PRIX)}), <b>${creneauFr(prochainCreneau())}</b>. Impossible de l'annuler après l'envoi.`;
+  $("smsFondTexte").innerHTML = `Ce SMS part à <b>${pluriel(dest.length, "client")}</b> (${total} SMS, ${eurosSms(total * SMS_PRIX)} pris sur votre porte-monnaie), <b>${creneauFr(prochainCreneau())}</b>. Impossible de l'annuler après l'envoi.`;
   $("smsFondApercu").innerHTML = smsBulle(smsTexte(t, nomExemple()));
   $("smsFond").classList.remove("cache"); $("bSmsAnnuler").focus();
 };
@@ -2091,7 +2169,7 @@ async function afficherGerant(){
   try{ for (const c of await API.adminSmsListe()) SMS_ADMIN[c.id] = c; }catch(e){}
   for (const sp of $("gListe").querySelectorAll("[data-smsinfo]")){
     const x = SMS_ADMIN[sp.dataset.smsinfo];
-    sp.textContent = x ? `📱 SMS ${x.sms_active ? "actifs" : "coupés"} · ${x.sms_mois} ce mois · ${x.sms_credits} en réserve` : "";
+    sp.textContent = x ? `📱 SMS ${x.sms_active ? "actifs" : "coupés"} · ${x.sms_mois} ce mois · porte-monnaie ${eurosSms(Number(x.sms_solde) || 0)}` : "";
   }
 }
 async function afficherParrainagesGerant(){
@@ -2300,17 +2378,17 @@ async function actionCommerce(b){
   if (!x) return;
   try{
     if (b.dataset.sms){
-      const etat = SMS_ADMIN[x.id] || {sms_active:false, sms_credits:0};
-      const r = prompt(`SMS de « ${x.commerce} » : ${etat.sms_active ? "actifs" : "coupés"}, ${etat.sms_credits} SMS en réserve.\n\nTapez :\n  A pour ${etat.sms_active ? "couper" : "activer"} les SMS\n  un nombre pour ajouter des SMS en réserve (pack payé), ex. 100\n  un nombre négatif pour en retirer, ex. -100`);
+      const etat = SMS_ADMIN[x.id] || {sms_active:false, sms_solde:0};
+      const r = prompt(`SMS de « ${x.commerce} » : ${etat.sms_active ? "actifs" : "coupés"}, porte-monnaie ${eurosSms(Number(etat.sms_solde) || 0)}.\n\nTapez :\n  A pour ${etat.sms_active ? "couper" : "activer"} les SMS\n  un montant en euros à ajouter (payé en liquide, geste commercial), ex. 20\n  un montant négatif pour en retirer, ex. -5`);
       if (r === null || !r.trim()) return;
       if (r.trim().toUpperCase() === "A"){
         await API.adminSms(x.id, !etat.sms_active);
         alerte(!etat.sms_active ? `📱 SMS activés pour ${x.commerce}` : `SMS coupés pour ${x.commerce}`);
       } else {
-        const n = parseInt(r, 10);
-        if (!Number.isFinite(n) || n === 0 || Math.abs(n) > 100000) return alert("Rien n'a changé : tapez A ou un nombre, ex. 100.");
-        const total = await API.adminSmsCredits(x.id, n);
-        alerte(`📱 ${x.commerce} : ${total} SMS en réserve`);
+        const n = Math.round(Number(r.replace(",", ".").replace("€", "").trim()) * 100) / 100;
+        if (!Number.isFinite(n) || n === 0 || Math.abs(n) > 10000) return alert("Rien n'a changé : tapez A ou un montant en euros, ex. 20.");
+        const total = await API.adminSmsSolde(x.id, n);
+        alerte(`📱 ${x.commerce} : porte-monnaie ${eurosSms(total)}`);
       }
     } else if (b.dataset.roue){
       const activer = !x.roue_active;
