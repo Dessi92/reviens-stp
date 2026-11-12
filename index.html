@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="43">
+<meta name="app-version" content="44">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -396,6 +396,20 @@
     <div class="ligne">
       <button class="btn gris" id="bSmsAnnuler">Annuler</button>
       <button class="btn principal" id="bSmsValider">Envoyer</button>
+    </div>
+  </div>
+</div>
+<div id="mdpGFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="mdpGTitre">
+  <div class="boite">
+    <h2 id="mdpGTitre" style="margin-top:4px">🔒 Confirmez avec votre mot de passe</h2>
+    <p id="mdpGTexte" style="font-size:17px"></p>
+    <p class="note" style="margin-top:0">C'est définitif : impossible de revenir en arrière.</p>
+    <label for="mdpG">Mot de passe de votre compte</label>
+    <input id="mdpG" type="password" autocomplete="current-password" placeholder="Mot de passe actuel">
+    <div id="msgMdpG"></div>
+    <div class="ligne">
+      <button class="btn gris" id="bMdpGAnnuler">Annuler</button>
+      <button class="btn rouge" id="bMdpGValider">Valider</button>
     </div>
   </div>
 </div>
@@ -2372,6 +2386,25 @@ $("bViderValider").onclick = ()=> occupe($("bViderValider"), async ()=>{
 });
 
 // Gérant : vider ou supprimer un commerce
+// Vérification par le mot de passe du compte avant une action définitive (gérant)
+function demanderMdp(texteHtml){
+  return new Promise(fin=>{
+    $("mdpGTexte").innerHTML = texteHtml;
+    $("mdpG").value = ""; message("msgMdpG", "");
+    $("mdpGFond").classList.remove("cache");
+    setTimeout(()=>$("mdpG").focus(), 50);
+    const fermer = ok=>{ $("mdpGFond").classList.add("cache"); $("mdpG").value = ""; fin(ok); };
+    $("bMdpGAnnuler").onclick = ()=> fermer(false);
+    $("mdpGFond").onclick = e=>{ if (e.target === $("mdpGFond")) fermer(false); };
+    $("mdpG").onkeydown = e=>{ if (e.key === "Enter") $("bMdpGValider").click(); };
+    $("bMdpGValider").onclick = ()=> occupe($("bMdpGValider"), async ()=>{
+      const m = $("mdpG").value;
+      if (!m) return message("msgMdpG", "Tapez votre mot de passe.", "err");
+      try{ await API.verifierMdp(SESSION.email, m); fermer(true); }
+      catch(e){ message("msgMdpG", e.message, "err"); $("mdpG").select(); }
+    });
+  });
+}
 async function actionCommerce(b){
   const s = DERNIERES_STATS || [];
   const id = b.dataset.vider || b.dataset.suppr || b.dataset.roue || b.dataset.sms, x = s.find(c=>String(c.id)===String(id));
@@ -2397,13 +2430,14 @@ async function actionCommerce(b){
       await verifierNotifs();
       alerte(activer ? `🎡 Roue activée pour ${x.commerce}` : `Roue coupée pour ${x.commerce}`);
     } else if (b.dataset.vider){
-      if (!confirm(`Vider « ${x.commerce} » ? Ses ${x.nb_clients} clients et leur historique seront effacés. Le compte et les réglages sont gardés.`)) return;
+      if (!await demanderMdp(`Vider <b>${echapper(x.commerce)}</b> ? Ses <b>${x.nb_clients} clients</b> et leur historique seront effacés. Le compte et les réglages sont gardés.`)) return;
       const n = await API.adminVider(x.id);
       alerte(`✓ ${x.commerce} vidé (${n} client${n>1?"s":""} effacé${n>1?"s":""})`);
     } else {
       const t = prompt(`Supprimer DÉFINITIVEMENT « ${x.commerce} » (compte, clients, historique, messages) ?\nPour confirmer, tapez son nom exact :`);
       if (t === null) return;
       if (t.trim() !== x.commerce) return alert("Nom différent : rien n'a été supprimé.");
+      if (!await demanderMdp(`Supprimer <b>définitivement</b> le compte <b>${echapper(x.commerce)}</b>, avec ses clients, son historique et ses messages ?`)) return;
       await API.adminSupprimer(x.id);
       alerte(`✓ ${x.commerce} supprimé`);
     }
