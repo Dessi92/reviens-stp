@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="44">
+<meta name="app-version" content="45">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -195,6 +195,12 @@
     85%{opacity:1}
     100%{transform:translate(var(--x),-118vh) rotate(var(--r));opacity:0}}
   @media (prefers-reduced-motion:reduce){#fete{display:none}}
+  /* Palier de clients (99 → 100…) : sous la pluie d'émojis pour qu'elle passe devant */
+  #palierFond{z-index:49}
+  #palierFond .boite{border:4px solid var(--accent)}
+  #palierEmo{font-size:44px;letter-spacing:4px;margin:2px 0 6px}
+  #palierTitre{font-size:30px!important;line-height:1.15}
+  #palierTexte{font-size:20px;font-weight:700;margin:10px 0 16px}
   /* Support */
   header button{position:relative}
   .badge{position:absolute;top:-6px;right:-6px;background:#ffd84d;color:#3a2a00;border-radius:99px;min-width:20px;height:20px;padding:0 5px;font-size:12px;font-weight:800;line-height:20px;text-align:center}
@@ -397,6 +403,14 @@
       <button class="btn gris" id="bSmsAnnuler">Annuler</button>
       <button class="btn principal" id="bSmsValider">Envoyer</button>
     </div>
+  </div>
+</div>
+<div id="palierFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="palierTitre">
+  <div class="boite">
+    <div id="palierEmo"></div>
+    <h2 id="palierTitre"></h2>
+    <p id="palierTexte"></p>
+    <button class="btn principal" id="bPalierOk" style="width:100%">Merci ! 🎉</button>
   </div>
 </div>
 <div id="mdpGFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="mdpGTitre">
@@ -1509,6 +1523,7 @@ async function entrer(){
   if (!SESSION.commerce.programme_choisi) return montrer("ecranReglages");   // premier passage : choisir son programme
   montrer("ecranAccueil");
   $("tel").focus();
+  if (!admin) setTimeout(verifierPalierClients, 900);
 }
 
 // Textes des boutons de points, selon le programme du commerce
@@ -1607,11 +1622,11 @@ function marqueConnexion(){
   $("cxSous").textContent = "Le programme de fidélité de votre commerce";
 }
 // Petits émojis qui s'envolent comme des ballons ; « grand » = pluie de fête (palier atteint)
-function fete(grand){
-  const t = leTheme(themeActif), zone = $("fete"), n = grand ? 45 : 16;
+function fete(grand, emojis){
+  const t = leTheme(themeActif), zone = $("fete"), n = grand ? 45 : 16, liste = emojis || t.e;
   for (let i = 0; i < n; i++){
     const s = document.createElement("span");
-    s.textContent = t.e[Math.floor(Math.random() * t.e.length)];
+    s.textContent = liste[Math.floor(Math.random() * liste.length)];
     s.style.left = (Math.random() * 100) + "%";
     s.style.setProperty("--t", Math.round((grand ? 30 : 26) + Math.random() * 22) + "px");
     s.style.setProperty("--d", (2.2 + Math.random() * 1.8).toFixed(2) + "s");
@@ -1622,6 +1637,33 @@ function fete(grand){
     setTimeout(() => s.remove(), 5500);
   }
 }
+// Paliers du nombre de clients : fenêtre de fête la veille (99 → « plus qu'un client ») et le jour du palier (100)
+// Une seule fois par palier et par appareil (souvenir dans le navigateur de la tablette).
+const PALIERS_CLIENTS = [50, 100, 150, 200, 300, 400, 500, 750, 1000, 1500, 2000];
+async function verifierPalierClients(){
+  if (!SESSION || !SESSION.commerce) return;
+  if (!$("roueFond").classList.contains("cache")) return setTimeout(verifierPalierClients, 2000);   // la roue d'abord
+  let n; try{ n = (await API.liste()).length; }catch(e){ return; }
+  const p = PALIERS_CLIENTS.find(x => n === x - 1 || n === x);
+  if (!p) return;
+  const veille = n === p - 1, cle = `reviens_palier_${SESSION.commerce.id}_${p}_${veille ? "veille" : "atteint"}`;
+  try{ if (localStorage.getItem(cle)) return; localStorage.setItem(cle, "1"); }catch(e){}
+  montrerPalier(p, veille);
+}
+function montrerPalier(p, veille){
+  const t = leTheme(themeActif), em = t.e.slice(0, 3);
+  const pluie = [...t.e, ...t.e, "⭐", "🌟", "✨", "⭐", "🌟"];
+  $("palierEmo").textContent = `⭐${em.join("")}⭐`;
+  $("palierTitre").textContent = veille ? `Plus qu'un client pour le palier des ${p} clients !` : `${p} clients ! 🎉`;
+  $("palierTexte").textContent = veille ? `Bravo, vous êtes les meilleurs ! ${em[0]}⭐` : `Palier des ${p} clients atteint. Bravo, vous êtes les meilleurs ! ${em[0]}⭐`;
+  $("palierFond").classList.remove("cache");
+  fete(true, pluie);
+  setTimeout(() => fete(true, pluie), 1300);
+  setTimeout(() => fete(true, pluie), 2600);
+}
+$("bPalierOk").onclick = ()=>{ $("palierFond").classList.add("cache"); fete(false, ["⭐","🌟","✨"]); $("tel").focus(); };
+$("palierFond").onclick = e=>{ if (e.target === $("palierFond")) $("bPalierOk").click(); };
+
 // Choix du thème dans les réglages (aperçu immédiat)
 let themeChoisi = "defaut";
 function afficherThemes(){
@@ -1694,6 +1736,7 @@ function creer(gros){
       fete(c.points >= SESSION.commerce.seuil);
       await finPassage(c, `Carte créée, +${c.points} points`);
       verifierRoue(c);
+      setTimeout(verifierPalierClients, 1500);
     }catch(e){ message("msgAccueil", e.message, "err"); }
   });
 }
