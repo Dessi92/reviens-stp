@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="47">
+<meta name="app-version" content="48">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -199,6 +199,10 @@
   @media (prefers-reduced-motion:reduce){#fete span{bottom:auto;top:var(--y,50%);animation:envolDoux 2.6s ease var(--w) forwards}}
   /* Palier de clients (99 → 100…) : sous la pluie d'émojis pour qu'elle passe devant */
   #palierFond{z-index:49}
+  .redJour{border:1px solid var(--bord);border-radius:12px;padding:8px 10px;margin:6px 0 10px;background:#fff}
+  .redJour summary{cursor:pointer;font-size:17px;font-weight:600}
+  .redJour .lr{display:flex;gap:10px;padding:5px 0;border-top:1px solid var(--bord);font-size:16px}
+  .redJour .lr span:first-child{font-variant-numeric:tabular-nums;color:var(--doux);min-width:46px}
   #palierFond .boite{border:4px solid var(--accent)}
   #palierEmo{font-size:44px;letter-spacing:4px;margin:2px 0 6px}
   #palierTitre{font-size:30px!important;line-height:1.15}
@@ -528,6 +532,11 @@
 <main id="ecranListe" class="cache">
   <div class="carte">
     <h2>Mes clients (<span id="nbClients">0</span>)</h2>
+    <details id="redJour" class="redJour">
+      <summary>🧾 Réductions du jour : <b id="redJourNb">…</b></summary>
+      <div id="redJourListe"></div>
+      <p class="note" style="margin:6px 0 0">Le soir, comparez avec les remises de votre caisse : même nombre = tout est bon. La réduction se fait toujours dans la caisse (touche « Remise »), l'appli ne fait que la noter.</p>
+    </details>
     <div class="alerteBons cache" id="alerteBons"></div>
     <input id="filtre" type="text" placeholder="Chercher un nom ou un numéro">
     <p class="note" style="margin:6px 0 0">Touchez un titre de colonne pour classer.</p>
@@ -772,6 +781,7 @@ const dateCourte = iso => { if (!iso) return "—"; const d = new Date(iso); ret
 // Bons de la roue : valables jusqu'au dernier jour du mois où ils ont été gagnés
 const debutMois = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); };
 const finMoisFr = iso => { const d = new Date(iso); return new Date(d.getFullYear(), d.getMonth()+1, 0).toLocaleDateString("fr-FR", {day:"numeric", month:"long"}); };
+const debutJour = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 const estBon = t => !!(t && t.tire_le && !t.utilise_le && t.lot && !["points","perdu"].includes(t.lot.type) && new Date(t.tire_le) >= debutMois());
 const echapper = s => String(s ?? "").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const pluriel = (n, mot) => n + " " + mot + (n>1 ? "s" : "");
@@ -859,6 +869,14 @@ function apiSupabase(sb){
     async roueTirer(id){ return v(await sb.rpc("roue_tirer", {p_tirage:id})); },
     async bonsActifs(){ return (v(await sb.from("roue_tirages").select("id,client_id,lot,tire_le,utilise_le").is("utilise_le", null).gte("tire_le", debutMois().toISOString()).limit(5000)) || []).filter(estBon); },
     async bonUtilise(id){ return v(await sb.rpc("roue_bon_utilise", {p_tirage:id})); },
+    // Réductions et bons de la roue utilisés depuis minuit (pour comparer avec la caisse le soir)
+    async reductionsDuJour(){
+      const d = debutJour().toISOString();
+      const [r, b] = await Promise.all([
+        sb.from("mouvements").select("client_id,remise,le").eq("type", "reduction").gte("le", d).order("le").limit(500),
+        sb.from("roue_tirages").select("client_id,lot,utilise_le").gte("utilise_le", d).order("utilise_le").limit(500)]);
+      return {reductions: v(r) || [], bons: v(b) || []};
+    },
     async rechargerCommerce(){ return v(await sb.from("commerces").select("*").eq("id", SESSION.commerce.id).single()); },
     // Support
     async supEnvoyer(texte){ v(await sb.from("messages_support").insert({texte})); },
@@ -1031,6 +1049,11 @@ function apiDemo(){
       sauver(); return copie(t.lot);
     },
     async bonsActifs(){ return copie((D.tirages||[]).filter(estBon)); },
+    async reductionsDuJour(){
+      const d = debutJour();
+      return {reductions: copie(D.mouvements.filter(m=>m.type==="reduction" && new Date(m.le) >= d)),
+              bons: copie((D.tirages||[]).filter(t=>t.utilise_le && new Date(t.utilise_le) >= d))};
+    },
     async bonUtilise(id){
       const t = (D.tirages||[]).find(t=>t.id===id);
       if (!estBon(t)) throw new Error("Ce bon n'est plus valable");
@@ -1930,6 +1953,21 @@ async function afficherListe(){
   BONS = {};
   try{ for (const t of await API.bonsActifs()) (BONS[t.client_id] = BONS[t.client_id] || []).push(t); }catch(e){}
   filtrerListe();
+  afficherReductionsJour();
+}
+async function afficherReductionsJour(){
+  let r;
+  try{ r = await API.reductionsDuJour(); }
+  catch(e){ $("redJourNb").textContent = "?"; $("redJourListe").innerHTML = `<p class="note">${echapper(e.message)}</p>`; return; }
+  const nom = id => { const c = LISTE.find(x=>x.id===id); return c ? (c.nom || joli(c.telephone)) : "Client"; };
+  const heure = d => new Date(d).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"});
+  const lignes = [
+    ...r.reductions.map(m => ({le:m.le, txt:`${echapper(nom(m.client_id))} : <b>−${m.remise} %</b>`})),
+    ...r.bons.map(t => ({le:t.utilise_le, txt:`${echapper(nom(t.client_id))} : <b>${echapper(nomLot(t.lot))}</b> (roue)`}))
+  ].sort((a,b)=>new Date(a.le) - new Date(b.le));
+  $("redJourNb").textContent = lignes.length;
+  $("redJourListe").innerHTML = lignes.length ? lignes.map(l=>`<div class="lr"><span>${heure(l.le)}</span><span>${l.txt}</span></div>`).join("")
+    : `<p class="note" style="margin:6px 0 0">Aucune réduction aujourd'hui pour l'instant.</p>`;
 }
 let BONS = {};
 function filtrerListe(){
