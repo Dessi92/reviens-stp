@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="46">
+<meta name="app-version" content="47">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -194,7 +194,9 @@
     25%{transform:translate(calc(var(--x) * -.4),-30vh) rotate(calc(var(--r) * .3))}
     85%{opacity:1}
     100%{transform:translate(var(--x),-118vh) rotate(var(--r));opacity:0}}
-  @media (prefers-reduced-motion:reduce){#fete{display:none}}
+  /* iPad réglé sur « Réduire les animations » : les émojis apparaissent sur place puis s'effacent, sans s'envoler */
+  @keyframes envolDoux{0%{opacity:0;transform:scale(.6)}20%{opacity:1;transform:scale(1)}75%{opacity:1}100%{opacity:0}}
+  @media (prefers-reduced-motion:reduce){#fete span{bottom:auto;top:var(--y,50%);animation:envolDoux 2.6s ease var(--w) forwards}}
   /* Palier de clients (99 → 100…) : sous la pluie d'émojis pour qu'elle passe devant */
   #palierFond{z-index:49}
   #palierFond .boite{border:4px solid var(--accent)}
@@ -1629,6 +1631,7 @@ function fete(grand, emojis){
     const s = document.createElement("span");
     s.textContent = liste[Math.floor(Math.random() * liste.length)];
     s.style.left = (Math.random() * 100) + "%";
+    s.style.setProperty("--y", Math.round(8 + Math.random() * 80) + "%");
     s.style.setProperty("--t", Math.round((grand ? 30 : 26) + Math.random() * 22) + "px");
     s.style.setProperty("--d", (2.2 + Math.random() * 1.8).toFixed(2) + "s");
     s.style.setProperty("--w", (Math.random() * (grand ? 1.2 : .5)).toFixed(2) + "s");
