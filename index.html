@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="45">
+<meta name="app-version" content="46">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -411,6 +411,7 @@
     <h2 id="palierTitre"></h2>
     <p id="palierTexte"></p>
     <button class="btn principal" id="bPalierOk" style="width:100%">Merci ! 🎉</button>
+    <p class="note" style="margin:8px 0 0">Se ferme tout seul dans quelques secondes</p>
   </div>
 </div>
 <div id="mdpGFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="mdpGTitre">
@@ -1660,8 +1661,17 @@ function montrerPalier(p, veille){
   fete(true, pluie);
   setTimeout(() => fete(true, pluie), 1300);
   setTimeout(() => fete(true, pluie), 2600);
+  clearTimeout(palierMinuteur);
+  palierMinuteur = setTimeout(fermerPalier, 7000);   // juste un clin d'œil : se ferme tout seul après 7 s
 }
-$("bPalierOk").onclick = ()=>{ $("palierFond").classList.add("cache"); fete(false, ["⭐","🌟","✨"]); $("tel").focus(); };
+let palierMinuteur = null;
+function fermerPalier(){
+  clearTimeout(palierMinuteur);
+  if ($("palierFond").classList.contains("cache")) return;
+  $("palierFond").classList.add("cache");
+  if (document.activeElement === $("bPalierOk") || document.activeElement === document.body) $("tel").focus();
+}
+$("bPalierOk").onclick = ()=>{ fermerPalier(); fete(false, ["⭐","🌟","✨"]); };
 $("palierFond").onclick = e=>{ if (e.target === $("palierFond")) $("bPalierOk").click(); };
 
 // Choix du thème dans les réglages (aperçu immédiat)
