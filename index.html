@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="48">
+<meta name="app-version" content="49">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -408,6 +408,18 @@
     <div class="ligne">
       <button class="btn gris" id="bSmsAnnuler">Annuler</button>
       <button class="btn principal" id="bSmsValider">Envoyer</button>
+    </div>
+  </div>
+</div>
+<div id="appareilFond" class="fond cache" role="alertdialog" aria-modal="true" aria-labelledby="appareilTitre" style="z-index:70">
+  <div class="boite">
+    <div style="font-size:44px">📱</div>
+    <h2 id="appareilTitre"></h2>
+    <p id="appareilTexte" style="font-size:17px"></p>
+    <div id="msgAppareil"></div>
+    <div class="ligne">
+      <button class="btn gris" id="bAppareilQuitter">Se déconnecter</button>
+      <button class="btn principal" id="bAppareilIci">Utiliser cet appareil</button>
     </div>
   </div>
 </div>
@@ -861,6 +873,15 @@ function apiSupabase(sb){
     async smsRecharger(){ throw new Error("Le paiement par carte arrive très bientôt. En attendant, écrivez au support 💬 pour recharger votre porte-monnaie SMS."); },
     async adminParrainValider(id, ok){ v(await sb.rpc("admin_parrainage_valider", {p_filleul:id, p_valide:!!ok})); },
     async stats(){ return v(await sb.rpc("stats_commerces")); },
+    // Un appareil par compte (si la base n'a pas encore ces fonctions, on laisse passer)
+    async appareilEntrer(a){
+      const r = await sb.rpc("appareil_entrer", {p_appareil:a});
+      if (r.error){ if (r.error.code === "PGRST202") return {ok:true}; throw traduire(r.error); }
+      return r.data;
+    },
+    async appareilVerifier(a){ const r = await sb.rpc("appareil_verifier", {p_appareil:a}); if (r.error) return true; return r.data !== false; },
+    async adminAppareils(){ return v(await sb.rpc("admin_appareils")) || []; },
+    async adminAppareilsRegler(id, liberer, max){ v(await sb.rpc("admin_appareils_regler", {p_id:id, p_liberer:!!liberer, p_max:(max == null ? null : max)})); },
     async viderMesClients(){ v(await sb.from("clients").delete().eq("commerce_id", SESSION.commerce.id)); },
     async adminVider(id){ return v(await sb.rpc("admin_vider_commerce", {p_id:id})); },
     async adminSupprimer(id){ v(await sb.rpc("admin_supprimer_commerce", {p_id:id})); },
@@ -1120,6 +1141,10 @@ function apiDemo(){
     async adminSms(id, actif){ if (id !== "demo") throw new Error("Commerce d'exemple"); D.commerce.sms_active = actif; sauver(); },
     async adminSmsSolde(id, m){ if (id !== "demo") throw new Error("Commerce d'exemple"); D.commerce.sms_solde = Math.max(0, Math.round(((D.commerce.sms_solde || 0) + m) * 100) / 100); (D.sms_recharges = D.sms_recharges || []).push({montant:m, mode:"manuel", cree_le:new Date().toISOString()}); sauver(); return D.commerce.sms_solde; },
     async adminParrainValider(id, ok){ D.parValide = D.parValide || {}; D.parValide[id] = ok ? new Date().toISOString() : null; sauver(); },
+    async appareilEntrer(){ return {ok:true}; },
+    async appareilVerifier(){ return true; },
+    async adminAppareils(){ return [{commerce_id:"demo", nb:1, max:1, changements_24h:0, refus_24h:0}]; },
+    async adminAppareilsRegler(){ throw new Error("Commerce d'exemple : rien à régler en démo"); },
     async stats(){
       const il30 = Date.now() - 30*864e5;
       const moi = {id:"demo", roue_active:!!D.commerce.roue_active, commerce:D.commerce.nom, email:D.email, inscrit_le:D.commerce.cree_le,
@@ -1536,6 +1561,53 @@ $("bOubli").onclick = async ()=>{
   catch(e){ message("msgConnexion", e.message, "err"); }
 };
 
+// ---------- Un appareil par compte ----------
+// Chaque appareil a un numéro tiré au hasard, gardé dans son navigateur. Le compte n'accepte qu'un appareil à la fois
+// (ou plus si le gérant l'autorise) ; le commerçant peut changer d'appareil 5 fois par 24 h, au-delà c'est refusé
+// et le gérant est prévenu (notification). Les comptes gérants n'ont pas de limite.
+function numeroAppareil(){
+  let a = null;
+  try{ a = localStorage.getItem("reviens_appareil"); }catch(e){}
+  if (!a || a.length < 8){
+    a = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+      : Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    try{ localStorage.setItem("reviens_appareil", a); }catch(e){}
+  }
+  return a;
+}
+const APPAREIL = numeroAppareil();
+let minuteurAppareil = null;
+function montrerAppareil(cas){
+  clearInterval(minuteurAppareil);
+  $("appareilTitre").textContent = cas === "limite" ? "Compte déjà utilisé ailleurs" : "Compte ouvert sur un autre appareil";
+  $("appareilTexte").innerHTML = cas === "limite"
+    ? "Ce compte est déjà utilisé sur un autre appareil, et il a changé d'appareil trop souvent aujourd'hui.<br><br>Un abonnement fonctionne sur <b>un seul appareil à la fois</b>. Pour en ajouter un, contactez Reviens STP."
+    : "Ce compte vient d'être ouvert sur un autre appareil. Un abonnement fonctionne sur <b>un seul appareil à la fois</b>.<br><br>Pour continuer ici, touchez « Utiliser cet appareil » : l'autre appareil sera déconnecté.";
+  $("bAppareilIci").classList.toggle("cache", cas === "limite");
+  message("msgAppareil", "");
+  $("appareilFond").classList.remove("cache");
+}
+async function appareilAutorise(){
+  let r;
+  try{ r = await API.appareilEntrer(APPAREIL); }
+  catch(e){ return true; }                       // souci de réseau : on ne bloque jamais la caisse
+  if (!r || r.ok === false){ montrerAppareil("limite"); return false; }
+  $("appareilFond").classList.add("cache");
+  if (r.remplace) alerte("📱 Ce compte est maintenant utilisé sur cet appareil. L'ancien appareil a été déconnecté.");
+  clearInterval(minuteurAppareil);
+  minuteurAppareil = setInterval(verifierAppareil, 60000);
+  return true;
+}
+async function verifierAppareil(){
+  if (DEMO || ADMIN || !SESSION || !$("appareilFond").classList.contains("cache")) return;
+  let ok = true;
+  try{ ok = await API.appareilVerifier(APPAREIL); }catch(e){}
+  if (!ok) montrerAppareil("autre");
+}
+document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState === "visible") verifierAppareil(); });
+$("bAppareilIci").onclick = ()=> occupe($("bAppareilIci"), async ()=>{ if (await appareilAutorise()) entrer(); });
+$("bAppareilQuitter").onclick = ()=>{ $("appareilFond").classList.add("cache"); clearInterval(minuteurAppareil); $("bDeconnexion").click(); };
+
 async function entrer(){
   $("ecranConnexion").classList.add("cache");
   $("app").classList.remove("cache");
@@ -1544,6 +1616,7 @@ async function entrer(){
   try{ admin = await API.estAdmin(); }catch(e){}
   $("bGerant").classList.toggle("cache", !admin);
   ADMIN = admin; dernierNonLus = null;
+  if (!DEMO && !admin && !await appareilAutorise()) return;
   verifierNotifs();
   if (!DEMO && !admin && !SESSION.commerce.telephone) setTimeout(demanderTelCommerce, 600);   // comptes créés avant le 10/11/2026
   if (!SESSION.commerce.programme_choisi) return montrer("ecranReglages");   // premier passage : choisir son programme
@@ -2260,10 +2333,10 @@ async function afficherGerant(){
     [somme("nb_clients"), "clients au total"], [somme("passages_30j"), "passages ces 30 jours"],
   ].map(([n,t])=>`<div class="chiffre"><b>${n}</b><span>${t}</span></div>`).join("");
   $("gListe").innerHTML = s.map(x=>`<tr>
-      <td><b>${echapper(x.commerce)}</b><br><span class="note">${echapper(x.email)}</span><br><span class="note" data-tel="${x.id}">…</span><br><span class="note" data-smsinfo="${x.id}"></span></td>
+      <td><b>${echapper(x.commerce)}</b><br><span class="note">${echapper(x.email)}</span><br><span class="note" data-tel="${x.id}">…</span><br><span class="note" data-smsinfo="${x.id}"></span><br><span class="note" data-appinfo="${x.id}"></span></td>
       <td class="n">${x.nb_clients}</td><td class="n">${x.nb_accord_sms}</td><td class="n">${x.passages_30j}</td>
       <td class="n">${x.nb_reductions}</td><td class="n">${jourFr(x.derniere_activite)}</td><td class="n">${jourFr(x.inscrit_le)}</td>
-      <td><button class="petitbtn roue" data-roue="${x.id}">${x.roue_active ? "🎡 Couper la roue" : "🎡 Activer la roue"}</button><button class="petitbtn" data-sms="${x.id}">📱 SMS…</button><button class="petitbtn vider" data-vider="${x.id}">Vider</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer</button></td></tr>`).join("")
+      <td><button class="petitbtn roue" data-roue="${x.id}">${x.roue_active ? "🎡 Couper la roue" : "🎡 Activer la roue"}</button><button class="petitbtn" data-sms="${x.id}">📱 SMS…</button><button class="petitbtn" data-app="${x.id}">📟 Appareils…</button><button class="petitbtn vider" data-vider="${x.id}">Vider</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer</button></td></tr>`).join("")
     || `<tr><td colspan="8" class="note">Aucun commerce inscrit pour l'instant.</td></tr>`;
   for (const b of $("gListe").querySelectorAll("button")) b.onclick = ()=> actionCommerce(b);
   afficherParrainagesGerant();
@@ -2279,7 +2352,16 @@ async function afficherGerant(){
     const x = SMS_ADMIN[sp.dataset.smsinfo];
     sp.textContent = x ? `📱 SMS ${x.sms_active ? "actifs" : "coupés"} · ${x.sms_mois} ce mois · porte-monnaie ${eurosSms(Number(x.sms_solde) || 0)}` : "";
   }
+  APP_ADMIN = {};
+  try{ for (const c of await API.adminAppareils()) APP_ADMIN[c.commerce_id] = c; }catch(e){}
+  for (const sp of $("gListe").querySelectorAll("[data-appinfo]")){
+    const x = APP_ADMIN[sp.dataset.appinfo];
+    if (!x){ sp.textContent = ""; continue; }
+    sp.innerHTML = `📟 Appareils ${x.nb} / ${x.max} · ${x.changements_24h} changement${x.changements_24h > 1 ? "s" : ""} en 24 h`
+      + (x.refus_24h ? ` · <b style="color:#b3261e">⚠️ ${x.refus_24h} refus</b>` : "");
+  }
 }
+let APP_ADMIN = {};
 async function afficherParrainagesGerant(){
   const t = $("gParrains");
   let l;
@@ -2501,10 +2583,23 @@ function demanderMdp(texteHtml){
 }
 async function actionCommerce(b){
   const s = DERNIERES_STATS || [];
-  const id = b.dataset.vider || b.dataset.suppr || b.dataset.roue || b.dataset.sms, x = s.find(c=>String(c.id)===String(id));
+  const id = b.dataset.vider || b.dataset.suppr || b.dataset.roue || b.dataset.sms || b.dataset.app, x = s.find(c=>String(c.id)===String(id));
   if (!x) return;
   try{
-    if (b.dataset.sms){
+    if (b.dataset.app){
+      const a = APP_ADMIN[x.id] || {nb:0, max:1, changements_24h:0, refus_24h:0};
+      const r = prompt(`Appareils de « ${x.commerce} » : ${a.nb} utilisé${a.nb > 1 ? "s" : ""} sur ${a.max} autorisé${a.max > 1 ? "s" : ""}, ${a.changements_24h} changement(s) et ${a.refus_24h} refus ces 24 h.\n\nTapez :\n  L pour libérer (le commerçant pourra se reconnecter sur l'appareil de son choix, compteur remis à zéro)\n  un nombre de 1 à 20 = appareils autorisés en même temps (ex. 2 pour un 2e magasin)`);
+      if (r === null || !r.trim()) return;
+      if (r.trim().toUpperCase() === "L"){
+        await API.adminAppareilsRegler(x.id, true, null);
+        alerte(`📟 Appareils libérés pour ${x.commerce}`);
+      } else {
+        const n = Number(r.trim());
+        if (!Number.isInteger(n) || n < 1 || n > 20) return alert("Rien n'a changé : tapez L ou un nombre de 1 à 20.");
+        await API.adminAppareilsRegler(x.id, false, n);
+        alerte(`📟 ${x.commerce} : ${n} appareil${n > 1 ? "s" : ""} autorisé${n > 1 ? "s" : ""} en même temps`);
+      }
+    } else if (b.dataset.sms){
       const etat = SMS_ADMIN[x.id] || {sms_active:false, sms_solde:0};
       const r = prompt(`SMS de « ${x.commerce} » : ${etat.sms_active ? "actifs" : "coupés"}, porte-monnaie ${eurosSms(Number(etat.sms_solde) || 0)}.\n\nTapez :\n  A pour ${etat.sms_active ? "couper" : "activer"} les SMS\n  un montant en euros à ajouter (payé en liquide, geste commercial), ex. 20\n  un montant négatif pour en retirer, ex. -5`);
       if (r === null || !r.trim()) return;
