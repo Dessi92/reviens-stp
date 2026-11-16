@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="51">
+<meta name="app-version" content="52">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -297,6 +297,33 @@
   .logo h1{font-family:var(--police)}
   .logo h1{font-size:24px;margin:10px 0 0}
   .logo p{color:var(--doux);margin:4px 0 0}
+
+  /* Prospection (espace gérant, v52) */
+  input[type=date],select.champ{width:100%;font-size:17px;padding:10px 12px;border:2px solid var(--bord);border-radius:12px;background:#fff;color:var(--texte);font-family:inherit}
+  .tunnel{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:6px 0 4px}
+  .tunnel div{background:var(--fond2,#efe6da);border-radius:12px;padding:8px 4px;text-align:center;position:relative}
+  .tunnel b{display:block;font-size:24px;line-height:1.1}
+  .tunnel span{display:block;font-size:12px;color:var(--doux);line-height:1.2}
+  .tunnel i{display:block;font-style:normal;font-size:12px;font-weight:700;color:var(--accent);margin-top:2px}
+  .pRel{border:2px solid #e0a100;background:#fff8e0;border-radius:12px;padding:10px 12px;margin:10px 0}
+  .pRel h3{margin:0 0 6px;font-size:16px}
+  .pRel button{all:unset;display:block;cursor:pointer;padding:5px 0;border-top:1px solid #f0dca0;font-size:15px}
+  .pRel button:first-of-type{border-top:0}
+  .pFiltres{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 8px}
+  .pFiltres button{border:1px solid var(--bord);background:var(--carte);color:var(--texte);border-radius:20px;padding:6px 12px;font-size:14px;font-weight:600;cursor:pointer}
+  .pFiltres button.actif{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .prosp{border:1px solid var(--bord);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+  .prosp .pHaut{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .prosp .note{margin-top:4px}
+  .pEtape{font-size:12px;font-weight:700;border-radius:20px;padding:3px 9px;white-space:nowrap;background:#e8e2da;color:#4a3b2e}
+  .pEtape.e1{background:#e3eefc;color:#1f4f8f}.pEtape.e2{background:#fff1cc;color:#7a5300}.pEtape.e3{background:#dff2df;color:#1e6b2a}
+  .pEtape.e4{background:#2e7d32;color:#fff}.pEtape.e5{background:#eee;color:#888}
+  .pBtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .pBtns .petitbtn{display:inline-block;width:auto;margin:0;padding:8px 12px;font-size:14px}
+  .pRapides{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .pRapides button{border:1px solid var(--bord);background:var(--carte);color:var(--texte);border-radius:20px;padding:6px 10px;font-size:13px;cursor:pointer}
+  #prospFond .boite{text-align:left}
+  @media (max-width:500px){ .tunnel{gap:4px} .tunnel b{font-size:20px} .tunnel span{font-size:11px} }
 </style>
 </head>
 <body>
@@ -432,6 +459,49 @@
     <p id="palierTexte"></p>
     <button class="btn principal" id="bPalierOk" style="width:100%">Merci ! 🎉</button>
     <p class="note" style="margin:8px 0 0">Se ferme tout seul dans quelques secondes</p>
+  </div>
+</div>
+<div id="prospFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="prospTitre">
+  <div class="boite">
+    <h2 id="prospTitre" style="margin-top:4px">Nouveau commerce rencontré</h2>
+    <label for="pNom">Nom du commerce</label>
+    <input id="pNom" type="text" maxlength="120" placeholder="ex. Boulangerie du marché">
+    <label for="pContact">Contact (prénom, téléphone…)</label>
+    <input id="pContact" type="text" maxlength="200" placeholder="ex. Sophie, 06…">
+    <label for="pSource">D'où vient le contact ?</label>
+    <select id="pSource" class="champ">
+      <option>porte-à-porte</option><option>recommandation</option><option>ami / proche</option>
+      <option>réseaux sociaux</option><option>il m'a contacté</option><option>autre</option>
+    </select>
+    <div id="pRecoZone"><label for="pReco">Recommandé par</label>
+    <input id="pReco" type="text" maxlength="120" placeholder="ex. Maison Louise"></div>
+    <label for="pEtapeSel">Où il en est</label>
+    <select id="pEtapeSel" class="champ">
+      <option>rencontré</option><option>démo faite</option><option>validé</option><option>signé</option><option>installé</option><option>arrêté</option>
+    </select>
+    <div id="pRaisonZone"><label for="pRaison">Pourquoi c'est arrêté</label>
+    <select id="pRaison" class="champ">
+      <option>trop cher</option><option>pas le temps</option><option>a déjà un système</option><option>pas convaincu</option>
+      <option>ne répond plus</option><option>commerce fermé</option><option>autre</option>
+    </select></div>
+    <label for="pRencontre">Rencontré le</label>
+    <input id="pRencontre" type="date">
+    <label for="pRelance">Prochaine relance</label>
+    <input id="pRelance" type="date">
+    <div class="pRapides" id="pRapides">
+      <button type="button" data-j="1">Demain</button><button type="button" data-j="3">Dans 3 jours</button>
+      <button type="button" data-j="7">Dans 1 semaine</button><button type="button" data-j="14">Dans 2 semaines</button><button type="button" data-j="">Pas de relance</button>
+    </div>
+    <label for="pPrix">Prix prévu HT / mois (€)</label>
+    <input id="pPrix" type="number" min="0" max="999" step="1" placeholder="35 la 1re année, puis 49">
+    <label for="pNotes">Notes</label>
+    <textarea id="pNotes" maxlength="2000" style="min-height:80px" placeholder="ex. veut voir la roue, rappeler après 15 h"></textarea>
+    <div id="msgProsp"></div>
+    <div class="ligne">
+      <button class="btn gris" id="bProspAnnuler">Annuler</button>
+      <button class="btn principal" id="bProspOk">Enregistrer</button>
+    </div>
+    <button class="btn gris cache" id="bProspSuppr" style="font-size:15px;padding:10px">🗑 Supprimer cette fiche</button>
   </div>
 </div>
 <div id="mdpGFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="mdpGTitre">
@@ -740,6 +810,16 @@
 </main>
 
 <main id="ecranGerant" class="cache large">
+  <div class="carte" id="gProspection">
+    <h2>🎯 Prospection</h2>
+    <div class="tunnel" id="pTunnel"></div>
+    <p class="note" style="margin-top:2px">Nombre de commerces arrivés à chaque étape, et part de ceux rencontrés.</p>
+    <div id="pRelances"></div>
+    <button class="btn principal" id="bProspNouveau">＋ Nouveau commerce rencontré</button>
+    <div class="pFiltres" id="pFiltres"></div>
+    <div id="pListe"></div>
+    <p class="note">Visible par vous seul. « Signé » = contrat de la période d'essai vraiment signé. Le suivi sur l'ordinateur reprend ces fiches tout seul.</p>
+  </div>
   <details class="carte outilsGerant">
     <summary>🧰 Outils du gérant</summary>
     <div class="outilsCorps">
@@ -911,6 +991,10 @@ function apiSupabase(sb){
     async adminSupLu(id){ v(await sb.rpc("support_marquer_lu", {p_id:id})); },
     async adminSupRepondre(id, texte){ v(await sb.rpc("support_repondre", {p_id:id, p_texte:texte})); },
     async adminSupToutSupprimer(){ return v(await sb.rpc("admin_support_tout_supprimer")); },
+    async prospects(){ return v(await sb.from("prospects").select("*").order("modifie_le", {ascending:false}).limit(1000)) || []; },
+    async prospectAjouter(champs){ return v(await sb.from("prospects").insert(champs).select().single()); },
+    async prospectMaj(id, champs){ return v(await sb.from("prospects").update(champs).eq("id", id).select().single()); },
+    async prospectSupprimer(id){ v(await sb.from("prospects").delete().eq("id", id)); },
   };
 }
 
@@ -1168,6 +1252,21 @@ function apiDemo(){
     async adminSupNonLus(){ return (D.support || []).filter(m=>!m.lu).length; },
     async adminSupLu(id){ const m = (D.support||[]).find(m=>m.id===id); if (m){ m.lu = true; sauver(); } },
     async adminSupToutSupprimer(){ const n = (D.support || []).length; D.support = []; sauver(); return n; },
+    async prospects(){
+      if (!D.prospects){
+        const j = n => { const d = new Date(Date.now()-n*864e5); return d.toISOString().slice(0,10); };
+        D.prospects = [
+          {id:1, nom:"Boulangerie (exemple)", contact:"Sophie", source:"porte-à-porte", etape:"démo faite", rencontre_le:j(6), demo_le:j(2), prochaine_relance:j(0), prix_mois:35, notes:"veut voir la roue"},
+          {id:2, nom:"Fleuriste (exemple)", contact:null, source:"recommandation", recommande_par:"Boulangerie (exemple)", etape:"rencontré", rencontre_le:j(1), prochaine_relance:j(-2)},
+          {id:3, nom:"Pizzeria (exemple)", contact:"Marco", source:"ami / proche", etape:"installé", rencontre_le:j(30), demo_le:j(28), valide_le:j(25), signe_le:j(22), installe_le:j(20), prix_mois:35},
+          {id:4, nom:"Caviste (exemple)", source:"porte-à-porte", etape:"arrêté", rencontre_le:j(15), arrete_le:j(10), raison_arret:"trop cher"}];
+        sauver();
+      }
+      return copie(D.prospects);
+    },
+    async prospectAjouter(c){ D.prospects = D.prospects || []; const p = {...c, id:Date.now()}; D.prospects.unshift(p); sauver(); return copie(p); },
+    async prospectMaj(id, c){ const p = (D.prospects || []).find(x=>x.id===id); if (p){ Object.assign(p, c); sauver(); } return copie(p); },
+    async prospectSupprimer(id){ D.prospects = (D.prospects || []).filter(x=>x.id!==id); sauver(); },
     async adminSupRepondre(id, texte){ const m = (D.support||[]).find(m=>m.id===id); if (m){ Object.assign(m, {reponse:texte, repondu_le:new Date().toISOString(), lu:true, reponse_vue:false}); sauver(); } },
   };
   return api;
@@ -2324,6 +2423,7 @@ $("bDeconnexion").onclick = async ()=>{
 let DERNIERES_STATS = [];
 async function afficherGerant(){
   afficherSupportGerant();
+  afficherProspection();
   $("gListe").innerHTML = `<tr><td colspan="8" class="note">Chargement…</td></tr>`;
   let s;
   try{ s = await API.stats(); DERNIERES_STATS = s; }
@@ -2381,6 +2481,122 @@ async function afficherParrainagesGerant(){
   };
 }
 
+
+// ---------- Prospection (tunnel de vente, gérant seulement) ----------
+const P_ETAPES = ["rencontré", "démo faite", "validé", "signé", "installé"];
+const P_DATE = {"rencontré":"rencontre_le", "démo faite":"demo_le", "validé":"valide_le", "signé":"signe_le", "installé":"installe_le", "arrêté":"arrete_le"};
+const P_SUIVANT = {"rencontré":"✓ Démo faite", "démo faite":"✓ Validé", "validé":"✓ Signé", "signé":"✓ Installé"};
+let PROSPECTS = [], P_FILTRE = "cours", P_EDITE = null;
+const isoJour = d => d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+const pAujourdhui = () => isoJour(new Date());
+const pDans = n => { const d = new Date(); d.setDate(d.getDate() + n); return isoJour(d); };
+const pJour = s => s ? new Date(s + "T12:00:00").toLocaleDateString("fr-FR", {day:"numeric", month:"short"}) : "";
+function pAtteint(p, i){
+  if (i === 0 || p[P_DATE[P_ETAPES[i]]]) return true;
+  return p.etape !== "arrêté" && P_ETAPES.indexOf(p.etape) >= i;
+}
+async function afficherProspection(){
+  try{ PROSPECTS = await API.prospects(); }
+  catch(e){ $("pListe").innerHTML = `<p class="note">${echapper(e.message)}</p>`; return; }
+  const n = PROSPECTS.length;
+  $("pTunnel").innerHTML = P_ETAPES.map((et, i)=>{
+    const k = PROSPECTS.filter(p=>pAtteint(p, i)).length;
+    return `<div><b>${k}</b><span>${i === 0 ? "rencontrés" : et}</span>${i && n ? `<i>${Math.round(100*k/n)} %</i>` : ""}</div>`;
+  }).join("");
+  const auj = pAujourdhui();
+  const rel = PROSPECTS.filter(p=>p.prochaine_relance && p.prochaine_relance <= auj && !["installé","arrêté"].includes(p.etape))
+                       .sort((a,b)=>a.prochaine_relance < b.prochaine_relance ? -1 : 1);
+  $("pRelances").innerHTML = rel.length ? `<div class="pRel"><h3>📞 À relancer aujourd'hui (${rel.length})</h3>` +
+    rel.map(p=>`<button data-pid="${p.id}"><b>${echapper(p.nom)}</b> · ${echapper(p.etape)}${p.contact ? " · " + echapper(p.contact) : ""}${p.prochaine_relance < auj ? ` · <span style="color:#b3261e">prévu le ${pJour(p.prochaine_relance)}</span>` : ""}</button>`).join("") + `</div>` : "";
+  for (const b of $("pRelances").querySelectorAll("button")) b.onclick = ()=> ouvrirProspect(PROSPECTS.find(p=>p.id == b.dataset.pid));
+  const filtres = {cours:["En cours", p=>!["installé","arrêté"].includes(p.etape)], inst:["Installés", p=>p.etape === "installé"],
+                   arr:["Arrêtés", p=>p.etape === "arrêté"], tous:["Tous", ()=>true]};
+  $("pFiltres").innerHTML = Object.entries(filtres).map(([k,[t,f]])=>`<button data-f="${k}" class="${k === P_FILTRE ? "actif" : ""}">${t} (${PROSPECTS.filter(f).length})</button>`).join("");
+  for (const b of $("pFiltres").querySelectorAll("button")) b.onclick = ()=>{ P_FILTRE = b.dataset.f; afficherProspection(); };
+  const l = PROSPECTS.filter(filtres[P_FILTRE][1]);
+  $("pListe").innerHTML = l.map(p=>{
+    const i = p.etape === "arrêté" ? 5 : P_ETAPES.indexOf(p.etape);
+    const infos = [p.contact && echapper(p.contact), echapper(p.source) + (p.recommande_par ? " par " + echapper(p.recommande_par) : ""),
+      "rencontré le " + pJour(p.rencontre_le), p.etape === "arrêté" && p.raison_arret && "arrêté : " + echapper(p.raison_arret),
+      p.prochaine_relance && i < 4 && (p.prochaine_relance < auj ? `<span style="color:#b3261e">relance prévue le ${pJour(p.prochaine_relance)}</span>` : "relance le " + pJour(p.prochaine_relance))].filter(Boolean).join(" · ");
+    return `<div class="prosp"><div class="pHaut"><b>${echapper(p.nom)}</b><span class="pEtape e${i}">${echapper(p.etape)}</span></div>
+      <div class="note">${infos}</div>${p.notes ? `<div class="note" style="font-style:italic">${echapper(p.notes)}</div>` : ""}
+      <div class="pBtns">${P_SUIVANT[p.etape] ? `<button class="petitbtn roue" data-av="${p.id}">${P_SUIVANT[p.etape]}</button>` : ""}<button class="petitbtn" data-mod="${p.id}">Modifier</button></div></div>`;
+  }).join("") || `<p class="note">Aucun commerce ici.</p>`;
+  for (const b of $("pListe").querySelectorAll("[data-av]")) b.onclick = ()=> avancerProspect(PROSPECTS.find(p=>p.id == b.dataset.av), b);
+  for (const b of $("pListe").querySelectorAll("[data-mod]")) b.onclick = ()=> ouvrirProspect(PROSPECTS.find(p=>p.id == b.dataset.mod));
+}
+async function avancerProspect(p, b){
+  const et = P_ETAPES[P_ETAPES.indexOf(p.etape) + 1];
+  if (!et) return;
+  if (et === "signé" && !confirm(`Le contrat de la période d'essai de « ${p.nom} » est vraiment signé ?`)) return;
+  const c = {etape:et}; c[P_DATE[et]] = pAujourdhui();
+  if (et === "installé") c.prochaine_relance = null;
+  b.disabled = true;
+  try{ await API.prospectMaj(p.id, c); alerte(`✓ ${p.nom} : ${et}`); }catch(e){ alert(e.message); }
+  afficherProspection();
+}
+function pZones(){
+  $("pRecoZone").classList.toggle("cache", $("pSource").value !== "recommandation");
+  $("pRaisonZone").classList.toggle("cache", $("pEtapeSel").value !== "arrêté");
+}
+function ouvrirProspect(p){
+  P_EDITE = p || null;
+  $("prospTitre").textContent = p ? p.nom : "Nouveau commerce rencontré";
+  $("pNom").value = p ? p.nom : ""; $("pContact").value = p && p.contact || "";
+  $("pSource").value = p ? p.source : "porte-à-porte"; $("pReco").value = p && p.recommande_par || "";
+  $("pEtapeSel").value = p ? p.etape : "rencontré"; $("pRaison").value = p && p.raison_arret || "trop cher";
+  $("pRencontre").value = p ? p.rencontre_le : pAujourdhui();
+  $("pRelance").value = p ? (p.prochaine_relance || "") : pDans(3);
+  $("pPrix").value = p && p.prix_mois != null ? Number(p.prix_mois) : "";
+  $("pNotes").value = p && p.notes || "";
+  $("bProspSuppr").classList.toggle("cache", !p);
+  message("msgProsp", "");
+  pZones();
+  $("prospFond").classList.remove("cache");
+  if (!p) setTimeout(()=>$("pNom").focus(), 50);
+}
+function fermerProspect(){ $("prospFond").classList.add("cache"); P_EDITE = null; }
+async function enregistrerProspect(){
+  const nom = $("pNom").value.trim();
+  if (!nom) return message("msgProsp", "Indiquez le nom du commerce", "err");
+  const et = $("pEtapeSel").value, p = P_EDITE;
+  if (et === "signé" && (!p || p.etape !== "signé") && !confirm("Le contrat de la période d'essai est vraiment signé ?")) return;
+  const prix = $("pPrix").value === "" ? null : Number($("pPrix").value);
+  const c = {nom, contact:$("pContact").value.trim() || null, source:$("pSource").value,
+    recommande_par:$("pSource").value === "recommandation" ? ($("pReco").value.trim() || null) : null,
+    etape:et, raison_arret:et === "arrêté" ? $("pRaison").value : null,
+    rencontre_le:$("pRencontre").value || pAujourdhui(), prochaine_relance:$("pRelance").value || null,
+    prix_mois:prix, notes:$("pNotes").value.trim() || null};
+  // Dates des étapes : celle de l'étape choisie = aujourd'hui si vide ; si on recule, les étapes suivantes s'effacent
+  const i = P_ETAPES.indexOf(et);
+  if (et === "arrêté"){ if (!p || !p.arrete_le) c.arrete_le = pAujourdhui(); }
+  else {
+    c.arrete_le = null;
+    P_ETAPES.forEach((e, k)=>{ if (k > 0 && k > i) c[P_DATE[e]] = null; });
+    if (i > 0 && !(p && p[P_DATE[et]])) c[P_DATE[et]] = pAujourdhui();
+    if (et === "installé") c.prochaine_relance = null;
+  }
+  $("bProspOk").disabled = true;
+  try{
+    if (p) await API.prospectMaj(p.id, c); else await API.prospectAjouter(c);
+    fermerProspect(); alerte(p ? "✓ Fiche enregistrée" : `✓ ${nom} ajouté`);
+    if (!p) P_FILTRE = "cours";
+    afficherProspection();
+  }catch(e){ message("msgProsp", e.message, "err"); }
+  finally{ $("bProspOk").disabled = false; }
+}
+$("bProspNouveau").onclick = ()=> ouvrirProspect(null);
+$("bProspAnnuler").onclick = fermerProspect;
+$("prospFond").onclick = e=>{ if (e.target === $("prospFond")) fermerProspect(); };
+$("bProspOk").onclick = enregistrerProspect;
+$("pSource").onchange = pZones; $("pEtapeSel").onchange = pZones;
+for (const b of $("pRapides").querySelectorAll("button")) b.onclick = ()=>{ $("pRelance").value = b.dataset.j === "" ? "" : pDans(Number(b.dataset.j)); };
+$("bProspSuppr").onclick = async ()=>{
+  const p = P_EDITE;
+  if (!p || !confirm(`Supprimer la fiche « ${p.nom} » ? (Pour un refus, choisissez plutôt « arrêté » : il compte dans vos statistiques.)`)) return;
+  try{ await API.prospectSupprimer(p.id); fermerProspect(); alerte("Fiche supprimée"); afficherProspection(); }catch(e){ message("msgProsp", e.message, "err"); }
+};
 // ---------- Mise à jour automatique ----------
 // Le téléphone garde l'ancienne page jusqu'à 10 min : à chaque ouverture, on compare avec la version en ligne.
 // Jamais pendant un passage en caisse (fiche ouverte ou nouveau client en cours).
