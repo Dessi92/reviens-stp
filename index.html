@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="56">
+<meta name="app-version" content="57">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -2617,6 +2617,22 @@ async function verifierMiseAJour(){
 }
 document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState === "visible") verifierMiseAJour(); });
 verifierMiseAJour();
+
+// ---------- Écran toujours allumé ----------
+// Tant que l'appli est ouverte et qu'un commerce est connecté, la tablette ne se met pas en veille.
+// Le système relâche ce verrou quand l'appli passe en arrière-plan : on le redemande au retour.
+let verrouEcran = null;
+async function garderEcranAllume(){
+  try{
+    if (!("wakeLock" in navigator) || !SESSION || document.visibilityState !== "visible") return;
+    if (verrouEcran && !verrouEcran.released) return;
+    verrouEcran = await navigator.wakeLock.request("screen");
+  }catch(e){}
+}
+document.addEventListener("visibilitychange", garderEcranAllume);
+for (const ev of ["pointerdown", "keydown"]) document.addEventListener(ev, garderEcranAllume, {passive:true});
+setInterval(garderEcranAllume, 30000);
+garderEcranAllume();
 
 // ---------- Support ----------
 let ADMIN = false, dernierNonLus = null;
