@@ -1,11 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="110" fill="#9b2c2c"/>
-  <g transform="rotate(21 256 256)"><rect x="136" y="96" width="280" height="186" rx="24" fill="#f0b3a6"/></g>
-  <g transform="rotate(14 256 256)"><rect x="124" y="108" width="290" height="194" rx="26" fill="#e88a78"/></g>
-  <g transform="rotate(7 256 256)"><rect x="110" y="124" width="300" height="200" rx="26" fill="#d9574a"/></g>
-  <rect x="84" y="176" width="320" height="212" rx="28" fill="#faf6f1"/>
-  <rect x="84" y="221" width="320" height="34" fill="#c0392b"/>
-  <circle cx="164" cy="326" r="22" fill="#9b2c2c"/>
-  <circle cx="234" cy="326" r="22" fill="#9b2c2c"/>
-  <circle cx="304" cy="326" r="22" fill="#e6dccf"/>
+  <rect x="96" y="150" width="320" height="212" rx="28" fill="#faf6f1"/>
+  <rect x="96" y="195" width="320" height="34" fill="#c0392b"/>
+  <circle cx="176" cy="300" r="22" fill="#9b2c2c"/>
+  <circle cx="246" cy="300" r="22" fill="#9b2c2c"/>
+  <circle cx="316" cy="300" r="22" fill="#e6dccf"/>
 </svg>
