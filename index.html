@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="57">
+<meta name="app-version" content="58">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -259,6 +259,27 @@
   #blocClient,#blocNouveau{width:100%;max-width:640px;margin-left:auto;margin-right:auto}
   header .logoEntete{width:34px;height:34px;object-fit:contain;background:#fff;border-radius:50%;padding:2px;flex:none}
   @media (min-width:700px){ .entete img{width:150px;height:150px} .entete h1{font-size:56px} input.grand{font-size:26px} }
+  /* Mon compte : carte qui se déroule */
+  details.compte{padding:0;overflow:hidden}
+  details.compte>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:16px 18px;cursor:pointer;user-select:none}
+  details.compte summary::-webkit-details-marker{display:none}
+  details.compte .cIcone{font-size:26px;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb, var(--accent) 12%, #fff);flex:none}
+  details.compte .cTexte{flex:1;min-width:0;display:flex;flex-direction:column}
+  details.compte .cTexte b{font-size:19px;color:var(--accent)}
+  details.compte .cTexte small{color:var(--doux);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  details.compte .cFleche{font-size:28px;line-height:1;color:var(--doux);transition:transform .25s ease;flex:none}
+  details[open]>summary .cFleche{transform:rotate(90deg)}
+  details.compte .compteCorps{padding:0 14px 14px;display:flex;flex-direction:column;gap:8px}
+  details.sous{border:1px solid var(--bord);border-radius:14px;background:#fff}
+  details.sous>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:14px;cursor:pointer;font-weight:600;font-size:16px}
+  details.sous>summary span:first-child{font-size:20px}
+  details.sous>summary .cFleche{margin-left:auto;font-size:22px}
+  details.sous .sousCorps{padding:0 14px 14px}
+  details.sous .sousCorps label:first-child{margin-top:0}
+  details.compte, details.sous{interpolate-size:allow-keywords}
+  details.compte::details-content, details.sous::details-content{height:0;overflow:hidden;transition:height .3s ease, content-visibility .3s allow-discrete}
+  details.compte[open]::details-content, details.sous[open]::details-content{height:auto}
+  @media (prefers-reduced-motion:reduce){ details.compte::details-content, details.sous::details-content{transition:none} }
   /* Fond vichy (thème personnalisé) */
   body.vichy{background-color:var(--bg);
     background-image:linear-gradient(90deg, var(--vichy) 50%, transparent 50%), linear-gradient(var(--vichy) 50%, transparent 50%);
@@ -347,8 +368,9 @@
       <label for="cxParrain">Code de parrainage <span class="note">(facultatif)</span></label>
       <input id="cxParrain" type="text" maxlength="6" placeholder="ex. 3F9A2C" autocapitalize="characters" autocomplete="off">
     </div>
-    <label for="cxEmail">Adresse e-mail</label>
-    <input id="cxEmail" type="email" autocomplete="username" placeholder="contact@moncommerce.fr">
+    <label for="cxEmail" id="cxEmailLabel">Identifiant ou adresse e-mail</label>
+    <input id="cxEmail" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ex. thibonne">
+    <p class="note cache" id="cxEmailNote" style="margin-top:4px">Un mot simple pour vous connecter, par exemple le nom du commerce : lettres et chiffres, sans espace. Vous pourrez ajouter une adresse e-mail plus tard dans les réglages.</p>
     <label for="cxMdp">Mot de passe</label>
     <input id="cxMdp" type="password" autocomplete="current-password" placeholder="Votre mot de passe">
     <button class="btn principal" id="bConnexion">Se connecter</button>
@@ -413,6 +435,21 @@
       <button class="btn gris" id="bSupSupAnnuler">Annuler</button>
       <button class="btn rouge" id="bSupSupValider">Valider</button>
     </div>
+  </div>
+</div>
+<div id="mailFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="mailTitre">
+  <div class="boite" style="text-align:left">
+    <h2 id="mailTitre" style="margin-top:4px;text-align:center">📧 Ajoutez votre adresse e-mail</h2>
+    <p style="font-size:17px">Avec une adresse e-mail, vous pourrez <b>retrouver votre mot de passe tout seul</b> si vous l'oubliez. Vous pourrez toujours vous connecter avec votre identifiant.</p>
+    <label for="mailSaisie">Adresse e-mail du commerce</label>
+    <input id="mailSaisie" type="email" autocomplete="email" placeholder="contact@moncommerce.fr">
+    <label for="mailMdp">Votre mot de passe actuel</label>
+    <input id="mailMdp" type="password" autocomplete="current-password">
+    <div class="ligne">
+      <button class="btn gris" id="bMailPlusTard">Plus tard</button>
+      <button class="btn principal" id="bMailEnregistrer">Enregistrer</button>
+    </div>
+    <div id="msgMail"></div>
   </div>
 </div>
 <div id="telFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="telTitre">
@@ -708,26 +745,48 @@
     <p class="note">Efface tous les clients, leurs points et leur historique. Votre compte, vos réglages et votre thème sont gardés. Impossible à annuler : téléchargez la liste avant si besoin.</p>
     <div id="msgVider"></div>
   </div>
-  <div class="carte">
-    <h2>Mon compte</h2>
-    <p class="note" style="margin-top:-6px">Connecté avec <b id="rEmail"></b></p>
-    <label for="rTel">Téléphone portable du commerce</label>
-    <input id="rTel" type="tel" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78">
-    <button class="btn gris" id="bTelReglages">Enregistrer le téléphone</button>
-    <div id="msgTelReglages"></div>
-    <label for="mdp0">Mot de passe actuel</label>
-    <input id="mdp0" type="password" autocomplete="current-password" placeholder="Obligatoire pour changer le mot de passe ou l'e-mail">
-    <label for="mdp1">Nouveau mot de passe</label>
-    <input id="mdp1" type="password" autocomplete="new-password" placeholder="6 caractères minimum">
-    <label for="mdp2">Retapez le nouveau mot de passe</label>
-    <input id="mdp2" type="password" autocomplete="new-password">
-    <button class="btn principal" id="bMdp">Changer le mot de passe</button>
-    <div id="msgMdp"></div>
-    <label for="nouvEmail" style="margin-top:22px">Nouvelle adresse e-mail</label>
-    <input id="nouvEmail" type="email" autocomplete="email" placeholder="nouvelle@adresse.fr">
-    <button class="btn gris" id="bEmail">Changer l'adresse e-mail</button>
-    <div id="msgEmail"></div>
-  </div>
+  <details class="carte compte" id="carteCompte">
+    <summary>
+      <span class="cIcone">👤</span>
+      <span class="cTexte"><b>Mon compte</b><small>Connecté avec <span id="rEmail"></span></small></span>
+      <span class="cFleche" aria-hidden="true">›</span>
+    </summary>
+    <div class="compteCorps">
+      <details class="sous">
+        <summary><span>📱</span> Téléphone du commerce<span class="cFleche" aria-hidden="true">›</span></summary>
+        <div class="sousCorps">
+          <label for="rTel">Téléphone portable</label>
+          <input id="rTel" type="tel" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78">
+          <button class="btn gris" id="bTelReglages">Enregistrer le téléphone</button>
+          <div id="msgTelReglages"></div>
+        </div>
+      </details>
+      <details class="sous">
+        <summary><span>🔒</span> Mot de passe<span class="cFleche" aria-hidden="true">›</span></summary>
+        <div class="sousCorps">
+          <label for="mdp0">Mot de passe actuel</label>
+          <input id="mdp0" type="password" autocomplete="current-password">
+          <label for="mdp1">Nouveau mot de passe</label>
+          <input id="mdp1" type="password" autocomplete="new-password" placeholder="6 caractères minimum">
+          <label for="mdp2">Retapez le nouveau mot de passe</label>
+          <input id="mdp2" type="password" autocomplete="new-password">
+          <button class="btn principal" id="bMdp">Changer le mot de passe</button>
+          <div id="msgMdp"></div>
+        </div>
+      </details>
+      <details class="sous">
+        <summary><span>📧</span> Adresse e-mail<span class="cFleche" aria-hidden="true">›</span></summary>
+        <div class="sousCorps">
+          <label for="nouvEmail">Adresse e-mail (nouvelle ou à ajouter)</label>
+          <input id="nouvEmail" type="email" autocomplete="email" placeholder="contact@moncommerce.fr">
+          <label for="mdpE">Votre mot de passe actuel</label>
+          <input id="mdpE" type="password" autocomplete="current-password">
+          <button class="btn gris" id="bEmail">Enregistrer l'adresse e-mail</button>
+          <div id="msgEmail"></div>
+        </div>
+      </details>
+    </div>
+  </details>
   <div class="carte">
     <button class="btn gris" id="bRevoirTuto" style="margin-top:0">❓ Revoir le tutoriel</button>
     <button class="btn gris" id="bDeconnexion">Se déconnecter</button>
@@ -866,6 +925,24 @@ function normaliser(t){
   return n.replace(/\D/g,"");
 }
 const joli = n => n.length===10 ? n.replace(/(\d{2})(?=\d)/g,"$1 ") : n;
+// Comptes sans e-mail : un identifiant choisi (ex. « thibonne ») ; adresse interne, jamais utilisée pour écrire
+const SANS_EMAIL = "@id.reviens-stp.fr";
+const sansEmail = e => (e || "").toLowerCase().endsWith(SANS_EMAIL);
+const nomIdentifiant = x => (x || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const IDENT_OK = x => /^[a-z0-9][a-z0-9._-]{2,29}$/.test(x);
+function identifiant(saisie){   // « thibonne » ou « contact@… » → adresse de connexion, ou "" si illisible
+  const x = (saisie || "").trim();
+  if (x.includes("@")) return /^\S+@\S+\.\S+$/.test(x) ? x : "";
+  const i = nomIdentifiant(x);
+  return IDENT_OK(i) ? i + SANS_EMAIL : "";
+}
+// Identifiant → adresse réelle du compte (si un e-mail a été ajouté depuis), sinon l'adresse interne.
+// La base ne la donne que si le mot de passe est bon (et bloque après 10 essais ratés).
+async function adresseDeConnexion(email, mdp){
+  if (!sansEmail(email)) return email;
+  return (await API.emailConnexion(email.split("@")[0], mdp)) || email;
+}
+const affEmail = e => sansEmail(e) ? `l'identifiant « ${e.split("@")[0]} » (pas encore d'e-mail)` : (e || "");
 const dateFr = iso => { const d=new Date(iso); return d.toLocaleDateString("fr-FR")+" "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}); };
 const jourFr = iso => iso ? new Date(iso).toLocaleDateString("fr-FR") : "—";
 // date courte pour la liste des clients : 06/11 cette année, 06/11/25 avant
@@ -891,9 +968,9 @@ async function occupe(btn, fn){
 function traduire(err){
   const m = (err && (err.message || err.error_description)) || String(err);
   const t = {
-    "Invalid login credentials":"E-mail ou mot de passe incorrect.",
+    "Invalid login credentials":"Identifiant (ou e-mail) ou mot de passe incorrect.",
     "Email not confirmed":"Adresse e-mail pas encore confirmée : cliquez sur le lien reçu par e-mail.",
-    "User already registered":"Un compte existe déjà avec cette adresse.",
+    "User already registered":"Cet identifiant ou cette adresse est déjà pris : choisissez-en un autre.",
     "Password should be at least 6 characters.":"Mot de passe trop court.",
     "Failed to fetch":"Pas de connexion internet.",
     "New password should be different":"Le nouveau mot de passe doit être différent de l'ancien.",
@@ -917,8 +994,19 @@ function apiSupabase(sb){
       return {email: session.user.email, commerce};
     },
     async connexion(email, mdp){ v(await sb.auth.signInWithPassword({email, password:mdp})); },
+    async emailConnexion(ident, mdp){   // adresse du compte, rendue seulement si le mot de passe est bon
+      const {data, error} = await sb.rpc("email_connexion", {p_identifiant: ident, p_mdp: mdp});
+      if (error) throw traduire(error);
+      return data || null;
+    },
+    async identifiantLibre(ident){
+      const {data, error} = await sb.rpc("identifiant_libre", {p_identifiant: ident});
+      if (error) throw traduire(error);
+      return data !== false;
+    },
     async inscription(email, mdp, nom, code, tel){
-      const d = v(await sb.auth.signUp({email, password:mdp, options:{data:{nom_commerce:nom, code_parrain:code||"", telephone:tel||""}, emailRedirectTo: adresseApp()}}));
+      const ident = sansEmail(email) ? email.split("@")[0] : "";
+      const d = v(await sb.auth.signUp({email, password:mdp, options:{data:{nom_commerce:nom, code_parrain:code||"", telephone:tel||"", identifiant:ident}, emailRedirectTo: adresseApp()}}));
       return {aConfirmer: !d.session};
     },
     async oubli(email){ v(await sb.auth.resetPasswordForEmail(email, {redirectTo: adresseApp()})); },
@@ -1084,6 +1172,8 @@ function apiDemo(){
     async connexion(email, mdp){ D.connecte = true; D.email = email; if (!D.mdp) D.mdp = mdp; sauver(); },
     async inscription(email, mdp, nom, code, tel){ if (tel) D.commerce.telephone = tel; D.connecte = true; D.email = email; D.mdp = mdp; if (nom) D.commerce.nom = nom; sauver(); return {aConfirmer:false}; },
     async oubli(){ },
+    async emailConnexion(){ return null; },
+    async identifiantLibre(){ return true; },
     async nouveauMdp(mdp){ D.mdp = mdp; sauver(); },
     async nouvelEmail(email){ D.email = email; sauver(); },
     async verifierMdp(email, mdp){ if (D.mdp && mdp !== D.mdp) throw new Error("Mot de passe actuel incorrect."); },
@@ -1564,6 +1654,29 @@ async function enregistrerTelCommerce(brut){
 }
 function demanderTelCommerce(){ $("telSaisie").value = ""; message("msgTel",""); $("telFond").classList.remove("cache"); $("telSaisie").focus(); }
 $("bTelPlusTard").onclick = ()=> $("telFond").classList.add("cache");
+// Compte créé avec un identifiant : une fois par jour, on propose d'ajouter l'adresse e-mail (mot de passe oublié)
+function proposerEmail(){
+  if (!SESSION || !sansEmail(SESSION.email) || !$("telFond").classList.contains("cache")) return;
+  const cle = "reviens_mail_propose", jour = new Date().toISOString().slice(0, 10);
+  try{ if (localStorage.getItem(cle) === jour) return; localStorage.setItem(cle, jour); }catch(e){}
+  $("mailSaisie").value = ""; $("mailMdp").value = ""; message("msgMail","");
+  $("mailFond").classList.remove("cache"); $("mailSaisie").focus();
+}
+$("bMailPlusTard").onclick = ()=>{ $("mailFond").classList.add("cache"); $("tel").focus(); };
+$("bMailEnregistrer").onclick = ()=> occupe($("bMailEnregistrer"), async ()=>{
+  const e = $("mailSaisie").value.trim(), m = $("mailMdp").value;
+  if (!/^\S+@\S+\.\S+$/.test(e) || sansEmail(e)) return message("msgMail","Adresse e-mail invalide.","err");
+  if (!m) return message("msgMail","Tapez votre mot de passe actuel.","err");
+  try{
+    await API.verifierMdp(SESSION.email, m);
+    await API.nouvelEmail(e);
+    const s2 = await API.session().catch(()=>null);
+    if (s2 && s2.email) SESSION.email = s2.email;
+    $("mailFond").classList.add("cache"); $("tel").focus();
+    alerte(sansEmail(SESSION.email) ? "📩 Cliquez sur le lien reçu par e-mail pour valider" : "✓ Merci, adresse e-mail enregistrée");
+  }catch(err){ message("msgMail", err.message, "err"); }
+});
+$("mailMdp").addEventListener("keydown", e=>{ if (e.key === "Enter") $("bMailEnregistrer").click(); });
 $("bTelEnregistrer").onclick = ()=> occupe($("bTelEnregistrer"), async ()=>{
   try{ await enregistrerTelCommerce($("telSaisie").value); $("telFond").classList.add("cache"); alerte("✓ Merci, numéro enregistré"); }
   catch(e){ message("msgTel", e.message, "err"); }
@@ -1629,25 +1742,32 @@ function ongletConnexion(inscr){
   $("lienOubli").classList.toggle("cache", inscr);
   $("bConnexion").textContent = inscr ? "Créer mon compte" : "Se connecter";
   $("cxMdp").autocomplete = inscr ? "new-password" : "current-password";
+  $("cxEmailLabel").textContent = inscr ? "Identifiant" : "Identifiant ou adresse e-mail";
+  $("cxEmailNote").classList.toggle("cache", !inscr);
 }
 $("ongConnexion").onclick = ()=>{ ongletConnexion(false); message("msgConnexion",""); };
 $("ongInscription").onclick = ()=>{ ongletConnexion(true); message("msgConnexion",""); };
 $("bConnexion").onclick = ()=> occupe($("bConnexion"), async ()=>{
-  const email = $("cxEmail").value.trim(), mdp = $("cxMdp").value, nom = $("cxNom").value.trim();
+  const saisie = $("cxEmail").value.trim(), mdp = $("cxMdp").value, nom = $("cxNom").value.trim();
   const code = $("cxParrain").value.trim().toUpperCase(), telCo = normaliser($("cxTel").value);
+  const email = identifiant(saisie);
   if (modeInscription && !TEL_OK(telCo)) return message("msgConnexion","Indiquez le téléphone portable du commerce (06 ou 07, 10 chiffres).","err");
   if (modeInscription && code && !CODE_OK(code)) return message("msgConnexion","Code de parrainage : 6 caractères (chiffres et lettres A à F), ou laissez vide.","err");
-  if (!/^\S+@\S+\.\S+$/.test(email)) return message("msgConnexion","Adresse e-mail invalide.","err");
+  if (!email) return message("msgConnexion", modeInscription
+    ? "Identifiant : de 3 à 30 lettres ou chiffres, sans espace (ex. thibonne)."
+    : "Tapez votre identifiant ou votre adresse e-mail.","err");
   if (!mdp) return message("msgConnexion","Tapez votre mot de passe.","err");
   if (modeInscription && mdp.length < 6) return message("msgConnexion","Mot de passe : 6 caractères minimum.","err");
   if (modeInscription && !nom) return message("msgConnexion","Indiquez le nom du commerce.","err");
   try{
+    if (modeInscription && sansEmail(email) && !await API.identifiantLibre(email.split("@")[0]))
+      return message("msgConnexion","Cet identifiant est déjà pris : choisissez-en un autre.","err");
     if (modeInscription){
       const r = await API.inscription(email, mdp, nom, code, telCo);
       try{ localStorage.removeItem("code_parrain"); }catch(e){}
       if (r.aConfirmer){ ongletConnexion(false); return message("msgConnexion","Compte créé ! Un e-mail de confirmation vient d'être envoyé : cliquez sur le lien, puis connectez-vous.","ok"); }
     } else {
-      await API.connexion(email, mdp);
+      await API.connexion(await adresseDeConnexion(email, mdp), mdp);
     }
     SESSION = await API.session();
     $("cxMdp").value = "";
@@ -1656,7 +1776,8 @@ $("bConnexion").onclick = ()=> occupe($("bConnexion"), async ()=>{
 });
 $("cxMdp").addEventListener("keydown", e=>{ if (e.key==="Enter") $("bConnexion").click(); });
 $("bOubli").onclick = async ()=>{
-  const email = $("cxEmail").value.trim();
+  const email = identifiant($("cxEmail").value);
+  if (sansEmail(email)) return message("msgConnexion","Tapez ci-dessus l'adresse e-mail de votre compte (pas l'identifiant). Pas encore d'e-mail ? Contactez Reviens STP.","info");
   if (!/^\S+@\S+\.\S+$/.test(email)) return message("msgConnexion","Écrivez d'abord votre adresse e-mail ci-dessus.","info");
   try{ await API.oubli(email); message("msgConnexion","Si un compte existe, un e-mail pour changer le mot de passe vient d'être envoyé.","ok"); }
   catch(e){ message("msgConnexion", e.message, "err"); }
@@ -1720,6 +1841,7 @@ async function entrer(){
   if (!DEMO && !admin && !await appareilAutorise()) return;
   verifierNotifs();
   if (!DEMO && !admin && !SESSION.commerce.telephone) setTimeout(demanderTelCommerce, 600);   // comptes créés avant le 10/11/2026
+  if (!admin) setTimeout(proposerEmail, 1500);   // comptes avec identifiant : ajouter un e-mail (une fois par jour)
   if (!SESSION.commerce.programme_choisi) return montrer("ecranReglages");   // premier passage : choisir son programme
   montrer("ecranAccueil");
   $("tel").focus();
@@ -2216,7 +2338,7 @@ function remplirReglages(){
   $("rBonusActif").checked = bonus;
   $("rMontant").value = c.montant_bonus ?? 70;
   $("rPointsBonus").value = c.points_bonus ?? c.points_par_passage * 2;
-  $("rEmail").textContent = SESSION.email;
+  $("rEmail").textContent = affEmail(SESSION.email);
   $("rTel").value = c.telephone ? joli(c.telephone) : ""; message("msgTelReglages","");
   themeChoisi = (c.theme === "perso" && c.perso) || THEMES[c.theme] ? c.theme : "defaut";
   afficherReglagesRoue();
@@ -2437,7 +2559,7 @@ async function afficherGerant(){
     [somme("nb_clients"), "clients au total"], [somme("passages_30j"), "passages ces 30 jours"],
   ].map(([n,t])=>`<div class="chiffre"><b>${n}</b><span>${t}</span></div>`).join("");
   $("gListe").innerHTML = s.map(x=>`<tr>
-      <td><b>${echapper(x.commerce)}</b><br><span class="note">${echapper(x.email)}</span><br><span class="note" data-tel="${x.id}">…</span><br><span class="note" data-smsinfo="${x.id}"></span><br><span class="note" data-appinfo="${x.id}"></span></td>
+      <td><b>${echapper(x.commerce)}</b><br><span class="note">${echapper(affEmail(x.email))}</span><br><span class="note" data-tel="${x.id}">…</span><br><span class="note" data-smsinfo="${x.id}"></span><br><span class="note" data-appinfo="${x.id}"></span></td>
       <td class="n">${x.nb_clients}</td><td class="n">${x.nb_accord_sms}</td><td class="n">${x.passages_30j}</td>
       <td class="n">${x.nb_reductions}</td><td class="n">${jourFr(x.derniere_activite)}</td><td class="n">${jourFr(x.inscrit_le)}</td>
       <td><button class="petitbtn roue" data-roue="${x.id}">${x.roue_active ? "🎡 Couper la roue" : "🎡 Activer la roue"}</button><button class="petitbtn" data-sms="${x.id}">📱 SMS…</button><button class="petitbtn" data-app="${x.id}">📟 Appareils…</button><button class="petitbtn vider" data-vider="${x.id}">Vider</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer</button></td></tr>`).join("")
@@ -2671,7 +2793,7 @@ async function afficherSupportGerant(){
   $("bSupToutSuppr").dataset.n = l.length;
   $("gNonLus").textContent = nonLus ? `(${nonLus} non lu${nonLus>1?"s":""})` : "";
   $("gSupport").innerHTML = l.map(m=>`<div class="msgsup ${m.lu?"":"nonlu"}" data-id="${m.id}">
-      <div class="quand"><b>${echapper(m.commerce)}</b> · ${echapper(m.email)} · ${dateFr(m.cree_le)}</div>
+      <div class="quand"><b>${echapper(m.commerce)}</b> · ${echapper(affEmail(m.email))} · ${dateFr(m.cree_le)}</div>
       <div class="texte">${echapper(m.texte)}</div>
       ${m.reponse ? `<div class="rep"><b>Ta réponse</b> (${dateFr(m.repondu_le)}) :<br>${echapper(m.reponse)}</div>` : ""}
       <div class="actions">${m.lu ? "" : `<button data-a="lu">✓ Lu</button>`}<button data-a="rep">${m.reponse ? "Modifier la réponse" : "Répondre"}</button></div>
@@ -2759,12 +2881,17 @@ $("bEmail").onclick = ()=> occupe($("bEmail"), async ()=>{
   const e = $("nouvEmail").value.trim();
   if (!/^\S+@\S+\.\S+$/.test(e)) return message("msgEmail","Adresse e-mail invalide.","err");
   if (e.toLowerCase() === (SESSION.email || "").toLowerCase()) return message("msgEmail","C'est déjà votre adresse actuelle.","info");
-  if (!$("mdp0").value) return message("msgEmail","Tapez votre mot de passe actuel (en haut de cette carte).","err");
+  if (!$("mdpE").value) return message("msgEmail","Tapez votre mot de passe actuel (sous l'adresse).","err");
   try{
-    await API.verifierMdp(SESSION.email, $("mdp0").value);
+    await API.verifierMdp(SESSION.email, $("mdpE").value);
     await API.nouvelEmail(e);
-    $("mdp0").value = "";
+    $("mdpE").value = "";
     $("nouvEmail").value = "";
+    const s2 = await API.session().catch(()=>null);   // changement immédiat (comptes sans confirmation par e-mail)
+    if (s2 && (s2.email || "").toLowerCase() === e.toLowerCase()){
+      SESSION.email = s2.email; $("rEmail").textContent = affEmail(s2.email);
+      return message("msgEmail","✓ Adresse enregistrée. Vous pouvez vous connecter avec votre identifiant ou avec cette adresse.","ok");
+    }
     message("msgEmail", DEMO ? "✓ Adresse changée (démo)." : "📩 Un e-mail de confirmation a été envoyé. Cliquez sur le lien reçu pour valider le changement (vérifiez aussi les courriers indésirables). D'ici là, l'ancienne adresse reste valable.", "ok");
   }catch(err){ message("msgEmail", err.message, "err"); }
 });
