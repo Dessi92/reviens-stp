@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="62">
+<meta name="app-version" content="63">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -519,6 +519,19 @@
     <p class="note" style="margin:8px 0 0">Se ferme tout seul dans quelques secondes</p>
   </div>
 </div>
+<div id="accesFond" class="fond cache" role="alertdialog" aria-modal="true" aria-labelledby="accesTitre" style="z-index:54">
+  <div class="boite" style="max-width:520px">
+    <div style="font-size:44px" id="accesEmo">🚀</div>
+    <h2 id="accesTitre">Activer Reviens STP</h2>
+    <div id="accesEtapes"></div>
+    <div id="msgAcces"></div>
+    <div id="accesActions" style="display:flex;flex-direction:column;gap:10px;margin-top:10px"></div>
+    <div class="ligne" style="margin-top:12px">
+      <button class="btn gris" id="bAccesSupport">💬 Support</button>
+      <button class="btn gris" id="bAccesQuitter">Se déconnecter</button>
+    </div>
+  </div>
+</div>
 <div id="contratFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="contratTitre">
   <div class="boite contratBoite" id="contratBoite">
     <h2 id="contratTitre">Mon contrat</h2>
@@ -560,7 +573,7 @@
   <div class="boite">
     <h2 id="ctAdmTitre" style="margin-top:4px">Contrat</h2>
     <div id="ctAdmEtat"></div>
-    <label for="ctAdmModele">Formule</label>
+    <label for="ctAdmModele">Formule (choisie automatiquement : 35 € pour les 10 premiers, puis 49 €)</label>
     <select id="ctAdmModele" class="champ"></select>
     <label for="ctAdmTab">Modèle de tablette</label>
     <input id="ctAdmTab" type="text" maxlength="120" value="Samsung Galaxy Tab Active3 (SM-T575)">
@@ -1151,6 +1164,9 @@ function apiSupabase(sb){
       return r.data;
     },
     async adminContrat(id){ return v(await sb.from("contrats").select("*").eq("id", id).single()); },
+    async monAcces(){ return v(await sb.rpc("mon_acces")); },
+    async adminAcces(){ return v(await sb.rpc("admin_acces")); },
+    async placesPartenaire(){ return v(await sb.rpc("places_partenaire")); },
     async adminFormules(){   // seulement la dernière version de chaque formule
       const l = v(await sb.from("contrats_modeles").select("code,titre,prix").like("code", "tablette-%").order("code"));
       const der = {}; for (const m of l){ const k = m.code.replace(/-v\d+$/, ""), n = Number(m.code.match(/-v(\d+)$/)?.[1] || 0); if (!der[k] || n > der[k].n) der[k] = {...m, n}; }
@@ -1375,6 +1391,9 @@ function apiDemo(){
     async adminContrats(){ return []; },
     async adminContrat(){ throw new Error("Pas de contrat en mode démo"); },
     async adminFormules(){ return []; },
+    async monAcces(){ return {ok:true, etape:"demo"}; },
+    async adminAcces(){ return []; },
+    async placesPartenaire(){ return 10; },
     async arreterEssai(){ throw new Error("Pas de contrat en mode démo"); },
     async carteEnregistree(){},
     async adminContratPreparer(){ throw new Error("Pas de contrat en mode démo"); },
@@ -1488,6 +1507,7 @@ function adresseApp(){ return location.origin + location.pathname; }
 let API, SESSION = null, courant = null, enAttente = null, modeInscription = false;
 
 function montrer(ecran){
+  if (ACCES_BLOQUE && !["ecranSupport","ecranReglages"].includes(ecran)){ $("accesFond").classList.remove("cache"); return; }
   for (const e of ["ecranAccueil","ecranListe","ecranReglages","ecranGerant","ecranSupport","ecranSms"]) $(e).classList.toggle("cache", e!==ecran);
   window.scrollTo(0,0);
   if (ecran==="ecranListe") afficherListe();
@@ -1957,10 +1977,9 @@ async function entrer(){
   ADMIN = admin; dernierNonLus = null;
   if (!DEMO && !admin && !await appareilAutorise()) return;
   verifierNotifs();
+  if (!DEMO && !admin && !await accesVerifie()) return;   // contrat signé + carte enregistrée chez Stripe, sinon écran d'activation
   if (!DEMO && !admin && !SESSION.commerce.telephone) setTimeout(demanderTelCommerce, 600);   // comptes créés avant le 10/11/2026
   if (!admin) setTimeout(proposerEmail, 1500);   // comptes avec identifiant : ajouter un e-mail (une fois par jour)
-  if (!DEMO && !admin) setTimeout(rappelContrat, 2500);   // contrat préparé par le gérant, pas encore signé
-  if (!DEMO && new URLSearchParams(location.search).get("paiement") === "ok") setTimeout(retourPaiement, 800);   // retour de la page Stripe
   if (!SESSION.commerce.programme_choisi) return montrer("ecranReglages");   // premier passage : choisir son programme
   montrer("ecranAccueil");
   $("tel").focus();
@@ -3030,6 +3049,67 @@ async function arreterEssai(c){
   await afficherMonContrat();
   alerte("🛑 C'est noté : rien ne sera prélevé. Reviens STP vous contacte pour la tablette.");
 }
+// ---------- Accès réservé aux abonnés (18/11/2026) ----------
+// La base décide (mon_acces) : contrat signé + carte confirmée par Stripe + abonnement en cours. Ici, seulement l'affichage.
+let ACCES_BLOQUE = false;
+async function accesVerifie(){
+  const retour = new URLSearchParams(location.search).get("paiement") === "ok";
+  if (retour) history.replaceState(null, "", location.pathname);
+  let a;
+  for (let i = 0; i < (retour ? 8 : 1); i++){        // retour de Stripe : la confirmation arrive en quelques secondes
+    try{ a = await API.monAcces(); }catch(e){ a = null; break; }
+    if (a && a.ok) break;
+    if (retour) await new Promise(r => setTimeout(r, 2500));
+  }
+  if (!a){ ACCES_BLOQUE = false; return true; }       // souci de réseau : la base bloque de toute façon les écritures
+  ACCES_BLOQUE = !a.ok;
+  if (a.ok){
+    $("accesFond").classList.add("cache");
+    if (retour) alerte("✅ Moyen de paiement enregistré : votre période offerte de 30 jours commence. Rien n'est prélevé avant le 31e jour.");
+    return true;
+  }
+  await afficherActivation(a, retour);
+  return false;
+}
+async function afficherActivation(a, retour){
+  let c = null;
+  try{ c = await API.monContrat(); }catch(e){}
+  const etape = (n, fait, texte) => `<div style="display:flex;gap:10px;align-items:flex-start;text-align:left;margin:8px 0;opacity:${fait ? .6 : 1}"><b style="min-width:28px">${fait ? "✅" : n}</b><span>${texte}</span></div>`;
+  let emo = "🚀", titre = "Activer Reviens STP", h = "", act = "";
+  const verifier = `<button class="btn gris" id="bAccesVerifier">🔄 J'ai terminé : vérifier</button>`;
+  if (a.etape === "aucun_contrat"){
+    emo = "📄"; titre = "Votre compte est créé";
+    h = `<p>Pour utiliser Reviens STP, votre contrat doit d'abord être préparé par Reviens STP, avec vous, le jour de l'installation de la tablette.</p>`;
+    act = verifier;
+  } else if (a.etape === "a_signer" || a.etape === "carte"){
+    const signe = a.etape === "carte";
+    h = `<p style="margin-bottom:4px">Deux étapes, et c'est parti :</p>`
+      + etape("1.", signe, "<b>Lire et signer mon contrat</b>, avec le doigt.")
+      + etape("2.", false, "<b>Enregistrer ma carte ou mon IBAN</b> sur la page sécurisée de Stripe. <b>Rien n'est prélevé pendant 30 jours</b>, et vous pouvez arrêter en un clic pendant cette période.");
+    act = !signe ? `<button class="btn principal" id="bAccesSigner">✍️ Lire et signer mon contrat</button>`
+      : (c ? btnLien(lienPaiement(c), "principal", "💳 Enregistrer ma carte ou mon IBAN") : "") + verifier;
+    if (retour && signe) h += `<p class="msg err">Stripe n'a pas encore confirmé votre moyen de paiement. Si vous venez de le saisir, attendez quelques secondes puis touchez « vérifier ».</p>`;
+  } else if (a.etape === "arret"){
+    emo = "🛑"; titre = "Période offerte terminée";
+    h = `<p>Vous avez arrêté pendant les 30 jours offerts : rien n'a été prélevé. Merci d'avoir essayé Reviens STP ! Pour reprendre, contactez-nous.</p>`;
+  } else {
+    emo = "⏸️"; titre = "Abonnement arrêté";
+    h = `<p>Votre abonnement n'est plus actif. Vos clients et leurs points sont conservés. Pour reprendre ou pour toute question, écrivez au Support.</p>`;
+    act = verifier;
+  }
+  $("accesEmo").textContent = emo; $("accesTitre").textContent = titre;
+  $("accesEtapes").innerHTML = h; $("accesActions").innerHTML = act;
+  message("msgAcces", "");
+  if ($("bAccesSigner")) $("bAccesSigner").onclick = ()=> c ? ouvrirContrat(c) : alert("Contrat introuvable : écrivez au Support.");
+  if ($("bAccesVerifier")) $("bAccesVerifier").onclick = ()=> occupe($("bAccesVerifier"), async ()=>{
+    if (await accesVerifie()) entrer();
+    else message("msgAcces", "Pas encore confirmé. Réessayez dans quelques secondes.", "err");
+  });
+  $("accesFond").classList.remove("cache");
+}
+$("bAccesSupport").onclick = ()=>{ $("accesFond").classList.add("cache"); montrer("ecranSupport"); };
+$("bAccesQuitter").onclick = ()=>{ $("accesFond").classList.add("cache"); ACCES_BLOQUE = false; $("bDeconnexion").click(); };
+
 async function retourPaiement(){
   history.replaceState(null, "", location.pathname);
   try{
@@ -3176,6 +3256,7 @@ $("bContratSigner").onclick = ()=> occupe($("bContratSigner"), async ()=>{
   }catch(e){ return message("msgContrat", e.message, "err"); }
   const c = await afficherMonContrat();
   fermerContrat();
+  if (ACCES_BLOQUE){ await accesVerifie(); if (c && c.signe_le) alerte("✅ Contrat signé, merci ! Dernière étape : « Enregistrer ma carte ou mon IBAN »."); return; }
   if (c && c.signe_le){
     alerte("✅ Contrat signé, merci ! Dernière étape : « Enregistrer ma carte ou mon IBAN ».");
     $("contratZone").scrollIntoView({behavior:"smooth", block:"center"});
@@ -3187,10 +3268,14 @@ let CT_ADMIN = {}, CT_COMMERCE = null;
 async function infosContratsGerant(){
   CT_ADMIN = {};
   try{ for (const c of await API.adminContrats()) if (!c.annule_le && c.commerce_id && !CT_ADMIN[c.commerce_id]) CT_ADMIN[c.commerce_id] = c; }catch(e){}
+  const ACC = {};
+  try{ for (const r of await API.adminAcces()) ACC[r.commerce_id] = r.etat; }catch(e){}
+  const libAcces = a => !a ? "" : a.etape === "offert" ? " · 🎁 accès offert" : a.ok ? ` · 🟢 accès ouvert (Stripe : ${a.statut || a.etape})` : ` · 🔒 bloqué (${{aucun_contrat:"pas de contrat", a_signer:"contrat à signer", carte:"carte pas confirmée par Stripe", arret:"arrêt pendant l'essai", termine:"abonnement " + (a.statut || "arrêté")}[a.etape] || a.etape})`;
   for (const sp of $("gListe").querySelectorAll("[data-ctinfo]")){
     const c = CT_ADMIN[sp.dataset.ctinfo];
     sp.textContent = !c ? "📄 pas de contrat dans l'appli" : !c.signe_le ? `📄 à signer (${c.modele})`
-      : `📄 ✅ signé le ${jourFr(c.signe_le)} (${c.modele})` + (c.arret_le ? ` · 🛑 ARRÊT demandé le ${jourFr(c.arret_le)} : annuler dans Stripe` : c.carte_le ? " · 💳 carte enregistrée" : " · 💳 carte pas encore enregistrée");
+      : `📄 ✅ signé le ${jourFr(c.signe_le)} (${c.modele})` + (c.arret_le ? ` · 🛑 ARRÊT demandé le ${jourFr(c.arret_le)} : annuler dans Stripe` : "");
+    sp.textContent = (ACC[sp.dataset.ctinfo] && ACC[sp.dataset.ctinfo].etape === "offert" ? "📄 sans contrat" : sp.textContent) + libAcces(ACC[sp.dataset.ctinfo]);
   }
 }
 async function ouvrirContratAdmin(x){
@@ -3203,9 +3288,11 @@ async function ouvrirContratAdmin(x){
     : `<p>📄 Préparé le ${jourFr(c.prepare_le)} (${echapper(c.modele)}${c.tablette_serie ? ", tablette " + echapper(c.tablette_serie) : ""}) : <b>pas encore signé</b>.</p><button class="petitbtn vider" id="bCtAdmRetirer">Retirer ce contrat</button>`;
   if ($("bCtAdmVoir")) $("bCtAdmVoir").onclick = async ()=>{ try{ const r = await API.adminContrat(c.id); $("ctAdmFond").classList.add("cache"); ouvrirContrat(r); }catch(e){ alert(e.message); } };
   if ($("bCtAdmRetirer")) $("bCtAdmRetirer").onclick = async ()=>{ if (!confirm("Retirer ce contrat pas encore signé ?")) return; try{ await API.adminContratAnnuler(c.id); await infosContratsGerant(); ouvrirContratAdmin(x); }catch(e){ alert(e.message); } };
-  let f = [];
-  try{ f = await API.adminFormules(); }catch(e){}
-  $("ctAdmModele").innerHTML = f.map(m => `<option value="${echapper(m.code)}">${echapper(m.titre)}</option>`).join("") || `<option value="">(modèles pas encore dans la base)</option>`;
+  let places = null;
+  try{ places = await API.placesPartenaire(); }catch(e){}
+  $("ctAdmModele").innerHTML = places == null ? `<option value="">(impossible de lire les places)</option>`
+    : places > 0 ? `<option value="auto">35 € (offre partenaire) : encore ${places} place${places > 1 ? "s" : ""} sur 10</option>`
+    : `<option value="auto">49 € (les 10 places partenaire sont prises)</option>`;
   $("ctAdmAcc").innerHTML = C_ACCESSOIRES.map((a, i) => `<label class="case" style="margin:4px 0"><input type="checkbox" value="${a}" ${i < 4 ? "checked" : ""}> ${a}</label>`).join("");
   $("ctAdmSerie").value = c && !c.signe_le ? (c.tablette_serie || "") : "";
   $("ctAdmFond").classList.remove("cache");
@@ -3213,7 +3300,7 @@ async function ouvrirContratAdmin(x){
 $("bCtAdmFermer").onclick = ()=> $("ctAdmFond").classList.add("cache");
 $("bCtAdmOk").onclick = ()=> occupe($("bCtAdmOk"), async ()=>{
   const x = CT_COMMERCE;
-  if (!$("ctAdmModele").value) return message("msgCtAdm", "Aucune formule : les modèles ne sont pas encore dans la base.", "err");
+  if (!$("ctAdmModele").value) return message("msgCtAdm", "Impossible de lire le tarif : réessayez.", "err");
   const c = CT_ADMIN[x.id];
   if (c && c.signe_le && !confirm("Ce commerce a déjà un contrat signé. En préparer un nouveau quand même ?")) return;
   try{
