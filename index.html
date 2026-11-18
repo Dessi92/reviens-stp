@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="61">
+<meta name="app-version" content="62">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -2987,10 +2987,10 @@ new MutationObserver(majCentrage).observe($("blocNouveau"), {attributes:true, at
 // ---------- Mon contrat : lu et signé dans l'application (18/11/2026) ----------
 // Le texte final est fabriqué par la base (signer_contrat) ; ici, seulement l'aperçu, avec les mêmes règles.
 const C_ACCESSOIRES = ["Tablette", "Pied de comptoir", "Câble de charge", "Bloc secteur", "Verre de protection"];
-// Paiement Stripe (liens publics par nature, aucune clé secrète). À REMPLACER par les liens de production avant le 1er vrai paiement.
+// Paiement Stripe, mode production depuis le 18/11/2026 (liens publics par nature, aucune clé secrète).
 const STRIPE = {
-  paiement: "https://buy.stripe.com/test_8x228k2kn4QPge33PE4ow01",   // Abonnement Reviens STP 49 €/mois
-  portail:  "https://billing.stripe.com/p/login/test_cNi9AMaQTerp6Dt4TI4ow00",
+  paiement: "https://buy.stripe.com/bJedR96Ig4wY9q160r8AE00",   // Abonnement Reviens STP 49 €/mois
+  portail:  "https://billing.stripe.com/p/login/bJedR96Ig4wY9q160r8AE00",
   codePartenaire: "PARTENAIRE",                                      // −14 € pendant 12 mois (contrats à 35 €)
 };
 // 30 jours offerts (contrats v2) : jour de la signature = 1er jour ; fin = 30e jour ; premier paiement le 31e jour
