@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="63">
+<meta name="app-version" content="64">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -545,6 +545,7 @@
         <div><label for="cSignataire">Votre nom et prénom</label><input id="cSignataire" type="text" maxlength="120" autocomplete="name"></div>
         <div><label for="cFonction">Votre fonction</label><input id="cFonction" type="text" maxlength="60" placeholder="Gérant(e)"></div>
         <div style="grid-column:1/-1"><label for="cContact">E-mail ou téléphone pour les factures</label><input id="cContact" type="text" maxlength="200" autocomplete="email"></div>
+        <div style="grid-column:1/-1" id="cSerieZone" class="cache"><label for="cSerie">🔧 N° de série de la tablette <small>(rempli par Reviens STP à l'installation)</small></label><input id="cSerie" type="text" maxlength="24" placeholder="ex. R52…" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase"></div>
       </div>
     </div>
     <div class="cOnglets" id="cOnglets">
@@ -577,7 +578,7 @@
     <select id="ctAdmModele" class="champ"></select>
     <label for="ctAdmTab">Modèle de tablette</label>
     <input id="ctAdmTab" type="text" maxlength="120" value="Samsung Galaxy Tab Active3 (SM-T575)">
-    <label for="ctAdmSerie">Numéro de série (Paramètres → À propos)</label>
+    <label for="ctAdmSerie">Numéro de série (Paramètres → À propos) : facultatif, il peut être tapé au moment de la signature</label>
     <input id="ctAdmSerie" type="text" maxlength="60" placeholder="ex. R52…" style="text-transform:uppercase">
     <label>Matériel remis</label>
     <div id="ctAdmAcc"></div>
@@ -1157,7 +1158,8 @@ function apiSupabase(sb){
       return r.data[0] || null;
     },
     async contratModeles(codes){ return v(await sb.from("contrats_modeles").select("code,titre,prix,html").in("code", codes)); },
-    async signerContrat(id, infos, signature, citation){ return v(await sb.rpc("signer_contrat", {p_id:id, p_infos:infos, p_signature:signature, p_citation:!!citation})); },
+    async signerContrat(id, infos, signature, citation, serie){ return v(await sb.rpc("signer_contrat", {p_id:id, p_infos:infos, p_signature:signature, p_citation:!!citation, p_serie:serie || ""})); },
+    async preparerMonContrat(){ return v(await sb.rpc("preparer_mon_contrat")); },
     async adminContrats(){
       const r = await sb.from("contrats").select("id,commerce_id,commerce_nom,modele,prepare_le,signe_le,annule_le,tablette_serie,infos,arret_le,carte_le").order("prepare_le", {ascending:false});
       if (r.error){ if (["42P01","PGRST205"].includes(r.error.code)) return []; throw traduire(r.error); }
@@ -1388,6 +1390,7 @@ function apiDemo(){
     async monContrat(){ return null; },
     async contratModeles(){ return []; },
     async signerContrat(){ throw new Error("Pas de contrat en mode démo"); },
+    async preparerMonContrat(){ throw new Error("Pas de contrat en mode démo"); },
     async adminContrats(){ return []; },
     async adminContrat(){ throw new Error("Pas de contrat en mode démo"); },
     async adminFormules(){ return []; },
@@ -3077,11 +3080,7 @@ async function afficherActivation(a, retour){
   const etape = (n, fait, texte) => `<div style="display:flex;gap:10px;align-items:flex-start;text-align:left;margin:8px 0;opacity:${fait ? .6 : 1}"><b style="min-width:28px">${fait ? "✅" : n}</b><span>${texte}</span></div>`;
   let emo = "🚀", titre = "Activer Reviens STP", h = "", act = "";
   const verifier = `<button class="btn gris" id="bAccesVerifier">🔄 J'ai terminé : vérifier</button>`;
-  if (a.etape === "aucun_contrat"){
-    emo = "📄"; titre = "Votre compte est créé";
-    h = `<p>Pour utiliser Reviens STP, votre contrat doit d'abord être préparé par Reviens STP, avec vous, le jour de l'installation de la tablette.</p>`;
-    act = verifier;
-  } else if (a.etape === "a_signer" || a.etape === "carte"){
+  if (a.etape === "aucun_contrat" || a.etape === "a_signer" || a.etape === "carte"){
     const signe = a.etape === "carte";
     h = `<p style="margin-bottom:4px">Deux étapes, et c'est parti :</p>`
       + etape("1.", signe, "<b>Lire et signer mon contrat</b>, avec le doigt.")
@@ -3100,7 +3099,13 @@ async function afficherActivation(a, retour){
   $("accesEmo").textContent = emo; $("accesTitre").textContent = titre;
   $("accesEtapes").innerHTML = h; $("accesActions").innerHTML = act;
   message("msgAcces", "");
-  if ($("bAccesSigner")) $("bAccesSigner").onclick = ()=> c ? ouvrirContrat(c) : alert("Contrat introuvable : écrivez au Support.");
+  if ($("bAccesSigner")) $("bAccesSigner").onclick = ()=> occupe($("bAccesSigner"), async ()=>{
+    try{
+      if (!c){ await API.preparerMonContrat(); c = await API.monContrat(); }   // contrat préparé tout seul, au tarif automatique
+      if (!c) throw new Error("Contrat introuvable : écrivez au Support.");
+      ouvrirContrat(c);
+    }catch(e){ message("msgAcces", e.message, "err"); }
+  });
   if ($("bAccesVerifier")) $("bAccesVerifier").onclick = ()=> occupe($("bAccesVerifier"), async ()=>{
     if (await accesVerifie()) entrer();
     else message("msgAcces", "Pas encore confirmé. Réessayez dans quelques secondes.", "err");
@@ -3156,7 +3161,7 @@ function cTexte(doc){
   const m = C_MODELES[code];
   if (!m) return "<p>Texte introuvable.</p>";
   const maintenant = new Date();
-  const vals = {...cInfos(), titre:(C_MODELES[c.modele] || {}).titre || "", tablette_modele:c.tablette_modele || "", tablette_serie:c.tablette_serie || "",
+  const vals = {...cInfos(), titre:(C_MODELES[c.modele] || {}).titre || "", tablette_modele:c.tablette_modele || "", tablette_serie:c.tablette_serie || cSerieSaisie(),
     etat:c.etat || "", prepare_le:cJour(new Date(c.prepare_le)), date:cJour(maintenant), date_heure:cJourHeure(maintenant), fin_mois_offert:cFinMoisOffert(maintenant),
     fin_essai:cJour(cPlus(cJourSeul(maintenant), 29)), premier_paiement:cJour(cPlus(cJourSeul(maintenant), 30))};
   const brut = {accessoires:cAccessoires(c.accessoires), citation:$("cCitation").checked ? "<b>☑</b> " : "☐ "};
@@ -3213,6 +3218,8 @@ async function ouvrirContrat(c){
     if (!$("cFonction").value) $("cFonction").value = "Gérant(e)";
     for (const k of ["cAccord", "cDebut"]) $(k).checked = false;
   }
+  $("cSerieZone").classList.toggle("cache", signe || !!c.tablette_serie);
+  if (signe || c.tablette_serie) $("cSerie").value = "";
   $("contratTitre").textContent = signe ? "Mon contrat signé" : "Mon contrat";
   $("contratSous").textContent = signe ? `Signé le ${cJourHeure(new Date(c.signe_le))} · contrat n° ${c.id}`
     : `${(C_MODELES[c.modele] || {}).titre || ""} · remplissez vos informations, lisez les 3 onglets, puis signez en bas.`;
@@ -3220,8 +3227,9 @@ async function ouvrirContrat(c){
   cAfficher(false);
   if (!signe) sigPreparer();
 }
+const cSerieSaisie = () => $("cSerie").value.replace(/\s/g, "").toUpperCase();
 function fermerContrat(){ $("contratFond").classList.add("cache"); $("contratCadre").srcdoc = ""; }
-for (const id of ["cEnseigne", "cEtab", "cAdresse", "cSiret", "cSignataire", "cFonction", "cContact"])
+for (const id of ["cEnseigne", "cEtab", "cAdresse", "cSiret", "cSignataire", "cFonction", "cContact", "cSerie"])
   $(id).addEventListener("input", ()=>{ clearTimeout(C_MINUTEUR); C_MINUTEUR = setTimeout(()=>{ if (C_CONTRAT && !C_CONTRAT.signe_le) cAfficher(true); }, 500); });
 $("cCitation").onchange = ()=> cAfficher(true);
 for (const b of $("cOnglets").querySelectorAll("button")) b.onclick = ()=>{ C_DOC = b.dataset.doc; cAfficher(false); };
@@ -3246,13 +3254,14 @@ $("bContratSigner").onclick = ()=> occupe($("bContratSigner"), async ()=>{
   const manque = [[i.enseigne.trim().length >= 1, "le nom du commerce"], [i.etablissement.trim().length >= 1, "le nom de l'établissement"],
                   [i.adresse.trim().length >= 5, "l'adresse de l'établissement"], [i.signataire.trim().length >= 3, "votre nom et prénom"],
                   [i.fonction.trim().length >= 2, "votre fonction"]].filter(([ok]) => !ok).map(m => m[1]);
+  if (!$("cSerieZone").classList.contains("cache") && !/^[A-Z0-9]{6,20}$/.test(cSerieSaisie())) manque.push("le numéro de série de la tablette (Reviens STP)");
   if (manque.length) return message("msgContrat", "Il manque " + manque.join(", ") + " (en haut).", "err");
   if (!$("cAccord").checked) return message("msgContrat", "Cochez la case « J'ai lu le contrat… » pour signer.", "err");
   if (!$("cDebut").checked) return message("msgContrat", "Cochez la case « le service commence dès aujourd'hui » (sinon l'installation attend 14 jours).", "err");
   if (!C_SIG) return message("msgContrat", "Signez avec le doigt dans le cadre en pointillés.", "err");
   if (!confirm(`Signer le contrat au nom de « ${i.enseigne.trim()} » ?`)) return;
   try{
-    await API.signerContrat(C_CONTRAT.id, i, $("sigCanvas").toDataURL("image/png"), $("cCitation").checked);
+    await API.signerContrat(C_CONTRAT.id, i, $("sigCanvas").toDataURL("image/png"), $("cCitation").checked, cSerieSaisie());
   }catch(e){ return message("msgContrat", e.message, "err"); }
   const c = await afficherMonContrat();
   fermerContrat();
