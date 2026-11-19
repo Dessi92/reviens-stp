@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="65">
+<meta name="app-version" content="66">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -253,6 +253,10 @@
   .accroche.vc .accSur::before,.accroche.vc .accSur::after{display:none}
   .accroche.vc .chip + .chip::before{content:"·";margin:0 8px;color:var(--accent2);font-weight:800}
   @media (min-width:700px){ .accroche .accTitre{font-size:30px} .accroche .accRegles{font-size:15px} }
+  #bActiver{width:100%;font-size:20px;padding:16px;margin:0 0 14px;animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent)}50%{box-shadow:0 0 0 10px transparent}}
+  @media (prefers-reduced-motion:reduce){#bActiver{animation:none}}
+  .bloque #tel,.bloque #pave,.bloque #bChercher{opacity:.4;filter:grayscale(.6)}
   .entete .trait{width:120px;height:2px;background:var(--accent2);margin:10px auto 0;border-radius:2px}
   #carteRecherche{width:100%;max-width:520px;margin:0 auto 16px;text-align:center}
   #carteRecherche label{text-align:center}
@@ -528,6 +532,7 @@
     <div id="msgAcces"></div>
     <div id="accesActions" style="display:flex;flex-direction:column;gap:10px;margin-top:10px"></div>
     <div class="ligne" style="margin-top:12px">
+      <button class="btn gris" id="bAccesFermer">← Accueil</button>
       <button class="btn gris" id="bAccesSupport">💬 Support</button>
       <button class="btn gris" id="bAccesQuitter">Se déconnecter</button>
     </div>
@@ -684,6 +689,7 @@
     <div class="trait"></div>
   </div>
   <div class="carte" id="carteRecherche">
+    <button class="btn principal cache" id="bActiver" type="button">🚀 Activer ma période d'essai</button>
     <div class="accroche va cache" id="aAccroche">
       <div class="accSur">Programme fidélité</div>
       <div class="accTitre" id="aAccTitre">Votre fidélité est récompensée</div>
@@ -1511,7 +1517,7 @@ function adresseApp(){ return location.origin + location.pathname; }
 let API, SESSION = null, courant = null, enAttente = null, modeInscription = false;
 
 function montrer(ecran){
-  if (ACCES_BLOQUE && !["ecranSupport","ecranReglages"].includes(ecran)){ $("accesFond").classList.remove("cache"); return; }
+  if (ACCES_BLOQUE && !["ecranAccueil","ecranSupport","ecranReglages"].includes(ecran)){ $("accesFond").classList.remove("cache"); return; }
   for (const e of ["ecranAccueil","ecranListe","ecranReglages","ecranGerant","ecranSupport","ecranSms"]) $(e).classList.toggle("cache", e!==ecran);
   window.scrollTo(0,0);
   if (ecran==="ecranListe") afficherListe();
@@ -1981,7 +1987,7 @@ async function entrer(){
   ADMIN = admin; dernierNonLus = null;
   if (!DEMO && !admin && !await appareilAutorise()) return;
   verifierNotifs();
-  if (!DEMO && !admin && !await accesVerifie()) return;   // contrat signé + carte enregistrée chez Stripe, sinon écran d'activation
+  if (!DEMO && !admin && !await accesVerifie()){ montrer("ecranAccueil"); return; }   // pas encore abonné : accueil visible, bouton « Activer », rien ne peut être tapé
   if (!DEMO && !admin && !SESSION.commerce.telephone) setTimeout(demanderTelCommerce, 600);   // comptes créés avant le 10/11/2026
   if (!admin) setTimeout(proposerEmail, 1500);   // comptes avec identifiant : ajouter un e-mail (une fois par jour)
   if (!SESSION.commerce.programme_choisi) return montrer("ecranReglages");   // premier passage : choisir son programme
@@ -3070,15 +3076,33 @@ async function accesVerifie(){
   }
   if (!a){ ACCES_BLOQUE = false; return true; }       // souci de réseau : la base bloque de toute façon les écritures
   ACCES_BLOQUE = !a.ok;
+  majVitrine(a);
   if (a.ok){
     $("accesFond").classList.add("cache");
     if (retour) alerte("✅ Moyen de paiement enregistré : votre période offerte de 30 jours commence. Rien n'est prélevé avant le 31e jour.");
     return true;
   }
-  await afficherActivation(a, retour);
+  await afficherActivation(a, retour, retour);   // ouverte tout de suite seulement au retour de Stripe
   return false;
 }
-async function afficherActivation(a, retour){
+// Accueil « vitrine » quand l'accès est bloqué : le commerçant voit sa page, mais ne peut rien taper
+function majVitrine(a){
+  const b = ACCES_BLOQUE;
+  $("carteRecherche").classList.toggle("bloque", b);
+  $("bActiver").classList.toggle("cache", !b);
+  $("tel").readOnly = b;
+  const arrete = ["arret", "termine"].includes(a && a.etape);       // abonnement arrêté : compte bloqué, Reviens STP reprend la tablette
+  $("bActiver").classList.toggle("gris", b && arrete); $("bActiver").classList.toggle("principal", !(b && arrete));
+  $("bActiver").style.animation = b && arrete ? "none" : "";
+  if (b) $("bActiver").textContent = arrete ? "⏸️ Abonnement arrêté" : "🚀 Activer ma période d'essai";
+}
+$("bActiver").onclick = ()=> $("accesFond").classList.remove("cache");
+$("carteRecherche").addEventListener("click", e=>{     // clavier, numéro, Valider : ouvrent l'activation
+  if (!ACCES_BLOQUE || e.target.closest("#bActiver") || !e.target.closest("#tel,#pave,#bChercher")) return;
+  e.preventDefault(); e.stopImmediatePropagation(); $("accesFond").classList.remove("cache");
+}, true);
+$("bAccesFermer").onclick = ()=> $("accesFond").classList.add("cache");
+async function afficherActivation(a, retour, ouvrir = true){
   let c = null;
   try{ c = await API.monContrat(); }catch(e){}
   const etape = (n, fait, texte) => `<div style="display:flex;gap:10px;align-items:flex-start;text-align:left;margin:8px 0;opacity:${fait ? .6 : 1}"><b style="min-width:28px">${fait ? "✅" : n}</b><span>${texte}</span></div>`;
@@ -3114,10 +3138,10 @@ async function afficherActivation(a, retour){
     if (await accesVerifie()) entrer();
     else message("msgAcces", "Pas encore confirmé. Réessayez dans quelques secondes.", "err");
   });
-  $("accesFond").classList.remove("cache");
+  if (ouvrir) $("accesFond").classList.remove("cache");
 }
 $("bAccesSupport").onclick = ()=>{ $("accesFond").classList.add("cache"); montrer("ecranSupport"); };
-$("bAccesQuitter").onclick = ()=>{ $("accesFond").classList.add("cache"); ACCES_BLOQUE = false; $("bDeconnexion").click(); };
+$("bAccesQuitter").onclick = ()=>{ $("accesFond").classList.add("cache"); ACCES_BLOQUE = false; majVitrine(null); $("bDeconnexion").click(); };
 
 async function retourPaiement(){
   history.replaceState(null, "", location.pathname);
@@ -3269,7 +3293,7 @@ $("bContratSigner").onclick = ()=> occupe($("bContratSigner"), async ()=>{
   }catch(e){ return message("msgContrat", e.message, "err"); }
   const c = await afficherMonContrat();
   fermerContrat();
-  if (ACCES_BLOQUE){ await accesVerifie(); if (c && c.signe_le) alerte("✅ Contrat signé, merci ! Dernière étape : « Enregistrer ma carte ou mon IBAN »."); return; }
+  if (ACCES_BLOQUE){ if (!await accesVerifie()) $("accesFond").classList.remove("cache"); if (c && c.signe_le) alerte("✅ Contrat signé, merci ! Dernière étape : « Enregistrer ma carte ou mon IBAN »."); return; }
   if (c && c.signe_le){
     alerte("✅ Contrat signé, merci ! Dernière étape : « Enregistrer ma carte ou mon IBAN ».");
     $("contratZone").scrollIntoView({behavior:"smooth", block:"center"});
