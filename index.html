@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="71">
+<meta name="app-version" content="72">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -278,6 +278,16 @@
   details.compte .reglCorps{padding:0 18px 18px}
   details.compte .reglCorps>label:first-child,details.compte .reglCorps>.note:first-child{margin-top:0}
   .copieRoue{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px}
+  /* Contrats rangés par commerce (gérant) et rectificatifs */
+  .ctDossier{margin:8px 0}
+  .ctLigne{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--bord)}
+  .ctLigne:first-child{border-top:0}
+  .ctLigne.ctRect{padding-left:14px}
+  .ctBtns{display:flex;gap:6px;flex-wrap:wrap}
+  #rectCadre{width:100%;height:min(52vh,520px);border:1px solid var(--bord);border-radius:10px;background:#fff}
+  #rectSig{width:100%;height:150px;display:block;touch-action:none;background:#fffdf8;border-radius:8px;cursor:crosshair}
+  .rnLigne{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:6px 0}
+  @media (max-width:560px){ .rnLigne{grid-template-columns:1fr} }
   .copieRoue .btn{margin:0;flex:1 1 220px;font-size:15px;padding:10px}
   details.sous{border:1px solid var(--bord);border-radius:14px;background:#fff}
   details.sous>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:14px;cursor:pointer;font-weight:600;font-size:16px}
@@ -578,6 +588,45 @@
       <button class="btn principal siSigne" id="bContratImprimer">🖨️ Imprimer / PDF</button>
     </div>
     <p class="note aSigner" style="margin-bottom:0">Signature électronique (art. 1366 du Code civil). Sont enregistrés : le texte exact accepté, la date et l'heure, l'appareil et sa connexion. Vous gardez une copie dans Mon compte.</p>
+  </div>
+</div>
+<div id="rectFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="rectTitre">
+  <div class="boite contratBoite">
+    <h2 id="rectTitre">Rectificatif</h2>
+    <iframe id="rectCadre" title="Texte du rectificatif"></iframe>
+    <div class="aSigner">
+      <label for="rectNom">Votre nom et prénom</label>
+      <input id="rectNom" type="text" maxlength="120" autocomplete="name">
+      <label class="case"><input type="checkbox" id="rectLu"> <span><b>Lu et approuvé.</b> J'accepte ce rectificatif, qui fait partie de mon contrat.</span></label>
+      <div class="sigZone">
+        <div class="sigTitre"><span>✍️ Signez ici avec le doigt</span><button type="button" id="bRectEffacer">Effacer</button></div>
+        <canvas id="rectSig"></canvas>
+      </div>
+    </div>
+    <div id="msgRect"></div>
+    <div class="ligne">
+      <button class="btn gris" id="bRectFermer">Fermer</button>
+      <button class="btn principal aSigner" id="bRectSigner">✍️ Signer le rectificatif</button>
+      <button class="btn principal" id="bRectImprimer">🖨️ Imprimer / PDF</button>
+    </div>
+    <p class="note aSigner" style="margin-bottom:0">Signature électronique (art. 1366 du Code civil). Sont enregistrés : le texte exact accepté, votre nom, la date et l'heure, l'appareil et sa connexion.</p>
+  </div>
+</div>
+<div id="rnFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="rnTitre">
+  <div class="boite">
+    <h2 id="rnTitre" style="margin-top:4px">Rectificatif</h2>
+    <p class="note" style="margin-top:-4px">Le contrat signé ne change pas : le rectificatif s'y ajoute. Il reste caché jusqu'à ce que vous touchiez « 📨 Montrer au commerçant » ; il le signe alors au doigt dans son application.</p>
+    <label for="rnObjet">Objet</label>
+    <textarea id="rnObjet" maxlength="500" rows="3"></textarea>
+    <label>Corrections (information · écrit dans le contrat · information exacte)</label>
+    <div class="rnLigne"><input id="rnInfo1" placeholder="ex. SIRET" maxlength="80"><input id="rnAvant1" placeholder="écrit dans le contrat" maxlength="200"><input id="rnApres1" placeholder="information exacte" maxlength="200"></div>
+    <div class="rnLigne"><input id="rnInfo2" placeholder="(facultatif)" maxlength="80"><input id="rnAvant2" maxlength="200"><input id="rnApres2" maxlength="200"></div>
+    <div class="rnLigne"><input id="rnInfo3" placeholder="(facultatif)" maxlength="80"><input id="rnAvant3" maxlength="200"><input id="rnApres3" maxlength="200"></div>
+    <div id="msgRn"></div>
+    <div class="ligne">
+      <button class="btn gris" id="bRnFermer">Fermer</button>
+      <button class="btn principal" id="bRnOk">Préparer le rectificatif</button>
+    </div>
   </div>
 </div>
 <div id="ctAdmFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="ctAdmTitre">
@@ -907,7 +956,7 @@
     <div class="compteCorps">
       <details class="sous" id="sousContrat">
         <summary><span>📄</span> Mon contrat<span id="contratPastille"></span><span class="cFleche" aria-hidden="true">›</span></summary>
-        <div class="sousCorps" id="contratZone"><p class="note" style="margin:0">Chargement…</p></div>
+        <div class="sousCorps"><div id="contratZone"><p class="note" style="margin:0">Chargement…</p></div><div id="rectZone"></div></div>
       </details>
       <details class="sous">
         <summary><span>📱</span> Téléphone du commerce<span class="cFleche" aria-hidden="true">›</span></summary>
@@ -1043,6 +1092,11 @@
       <p class="note">Pour la montrer à un commerçant : clients fictifs (Lucas 06 00 00 00 05 → réduction, Mme Martin 06 00 00 00 06 → roue). Rien n'est enregistré en ligne et votre compte reste connecté. Pour revenir ici : « Quitter la démo » en haut de l'écran.</p>
     </div>
   </details>
+  <div class="carte">
+    <h2>📁 Contrats <span class="note" style="font-weight:400">(<span id="gContratsNb">0</span> signés)</span></h2>
+    <p class="note" style="margin-top:-6px">Tous les contrats et leurs rectificatifs, rangés par commerce. Un contrat signé ne se modifie jamais : pour corriger une information, préparez un rectificatif, que le commerçant signe dans son application.</p>
+    <div id="gContrats"><p class="note">Chargement…</p></div>
+  </div>
   <div class="carte">
     <h2>🔔 Messages du support <span id="gNonLus"></span></h2>
     <div id="gSupport"></div>
@@ -1226,6 +1280,20 @@ function apiSupabase(sb){
       return r.data;
     },
     async adminContrat(id){ return v(await sb.from("contrats").select("*").eq("id", id).single()); },
+    async mesRectificatifs(){
+      const r = await sb.from("contrats_rectificatifs").select("*").eq("commerce_id", SESSION.commerce.id).order("cree_le");
+      if (r.error){ if (["42P01","PGRST205"].includes(r.error.code)) return []; throw traduire(r.error); }
+      return r.data;
+    },
+    async signerRectificatif(id, nom, signature){ return v(await sb.rpc("signer_rectificatif", {p_id:id, p_signataire:nom, p_signature:signature})); },
+    async adminRectificatifs(){
+      const r = await sb.from("contrats_rectificatifs").select("*").order("cree_le");
+      if (r.error){ if (["42P01","PGRST205"].includes(r.error.code)) return []; throw traduire(r.error); }
+      return r.data;
+    },
+    async adminRectificatifPreparer(contrat, objet, corrections){ return v(await sb.rpc("admin_rectificatif_preparer", {p_contrat:contrat, p_objet:objet, p_corrections:corrections})); },
+    async adminRectificatifAnnuler(id){ v(await sb.rpc("admin_rectificatif_annuler", {p_id:id})); },
+    async adminRectificatifMontrer(id, oui){ v(await sb.rpc("admin_rectificatif_montrer", {p_id:id, p_montrer:!!oui})); },
     async monAcces(){ return v(await sb.rpc("mon_acces")); },
     async adminAcces(){ return v(await sb.rpc("admin_acces")); },
     async placesPartenaire(){ return v(await sb.rpc("places_partenaire")); },
@@ -1474,6 +1542,12 @@ function apiDemo(){
     async signerContrat(){ throw new Error("Pas de contrat en mode démo"); },
     async preparerMonContrat(){ throw new Error("Pas de contrat en mode démo"); },
     async adminContrats(){ return []; },
+    async mesRectificatifs(){ return []; },
+    async signerRectificatif(){ throw new Error("Pas de rectificatif en mode démo"); },
+    async adminRectificatifs(){ return []; },
+    async adminRectificatifPreparer(){ throw new Error("Pas de rectificatif en mode démo"); },
+    async adminRectificatifAnnuler(){ throw new Error("Pas de rectificatif en mode démo"); },
+    async adminRectificatifMontrer(){ throw new Error("Pas de rectificatif en mode démo"); },
     async adminContrat(){ throw new Error("Pas de contrat en mode démo"); },
     async adminFormules(){ return []; },
     async monAcces(){ return {ok:true, etape:"demo"}; },
@@ -3322,6 +3396,7 @@ async function afficherMonContrat(){
   let c;
   try{ c = await API.monContrat(); }catch(e){ z.innerHTML = `<p class="note" style="margin:0">${echapper(e.message)}</p>`; return null; }
   $("contratPastille").innerHTML = c && !c.signe_le ? `<span class="pastille">à signer</span>` : "";
+  if ($("rectZone")) $("rectZone").innerHTML = "";
   if (!c){ z.innerHTML = `<p class="note" style="margin:0">Aucun contrat pour l'instant. Votre contrat apparaîtra ici quand Reviens STP l'aura préparé.</p>`; return null; }
   if (c.signe_le){
     z.innerHTML = `<p style="margin:0">✅ <b>Contrat signé</b> le ${echapper(cJourHeure(new Date(c.signe_le)))} par ${echapper((c.infos || {}).signataire)}.</p>
@@ -3334,11 +3409,16 @@ async function afficherMonContrat(){
   }
   $("bVoirContrat").onclick = ()=> ouvrirContrat(c);
   if ($("bArretEssai")) $("bArretEssai").onclick = ()=> arreterEssai(c);
+  const rects = c.signe_le ? await afficherMesRectificatifs() : [];
+  if (rects.some(r => !r.signe_le)) $("contratPastille").innerHTML = `<span class="pastille">à signer</span>`;
   return c;
 }
 async function rappelContrat(){
   try{
     const c = await API.monContrat();
+    let rect = false;
+    if (c && c.signe_le) try{ rect = (await API.mesRectificatifs()).some(r => !r.signe_le && !r.annule_le); }catch(e){}
+    if (rect) alerte("✍️ Un rectificatif de votre contrat est à signer : touchez ici", ()=>{ montrer("ecranReglages"); $("carteCompte").open = true; $("sousContrat").open = true; $("sousContrat").scrollIntoView({behavior:"smooth", block:"center"}); });
     if (c && !c.signe_le) alerte("📄 Votre contrat est prêt à signer : touchez ici", ()=>{ montrer("ecranReglages"); $("carteCompte").open = true; $("sousContrat").open = true; $("sousContrat").scrollIntoView({behavior:"smooth", block:"center"}); });
   }catch(e){}
 }
@@ -3418,6 +3498,7 @@ $("bContratSigner").onclick = ()=> occupe($("bContratSigner"), async ()=>{
 // Gérant : préparer un contrat pour un commerce, voir un contrat signé
 let CT_ADMIN = {}, CT_COMMERCE = null;
 async function infosContratsGerant(){
+  afficherContratsGerant();
   CT_ADMIN = {};
   try{ for (const c of await API.adminContrats()) if (!c.annule_le && c.commerce_id && !CT_ADMIN[c.commerce_id]) CT_ADMIN[c.commerce_id] = c; }catch(e){}
   const ACC = {};
@@ -3462,6 +3543,120 @@ $("bCtAdmOk").onclick = ()=> occupe($("bCtAdmOk"), async ()=>{
   await infosContratsGerant();
   ouvrirContratAdmin(x);
   message("msgCtAdm", "✓ Contrat prêt : le commerçant le signe dans Réglages → Mon compte → Mon contrat.", "ok");
+});
+
+// ---------- Rectificatifs de contrat (signés dans l'application, jamais sur papier) ----------
+const RECT_CSS = `<style>body{font-family:Georgia,"Times New Roman",serif;color:#1d1d1d;font-size:15px;line-height:1.5;margin:18px}
+  h1{font-size:22px;text-align:center;margin:0 0 4px}.sous{text-align:center;color:#555;margin:0 0 20px;font-size:13px}
+  .parties{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 16px}@media(max-width:560px){.parties{grid-template-columns:1fr}}
+  .bloc{border:1px solid #bbb;border-radius:8px;padding:8px 12px}.bloc .t{font-weight:bold;text-transform:uppercase;font-size:11px;letter-spacing:.06em;color:#666}
+  h2{font-size:16px;margin:16px 0 6px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:7px 9px;text-align:left}
+  th{background:#f1ede6;font-size:13px}.faux{text-decoration:line-through;color:#8a1c1c}.bon{font-weight:bold;color:#1d5c2c}
+  .preuve{border-top:2px solid #333;margin-top:22px;padding-top:10px;font-size:13px}.preuve img{max-width:260px;display:block;margin:6px 0}
+  @media print{body{margin:0}}</style>`;
+let R_COURANT = null, R_SIG = false;
+function rectTexte(r){
+  const preuve = r.signe_le ? `<div class="preuve"><b>Signé électroniquement</b> par <b>${echapper(r.signataire)}</b>, pour le commerce, le <b>${echapper(cJourHeure(new Date(r.signe_le)))}</b> (heure du serveur), précédé de « Lu et approuvé ».
+      <img src="${r.signature}" alt="Signature">
+      Rectificatif n° ${r.id} · connexion : ${echapper(r.ip || "—")} · appareil : ${echapper(r.appareil || "—")}<br>
+      Empreinte SHA-256 : <span style="word-break:break-all">${echapper(r.empreinte || "")}</span></div>` : "";
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${RECT_CSS}</head><body>${r.texte}${preuve}</body></html>`;
+}
+function rectSigPreparer(){
+  const cv = $("rectSig"), b = cv.getBoundingClientRect(), k = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(b.width * k); cv.height = Math.round(b.height * k);
+  const g = cv.getContext("2d");
+  g.setTransform(k, 0, 0, k, 0, 0); g.lineWidth = 2.6; g.lineCap = "round"; g.lineJoin = "round"; g.strokeStyle = "#1b2a6b";
+  R_SIG = false;
+  let enCours = false, dernier = null;
+  const pos = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  cv.onpointerdown = e => { enCours = true; dernier = pos(e); cv.setPointerCapture(e.pointerId); g.beginPath(); g.arc(dernier[0], dernier[1], 1.2, 0, 7); g.fillStyle = "#1b2a6b"; g.fill(); };
+  cv.onpointermove = e => { if (!enCours) return; const p = pos(e); g.beginPath(); g.moveTo(dernier[0], dernier[1]); g.lineTo(p[0], p[1]); g.stroke(); if (Math.hypot(p[0]-dernier[0], p[1]-dernier[1]) > 0.5) R_SIG = true; dernier = p; };
+  cv.onpointerup = cv.onpointercancel = () => { enCours = false; };
+}
+function ouvrirRectificatif(r){
+  R_COURANT = r;
+  $("rectTitre").textContent = `Rectificatif au contrat n° ${r.contrat_id}`;
+  $("rectCadre").srcdoc = rectTexte(r);
+  const aSigner = !r.signe_le && !r.annule_le && !ADMIN_VUE;
+  for (const el of document.querySelectorAll("#rectFond .aSigner")) el.classList.toggle("cache", !aSigner);
+  $("bRectImprimer").classList.toggle("cache", aSigner);
+  $("rectNom").value = ""; $("rectLu").checked = false; message("msgRect", "");
+  $("rectFond").classList.remove("cache");
+  if (aSigner) requestAnimationFrame(rectSigPreparer);
+}
+let ADMIN_VUE = false;
+$("bRectEffacer").onclick = rectSigPreparer;
+$("bRectFermer").onclick = ()=>{ $("rectFond").classList.add("cache"); $("rectCadre").srcdoc = ""; ADMIN_VUE = false; };
+$("bRectImprimer").onclick = ()=>{ try{ $("rectCadre").contentWindow.focus(); $("rectCadre").contentWindow.print(); }catch(e){ alert("Impression impossible sur cet appareil."); } };
+$("bRectSigner").onclick = ()=> occupe($("bRectSigner"), async ()=>{
+  const nom = $("rectNom").value.trim();
+  if (nom.length < 3) return message("msgRect", "Écrivez votre nom et prénom.", "err");
+  if (!$("rectLu").checked) return message("msgRect", "Cochez « Lu et approuvé » pour signer.", "err");
+  if (!R_SIG) return message("msgRect", "Signez avec le doigt dans le cadre en pointillés.", "err");
+  try{ await API.signerRectificatif(R_COURANT.id, nom, $("rectSig").toDataURL("image/png")); }
+  catch(e){ return message("msgRect", e.message, "err"); }
+  $("rectFond").classList.add("cache");
+  await afficherMonContrat();
+  alerte("✅ Rectificatif signé, merci ! Il est rangé avec votre contrat.");
+});
+// Liste des rectificatifs sous « Mon contrat »
+async function afficherMesRectificatifs(){
+  const z = $("rectZone"); if (!z) return [];
+  let l = [];
+  try{ l = (await API.mesRectificatifs()).filter(r => !r.annule_le); }catch(e){ z.innerHTML = ""; return []; }
+  z.innerHTML = l.map(r => r.signe_le
+      ? `<p style="margin:10px 0 0">✅ <b>Rectificatif</b> signé le ${echapper(jourFr(r.signe_le))}</p><button class="btn gris" data-rect="${r.id}">📄 Voir ou imprimer le rectificatif</button>`
+      : `<p style="margin:10px 0 0">✍️ <b>Un rectificatif est à signer</b> : ${echapper(r.objet)}</p><button class="btn principal" data-rect="${r.id}">✍️ Lire et signer le rectificatif</button>`).join("");
+  for (const b of z.querySelectorAll("[data-rect]")) b.onclick = ()=> ouvrirRectificatif(l.find(r => String(r.id) === b.dataset.rect));
+  return l;
+}
+
+// ---------- Espace gérant : tous les contrats, rangés par commerce ----------
+let RECT_CONTRAT = null;
+async function afficherContratsGerant(){
+  const z = $("gContrats"); if (!z) return;
+  let cs = [], rs = [];
+  try{ cs = await API.adminContrats(); rs = await API.adminRectificatifs(); }catch(e){ z.innerHTML = `<p class="note">${echapper(e.message)}</p>`; return; }
+  const parCommerce = {};
+  for (const c of cs){ if (c.annule_le && !c.signe_le) continue; (parCommerce[c.commerce_nom] = parCommerce[c.commerce_nom] || []).push(c); }
+  const noms = Object.keys(parCommerce).sort((a,b)=>a.localeCompare(b, "fr"));
+  $("gContratsNb").textContent = cs.filter(c => c.signe_le && !c.annule_le).length;
+  if (!noms.length){ z.innerHTML = `<p class="note">Aucun contrat pour l'instant.</p>`; return; }
+  z.innerHTML = noms.map(n => `<details class="sous ctDossier"><summary><span>📁</span> ${echapper(n)} <small class="note" style="margin-left:6px">${parCommerce[n].length} contrat${parCommerce[n].length > 1 ? "s" : ""}</small><span class="cFleche" aria-hidden="true">›</span></summary>
+      <div class="sousCorps">${parCommerce[n].map(c => {
+        const rr = rs.filter(r => r.contrat_id === c.id && !r.annule_le);
+        return `<div class="ctLigne"><div><b>Contrat n° ${c.id}</b> · ${echapper(c.modele)}${c.tablette_serie ? " · tablette " + echapper(c.tablette_serie) : ""}<br>
+            <span class="note">${c.signe_le ? `✅ signé le ${echapper(cJourHeure(new Date(c.signe_le)))} par ${echapper((c.infos || {}).signataire || "")}` : `📄 préparé le ${jourFr(c.prepare_le)}, pas encore signé`}</span></div>
+            <div class="ctBtns">${c.signe_le ? `<button class="petitbtn roue" data-ctvoir="${c.id}">📄 Voir</button><button class="petitbtn" data-ctrect="${c.id}">✏️ Rectificatif…</button>` : ""}</div></div>` +
+          rr.map(r => `<div class="ctLigne ctRect"><div>↳ <b>Rectificatif n° ${r.id}</b> : ${echapper(r.objet)}<br><span class="note">${r.signe_le ? `✅ signé le ${echapper(cJourHeure(new Date(r.signe_le)))} par ${echapper(r.signataire)}` : r.montre_le ? `✍️ montré au commerce le ${jourFr(r.montre_le)} : en attente de sa signature` : "🙈 caché : le commerce ne le voit pas encore"}</span></div>
+            <div class="ctBtns"><button class="petitbtn roue" data-rvoir="${r.id}">📄 Voir</button>${r.signe_le ? "" : `<button class="petitbtn${r.montre_le ? "" : " roue"}" data-rmontrer="${r.id}" data-oui="${r.montre_le ? "" : "1"}">${r.montre_le ? "🙈 Cacher" : "📨 Montrer au commerçant"}</button><button class="petitbtn vider" data-rretirer="${r.id}">Retirer</button>`}</div></div>`).join("");
+      }).join("")}</div></details>`).join("");
+  for (const b of z.querySelectorAll("[data-ctvoir]")) b.onclick = async ()=>{ try{ ouvrirContrat(await API.adminContrat(Number(b.dataset.ctvoir))); }catch(e){ alert(e.message); } };
+  for (const b of z.querySelectorAll("[data-rvoir]")) b.onclick = ()=>{ ADMIN_VUE = true; ouvrirRectificatif(rs.find(r => String(r.id) === b.dataset.rvoir)); };
+  for (const b of z.querySelectorAll("[data-rmontrer]")) b.onclick = async ()=>{
+    const oui = !!b.dataset.oui;
+    if (oui && !confirm("Montrer ce rectificatif au commerçant ? Il le verra dans son application et pourra le signer.")) return;
+    try{ await API.adminRectificatifMontrer(Number(b.dataset.rmontrer), oui); await afficherContratsGerant(); alerte(oui ? "📨 Rectificatif montré au commerçant : il le signe dans Réglages → Mon compte → Mon contrat." : "🙈 Rectificatif caché."); }catch(e){ alert(e.message); }
+  };
+  for (const b of z.querySelectorAll("[data-rretirer]")) b.onclick = async ()=>{ if (!confirm("Retirer ce rectificatif pas encore signé ?")) return; try{ await API.adminRectificatifAnnuler(Number(b.dataset.rretirer)); afficherContratsGerant(); }catch(e){ alert(e.message); } };
+  for (const b of z.querySelectorAll("[data-ctrect]")) b.onclick = ()=>{
+    RECT_CONTRAT = cs.find(c => String(c.id) === b.dataset.ctrect);
+    $("rnTitre").textContent = `Rectificatif au contrat n° ${RECT_CONTRAT.id} (${RECT_CONTRAT.commerce_nom})`;
+    $("rnObjet").value = "Corriger une erreur de saisie dans les informations du commerce indiquées lors de la signature du contrat.";
+    for (const i of [1,2,3]) for (const k of ["Info","Avant","Apres"]) $("rn" + k + i).value = "";
+    message("msgRn", ""); $("rnFond").classList.remove("cache");
+  };
+}
+$("bRnFermer").onclick = ()=> $("rnFond").classList.add("cache");
+$("bRnOk").onclick = ()=> occupe($("bRnOk"), async ()=>{
+  const corr = [1,2,3].map(i => ({info:$("rnInfo"+i).value.trim(), avant:$("rnAvant"+i).value.trim(), apres:$("rnApres"+i).value.trim()})).filter(x => x.info && x.apres);
+  if (!corr.length) return message("msgRn", "Remplissez au moins une ligne : l'information et sa bonne valeur.", "err");
+  try{ await API.adminRectificatifPreparer(RECT_CONTRAT.id, $("rnObjet").value, corr); }
+  catch(e){ return message("msgRn", e.message, "err"); }
+  $("rnFond").classList.add("cache");
+  await afficherContratsGerant();
+  alerte("✓ Rectificatif prêt et caché. Touchez « 📨 Montrer au commerçant » quand vous voulez qu'il le signe.");
 });
 
 // ---------- Mon compte : mot de passe et e-mail ----------
