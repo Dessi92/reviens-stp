@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="68">
+<meta name="app-version" content="69">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -791,7 +791,7 @@
         <input id="rSeuil" class="inline" type="number" min="1" step="1" inputmode="numeric" aria-label="Nombre de points pour avoir la réduction"> points,
         <span id="rRemiseBloc">il reçoit <b>une réduction de</b>
         <input id="rRemise" class="inline" type="number" min="1" max="100" step="1" inputmode="numeric" aria-label="Pourcentage de réduction"> %
-        sur son prochain achat.</span><span id="rPalierRoueTxt" class="cache">il gagne <b>un tour de la roue des cadeaux</b> (les cadeaux et réductions se règlent dans « Roue de la fortune », plus bas).</span> Ses points repartent ensuite à 0.</div>
+        sur son prochain achat.</span><span id="rPalierRoueTxt" class="cache">il gagne <b>un tour de la roue des <span id="rSeuilRoue">100</span> points</b> (les cadeaux et réductions se règlent dans « Roue de la fortune », plus bas).</span> Ses points repartent ensuite à 0.</div>
     </div>
     <div class="etape">
       <span class="num">3</span>
@@ -1189,6 +1189,8 @@ function apiSupabase(sb){
     async adminVider(id){ return v(await sb.rpc("admin_vider_commerce", {p_id:id})); },
     async adminSupprimer(id){ v(await sb.rpc("admin_supprimer_commerce", {p_id:id})); },
     async adminRoue(id, actif){ v(await sb.rpc("admin_roue", {p_id:id, p_active:actif})); },
+    async adminPalierListe(){ return v(await sb.rpc("admin_palier_liste")) || []; },
+    async adminPalierRoue(id, actif){ v(await sb.rpc("admin_palier_roue", {p_id:id, p_actif:!!actif})); },
     async roueEnAttente(clientId){ const d = v(await sb.from("roue_tirages").select("*").eq("client_id", clientId).is("tire_le", null).order("cree_le", {ascending:false}).limit(1)); return d[0] || null; },
     async roueTirer(id){ return v(await sb.rpc("roue_tirer", {p_tirage:id})); },
     async bonsActifs(){ return (v(await sb.from("roue_tirages").select("id,client_id,lot,tire_le,utilise_le").is("utilise_le", null).gte("tire_le", debutMois().toISOString()).limit(5000)) || []).filter(estBon); },
@@ -1380,6 +1382,8 @@ function apiDemo(){
     async viderMesClients(){ D.clients = []; D.mouvements = []; sauver(); },
     async adminVider(id){ if (id !== "demo") throw new Error("Commerce d'exemple : rien à vider en démo"); const n = D.clients.length; D.clients = []; D.mouvements = []; sauver(); return n; },
     async adminSupprimer(id){ throw new Error("Pas de suppression de commerce en mode démo"); },
+    async adminPalierListe(){ return [{id:"demo", palier_roue:!!D.commerce.palier_roue}]; },
+    async adminPalierRoue(id, actif){ if (id !== "demo") throw new Error("Commerce d'exemple"); D.commerce.palier_roue = !!actif; sauver(); },
     async adminRoue(id, actif){ if (id !== "demo") throw new Error("Commerce d'exemple"); D.commerce.roue_active = actif; if (actif && !(D.commerce.roue && D.commerce.roue.lots && D.commerce.roue.lots.length)) D.commerce.roue = ROUE_EXEMPLE(); if (actif && !D.commerce.roue_depuis) D.commerce.roue_depuis = new Date().toISOString(); sauver(); },
     async roueEnAttente(clientId){ return copie((D.tirages||[]).filter(t=>t.client_id===clientId && !t.tire_le).pop() || null); },
     async roueTirer(id){
@@ -1585,9 +1589,13 @@ function smsExpediteur(nom){
   if (/[A-Za-z]/.test(e11)) return e11;
   return "Reviens STP";
 }
+const SMS_PRESQUE_ROUE = "Bonjour{nom}, plus qu'un passage chez {commerce} et un cadeau ou une réduction est à gagner sur notre roue !";
 function smsReglages(){
   const s = SESSION.commerce.sms || {};
-  return {expediteur:s.expediteur || "", relance:{...SMS_DEFAUT.relance, ...(s.relance || {})}, presque:{...SMS_DEFAUT.presque, ...(s.presque || {})}};
+  const r = {expediteur:s.expediteur || "", relance:{...SMS_DEFAUT.relance, ...(s.relance || {})}, presque:{...SMS_DEFAUT.presque, ...(s.presque || {})}};
+  // Roue des 100 points : pas de « réduction de X % » dans le texte proposé
+  if (palierRoue() && r.presque.texte === SMS_DEFAUT.presque.texte) r.presque.texte = SMS_PRESQUE_ROUE;
+  return r;
 }
 // Jours fériés (France métropolitaine) et créneau d'envoi : du lundi au samedi, 10 h - 19 h
 function joursFeries(an){
@@ -2278,8 +2286,8 @@ async function ouvrirClient(c, ajoute = false){
   if (atteint){
     const reste = c.points - r.seuil;
     if (palierRoue()){
-      $("bUtiliser").textContent = "🎡 Lancer la roue des cadeaux";
-      $("cRecompense").textContent = `🎉 ${r.seuil} points atteints : un tour de roue des cadeaux !`;
+      $("bUtiliser").textContent = `🎡 Lancer la roue des ${r.seuil} points`;
+      $("cRecompense").textContent = `🎉 ${r.seuil} points atteints : un tour de la roue des ${r.seuil} points !`;
     } else {
     $("bUtiliser").textContent = reste > 0 ? `✓ Réduction faite · garder ${reste} point${reste>1?"s":""}` : "✓ Réduction faite · remettre à 0";
     $("cRecompense").textContent = `🎉 Réduction de ${r.remise} % à appliquer sur cet achat`;
@@ -2287,7 +2295,7 @@ async function ouvrirClient(c, ajoute = false){
     $("cReste").textContent = "";
   } else {
     const reste = r.seuil - c.points, passages = Math.ceil(reste / r.points_par_passage);
-    $("cReste").textContent = `Encore ${reste} points (${pluriel(passages,"passage")}) pour ${palierRoue() ? "la roue des cadeaux" : "-" + r.remise + " %"}`;
+    $("cReste").textContent = `Encore ${reste} points (${pluriel(passages,"passage")}) pour ${palierRoue() ? "la roue des " + r.seuil + " points" : "-" + r.remise + " %"}`;
   }
   afficherBons(c);
   $("cAccord").textContent = c.accord_sms ? `✅ Accepte les SMS (depuis le ${jourFr(c.accord_sms_le)})` : "❌ N'a pas accepté les SMS";
@@ -2299,7 +2307,7 @@ async function ouvrirClient(c, ajoute = false){
       $("zoneAjout").classList.add("cache");
       message("msgClient", `⚠️ Ce client a déjà reçu +${recent.points} points à ${new Date(recent.le).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}. Pas de nouveaux points avant 2 minutes.`, "info");
     }
-    $("cHisto").innerHTML = h.map(m=>`<div>${dateFr(m.le)} — ${m.type==="points" ? "+"+m.points+" points"+(m.gros_panier?" (gros panier)":"") : m.type==="roue" ? ((m.libelle||"").startsWith("Bon utilisé") ? "🎟️ "+echapper(m.libelle) : "🎡 Roue : "+echapper(m.libelle||"cadeau")) : (m.remise == null ? "🎡 Roue des cadeaux (palier atteint)" : `Réduction -${m.remise} % utilisée, points remis à 0`)}</div>`).join("");
+    $("cHisto").innerHTML = h.map(m=>`<div>${dateFr(m.le)} — ${m.type==="points" ? "+"+m.points+" points"+(m.gros_panier?" (gros panier)":"") : m.type==="roue" ? ((m.libelle||"").startsWith("Bon utilisé") ? "🎟️ "+echapper(m.libelle) : "🎡 Roue : "+echapper(m.libelle||"cadeau")) : (m.remise == null ? "🎡 Roue des " + SESSION.commerce.seuil + " points" : `Réduction -${m.remise} % utilisée, points remis à 0`)}</div>`).join("");
   }catch(e){ $("cHisto").textContent = ""; }
 }
 
@@ -2449,7 +2457,7 @@ async function afficherReductionsJour(){
   const nom = id => { const c = LISTE.find(x=>x.id===id); return c ? (c.nom || joli(c.telephone)) : "Client"; };
   const heure = d => new Date(d).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"});
   const lignes = [
-    ...r.reductions.map(m => ({le:m.le, txt:`${echapper(nom(m.client_id))} : <b>${m.remise == null ? "🎡 roue des cadeaux" : "−" + m.remise + " %"}</b>`})),
+    ...r.reductions.map(m => ({le:m.le, txt:`${echapper(nom(m.client_id))} : <b>${m.remise == null ? "🎡 roue des " + SESSION.commerce.seuil + " points" : "−" + m.remise + " %"}</b>`})),
     ...r.bons.map(t => ({le:t.utilise_le, txt:`${echapper(nom(t.client_id))} : <b>${echapper(nomLot(t.lot))}</b> (roue)`}))
   ].sort((a,b)=>new Date(a.le) - new Date(b.le));
   $("redJourNb").textContent = lignes.length;
@@ -2522,7 +2530,7 @@ function remplirReglages(){
   $("rAutres").classList.toggle("cache", premier);
   $("bEnregistrer").textContent = premier ? "C'est parti !" : "Enregistrer";
   $("rNom").value = c.nom; $("rPoints").value = c.points_par_passage; $("rSeuil").value = c.seuil; $("rRemise").value = c.remise;
-  $("rRemiseBloc").classList.toggle("cache", !!c.palier_roue); $("rPalierRoueTxt").classList.toggle("cache", !c.palier_roue);
+  $("rSeuilRoue").textContent = c.seuil; $("rRemiseBloc").classList.toggle("cache", !!c.palier_roue); $("rPalierRoueTxt").classList.toggle("cache", !c.palier_roue);
   // Au premier passage, on propose le bonus gros panier (70 € → double de points) déjà coché
   const bonus = premier || c.points_bonus != null;
   $("rBonusActif").checked = bonus;
@@ -2595,7 +2603,7 @@ function etapesTuto(){
   const e = [
     {ecran:"ecranAccueil", cible:"tel", titre:"Le numéro du client", texte:"En caisse, demandez son numéro de téléphone et tapez-le ici avec le clavier. Pas de carte, rien à installer pour le client."},
     {ecran:"ecranAccueil", cible:"bChercher", titre:"Valider", texte:"Touchez « Valider ». Nouveau client ? Une fiche s'ouvre : son prénom, son accord pour les SMS, et sa carte est créée avec ses premiers points."},
-    {ecran:"ecranAccueil", titre:"Client déjà connu", texte:`Sa carte s'affiche : touchez « +${pts} points ». Une erreur ? « Annuler ces points » juste en dessous. ${c.palier_roue ? `Au palier (${c.seuil} points), un bouton « Lancer la roue des cadeaux » apparaît : le client tourne la roue et gagne un cadeau ou une réduction.` : `Au palier (${c.seuil} points), un bouton vert « Réduction faite » apparaît : faites-lui sa remise (${c.remise} %), puis touchez-le.`} Les points, le palier et la réduction se règlent entièrement comme vous voulez, on va voir où.`},
+    {ecran:"ecranAccueil", titre:"Client déjà connu", texte:`Sa carte s'affiche : touchez « +${pts} points ». Une erreur ? « Annuler ces points » juste en dessous. ${c.palier_roue ? `Au palier (${c.seuil} points), un bouton « Lancer la roue des ${c.seuil} points » apparaît : le client tourne la roue et gagne un cadeau ou une réduction.` : `Au palier (${c.seuil} points), un bouton vert « Réduction faite » apparaît : faites-lui sa remise (${c.remise} %), puis touchez-le.`} Les points, le palier et la réduction se règlent entièrement comme vous voulez, on va voir où.`},
   ];
   if (roue) e.push({ecran:"ecranAccueil", titre:"La roue de la fortune 🎡", texte:"De temps en temps, la roue s'affiche pour le client en caisse. Il la lance, et son cadeau est noté sur sa fiche jusqu'à la fin du mois. Ses cadeaux se règlent aussi, juste après."});
   e.push(
@@ -2695,7 +2703,7 @@ function majResume(){
   const np = Math.ceil(x.s / x.p), ng = x.bonus ? Math.ceil(x.s / x.pb) : 0;
   $("rResume").innerHTML = `<b>En résumé :</b> un client qui vient <b>${np} fois</b>` +
     (x.bonus && ng !== np ? ` (ou seulement <b>${ng} fois</b> avec des paniers de ${euros(x.m)} ou plus)` : "") +
-    (palierRoue() ? ` gagne <b>un tour de la roue des cadeaux</b>.` : ` obtient <b>-${x.r} %</b> sur son achat suivant.`);
+    (palierRoue() ? ` gagne <b>un tour de la roue des ${x.s} points</b>.` : ` obtient <b>-${x.r} %</b> sur son achat suivant.`);
 }
 for (const id of ["rPoints","rSeuil","rRemise","rMontant","rPointsBonus"]) $(id).addEventListener("input", majResume);
 $("rBonusActif").addEventListener("change", majResume);
@@ -2753,7 +2761,7 @@ async function afficherGerant(){
       <td><b>${echapper(x.commerce)}</b><br><span class="note">${echapper(affEmail(x.email))}</span><br><span class="note" data-tel="${x.id}">…</span><br><span class="note" data-smsinfo="${x.id}"></span><br><span class="note" data-appinfo="${x.id}"></span><br><span class="note" data-ctinfo="${x.id}"></span></td>
       <td class="n">${x.nb_clients}</td><td class="n">${x.nb_accord_sms}</td><td class="n">${x.passages_30j}</td>
       <td class="n">${x.nb_reductions}</td><td class="n">${jourFr(x.derniere_activite)}</td><td class="n">${jourFr(x.inscrit_le)}</td>
-      <td><button class="petitbtn roue" data-roue="${x.id}">${x.roue_active ? "🎡 Couper la roue" : "🎡 Activer la roue"}</button><button class="petitbtn" data-sms="${x.id}">📱 SMS…</button><button class="petitbtn" data-app="${x.id}">📟 Appareils…</button><button class="petitbtn" data-contrat="${x.id}">📄 Contrat…</button><button class="petitbtn vider" data-vider="${x.id}">Vider</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer</button></td></tr>`).join("")
+      <td><button class="petitbtn roue" data-roue="${x.id}">${x.roue_active ? "🎡 Couper la roue de la fortune" : "🎡 Activer la roue de la fortune"}</button><button class="petitbtn roue" data-palier="${x.id}">🎡 Roue des 100 points…</button><button class="petitbtn" data-sms="${x.id}">📱 SMS…</button><button class="petitbtn" data-app="${x.id}">📟 Appareils…</button><button class="petitbtn" data-contrat="${x.id}">📄 Contrat…</button><button class="petitbtn vider" data-vider="${x.id}">Vider</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer</button></td></tr>`).join("")
     || `<tr><td colspan="8" class="note">Aucun commerce inscrit pour l'instant.</td></tr>`;
   for (const b of $("gListe").querySelectorAll("button")) b.onclick = ()=> actionCommerce(b);
   afficherParrainagesGerant();
@@ -2770,6 +2778,10 @@ async function afficherGerant(){
     const x = SMS_ADMIN[sp.dataset.smsinfo];
     sp.textContent = x ? `📱 SMS ${x.sms_active ? "actifs" : "coupés"} · ${x.sms_mois} ce mois · porte-monnaie ${eurosSms(Number(x.sms_solde) || 0)}` : "";
   }
+  PALIER_ADMIN = {};
+  try{ for (const c of await API.adminPalierListe()) PALIER_ADMIN[c.id] = !!c.palier_roue; }catch(e){}
+  for (const b of $("gListe").querySelectorAll("[data-palier]"))
+    if (b.dataset.palier in PALIER_ADMIN) b.textContent = PALIER_ADMIN[b.dataset.palier] ? "🎡 Couper la roue des 100 points" : "🎡 Activer la roue des 100 points";
   APP_ADMIN = {};
   try{ for (const c of await API.adminAppareils()) APP_ADMIN[c.commerce_id] = c; }catch(e){}
   for (const sp of $("gListe").querySelectorAll("[data-appinfo]")){
@@ -3469,9 +3481,10 @@ function demanderMdp(texteHtml){
     });
   });
 }
+let PALIER_ADMIN = {};
 async function actionCommerce(b){
   const s = DERNIERES_STATS || [];
-  const id = b.dataset.vider || b.dataset.suppr || b.dataset.roue || b.dataset.sms || b.dataset.app || b.dataset.contrat, x = s.find(c=>String(c.id)===String(id));
+  const id = b.dataset.vider || b.dataset.suppr || b.dataset.roue || b.dataset.palier || b.dataset.sms || b.dataset.app || b.dataset.contrat, x = s.find(c=>String(c.id)===String(id));
   if (!x) return;
   if (b.dataset.contrat) return ouvrirContratAdmin(x);
   try{
@@ -3501,6 +3514,13 @@ async function actionCommerce(b){
         const total = await API.adminSmsSolde(x.id, n);
         alerte(`📱 ${x.commerce} : porte-monnaie ${eurosSms(total)}`);
       }
+    } else if (b.dataset.palier){
+      const activer = !PALIER_ADMIN[x.id];
+      if (!confirm(activer ? `Activer la roue des 100 points pour « ${x.commerce} » ? Au palier, le client tourne la roue (cadeaux de sa roue de la fortune, sans case « perdu ») au lieu d'avoir sa réduction.` : `Couper la roue des 100 points pour « ${x.commerce} » ? Au palier, le client retrouve sa réduction en %.`)) return;
+      await API.adminPalierRoue(x.id, activer);
+      PALIER_ADMIN[x.id] = activer; b.textContent = activer ? "🎡 Couper la roue des 100 points" : "🎡 Activer la roue des 100 points";
+      if (SESSION && SESSION.commerce && SESSION.commerce.id === x.id) SESSION.commerce.palier_roue = activer;
+      alerte(activer ? `🎡 Roue des 100 points activée pour ${x.commerce}` : `Roue des 100 points coupée pour ${x.commerce}`);
     } else if (b.dataset.roue){
       const activer = !x.roue_active;
       if (!confirm(activer ? `Activer la roue de la fortune pour « ${x.commerce} » ? Des cadeaux d'exemple sont proposés, le commerçant les modifie dans ⚙️.` : `Couper la roue de la fortune pour « ${x.commerce} » ?`)) return;
@@ -3590,7 +3610,7 @@ let roueClient = null;
 function ouvrirRoue(t, c){
   tirageEnCours = t; roueClient = c;
   const qui = c && c.nom ? c.nom : "ce client";
-  $("roueIntro").textContent = t.palier ? `🎉 ${SESSION.commerce.seuil} points atteints : ${qui} gagne un tour de la roue des cadeaux !`
+  $("roueIntro").textContent = t.palier ? `🎉 ${SESSION.commerce.seuil} points atteints : ${qui} gagne un tour de la roue des ${SESSION.commerce.seuil} points !`
                                         : `Passage n° ${t.numero} : ${qui} gagne un tour de roue !`;
   $("roueResultat").classList.add("cache");
   $("bRoueLancer").classList.remove("cache"); $("bRoueLancer").disabled = false;
