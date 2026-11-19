@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="72">
+<meta name="app-version" content="73">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -278,6 +278,22 @@
   details.compte .reglCorps{padding:0 18px 18px}
   details.compte .reglCorps>label:first-child,details.compte .reglCorps>.note:first-child{margin-top:0}
   .copieRoue{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px}
+  /* Commerces inscrits (gérant) : une fiche qui se déroule par commerce */
+  .cmFiche{margin:10px 0}
+  .cmFiche>summary{align-items:center}
+  .cmNom{display:flex;flex-direction:column;min-width:0;flex:1}
+  .cmNom b{font-size:18px;color:var(--accent)}
+  .cmNom small{color:var(--doux);font-size:13px;font-weight:400}
+  .cmEtat{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;background:#eee;color:#555}
+  .cmEtat.ok{background:#e3f4e6;color:#1d6b33}.cmEtat.bloque{background:#fde7e4;color:#9b2c2c}.cmEtat.offert{background:#efe4fb;color:#5b2a86}
+  .cmChiffres{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:4px 0 12px}
+  .cmChiffres div{background:var(--fond);border:1px solid var(--bord);border-radius:12px;padding:8px 10px}
+  .cmChiffres b{display:block;font-size:20px}.cmChiffres span{font-size:12px;color:var(--doux)}
+  .cmInfos{display:flex;flex-direction:column;gap:4px;margin:0 0 12px;font-size:14px}
+  .cmTitre{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--doux);margin:12px 0 6px}
+  .cmBtns{display:flex;flex-wrap:wrap;gap:6px}
+  .cmBtns .petitbtn{margin:0}
+  .cmDanger{margin-top:14px;padding-top:10px;border-top:1px dashed var(--bord)}
   /* Contrats rangés par commerce (gérant) et rectificatifs */
   .ctDossier{margin:8px 0}
   .ctLigne{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--bord)}
@@ -1105,10 +1121,8 @@
   <div class="chiffres" id="gChiffres"></div>
   <div class="carte">
     <h2>Les commerces inscrits</h2>
-    <div class="tableau"><table>
-      <thead><tr><th>Commerce</th><th class="n">Clients</th><th class="n">Accord SMS</th><th class="n">Passages 30 j</th><th class="n">Réductions</th><th class="n">Dernière activité</th><th class="n">Inscrit le</th><th></th></tr></thead>
-      <tbody id="gListe"></tbody>
-    </table></div>
+    <p class="note" style="margin-top:-6px">Touchez un commerce pour voir ses chiffres, ses informations et ses réglages.</p>
+    <div id="gListe"></div>
     <p class="note">Espace gérant : seulement des chiffres. Les numéros et les noms des clients restent visibles par leur commerce uniquement.</p>
   </div>
   <div class="carte">
@@ -2875,22 +2889,47 @@ let DERNIERES_STATS = [];
 async function afficherGerant(){
   afficherSupportGerant();
   afficherProspection();
-  $("gListe").innerHTML = `<tr><td colspan="8" class="note">Chargement…</td></tr>`;
+  $("gListe").innerHTML = `<p class="note">Chargement…</p>`;
   let s;
   try{ s = await API.stats(); DERNIERES_STATS = s; }
-  catch(e){ $("gListe").innerHTML = `<tr><td colspan="8">${echapper(e.message)}</td></tr>`; return; }
+  catch(e){ $("gListe").innerHTML = `<p class="note">${echapper(e.message)}</p>`; return; }
   const somme = k => s.reduce((t,x)=>t+Number(x[k]||0),0);
   const actifs = s.filter(x=>x.derniere_activite && Date.now()-new Date(x.derniere_activite) < 30*864e5).length;
   $("gChiffres").innerHTML = [
     [s.length, "commerces inscrits"], [actifs, "actifs ces 30 jours"],
     [somme("nb_clients"), "clients au total"], [somme("passages_30j"), "passages ces 30 jours"],
   ].map(([n,t])=>`<div class="chiffre"><b>${n}</b><span>${t}</span></div>`).join("");
-  $("gListe").innerHTML = s.map(x=>`<tr>
-      <td><b>${echapper(x.commerce)}</b><br><span class="note">${echapper(affEmail(x.email))}</span><br><span class="note" data-tel="${x.id}">…</span><br><span class="note" data-smsinfo="${x.id}"></span><br><span class="note" data-appinfo="${x.id}"></span><br><span class="note" data-ctinfo="${x.id}"></span></td>
-      <td class="n">${x.nb_clients}</td><td class="n">${x.nb_accord_sms}</td><td class="n">${x.passages_30j}</td>
-      <td class="n">${x.nb_reductions}</td><td class="n">${jourFr(x.derniere_activite)}</td><td class="n">${jourFr(x.inscrit_le)}</td>
-      <td><button class="petitbtn roue" data-roue="${x.id}">${x.roue_active ? "🎡 Couper la roue de la fortune" : "🎡 Activer la roue de la fortune"}</button><button class="petitbtn roue" data-palier="${x.id}">🎡 Roue des 100 points…</button><button class="petitbtn" data-sms="${x.id}">📱 SMS…</button><button class="petitbtn" data-app="${x.id}">📟 Appareils…</button><button class="petitbtn" data-contrat="${x.id}">📄 Contrat…</button><button class="petitbtn vider" data-vider="${x.id}">Vider</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer</button></td></tr>`).join("")
-    || `<tr><td colspan="8" class="note">Aucun commerce inscrit pour l'instant.</td></tr>`;
+  const recent = d => d && Date.now() - new Date(d) < 30*864e5;
+  $("gListe").innerHTML = s.map(x=>`<details class="sous cmFiche">
+      <summary>
+        <span class="cmNom"><b>${echapper(x.commerce)}</b><small>${pluriel(Number(x.nb_clients)||0, "client")} · ${x.passages_30j} passage${Number(x.passages_30j) > 1 ? "s" : ""} en 30 j · ${recent(x.derniere_activite) ? "actif le " + jourFr(x.derniere_activite) : x.derniere_activite ? "inactif depuis le " + jourFr(x.derniere_activite) : "jamais utilisé"}</small></span>
+        <span class="cmEtat" data-etat="${x.id}">…</span>
+        <span class="cFleche" aria-hidden="true">›</span>
+      </summary>
+      <div class="sousCorps">
+        <div class="cmChiffres">
+          <div><b>${x.nb_clients}</b><span>clients</span></div>
+          <div><b>${x.nb_accord_sms}</b><span>acceptent les SMS</span></div>
+          <div><b>${x.passages_30j}</b><span>passages 30 jours</span></div>
+          <div><b>${x.nb_reductions}</b><span>réductions données</span></div>
+          <div><b>${jourFr(x.derniere_activite) || "—"}</b><span>dernière activité</span></div>
+          <div><b>${jourFr(x.inscrit_le) || "—"}</b><span>inscrit le</span></div>
+        </div>
+        <div class="cmInfos">
+          <span>✉️ ${echapper(affEmail(x.email))}</span>
+          <span data-tel="${x.id}">…</span>
+          <span data-ctinfo="${x.id}"></span>
+          <span data-smsinfo="${x.id}"></span>
+          <span data-appinfo="${x.id}"></span>
+        </div>
+        <div class="cmTitre">Contrat et appareils</div>
+        <div class="cmBtns"><button class="petitbtn" data-contrat="${x.id}">📄 Contrat…</button><button class="petitbtn" data-app="${x.id}">📟 Appareils…</button></div>
+        <div class="cmTitre">Roues et SMS</div>
+        <div class="cmBtns"><button class="petitbtn roue" data-roue="${x.id}">${x.roue_active ? "🎡 Couper la roue de la fortune" : "🎡 Activer la roue de la fortune"}</button><button class="petitbtn roue" data-palier="${x.id}">🎁 Roue des 100 points…</button><button class="petitbtn" data-sms="${x.id}">📱 SMS…</button></div>
+        <div class="cmDanger cmBtns"><button class="petitbtn vider" data-vider="${x.id}">Vider ses clients</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer le commerce</button></div>
+      </div>
+    </details>`).join("")
+    || `<p class="note">Aucun commerce inscrit pour l'instant.</p>`;
   for (const b of $("gListe").querySelectorAll("button")) b.onclick = ()=> actionCommerce(b);
   afficherParrainagesGerant();
   infosContratsGerant();
@@ -2909,7 +2948,7 @@ async function afficherGerant(){
   PALIER_ADMIN = {};
   try{ for (const c of await API.adminPalierListe()) PALIER_ADMIN[c.id] = !!c.palier_roue; }catch(e){}
   for (const b of $("gListe").querySelectorAll("[data-palier]"))
-    if (b.dataset.palier in PALIER_ADMIN) b.textContent = PALIER_ADMIN[b.dataset.palier] ? "🎡 Couper la roue des 100 points" : "🎡 Activer la roue des 100 points";
+    if (b.dataset.palier in PALIER_ADMIN) b.textContent = PALIER_ADMIN[b.dataset.palier] ? "🎁 Couper la roue des 100 points" : "🎁 Activer la roue des 100 points";
   APP_ADMIN = {};
   try{ for (const c of await API.adminAppareils()) APP_ADMIN[c.commerce_id] = c; }catch(e){}
   for (const sp of $("gListe").querySelectorAll("[data-appinfo]")){
@@ -3510,6 +3549,14 @@ async function infosContratsGerant(){
       : `📄 ✅ signé le ${jourFr(c.signe_le)} (${c.modele})` + (c.arret_le ? ` · 🛑 ARRÊT demandé le ${jourFr(c.arret_le)} : annuler dans Stripe` : "");
     sp.textContent = (ACC[sp.dataset.ctinfo] && ACC[sp.dataset.ctinfo].etape === "offert" ? "📄 sans contrat" : sp.textContent) + libAcces(ACC[sp.dataset.ctinfo]);
   }
+  for (const sp of $("gListe").querySelectorAll("[data-etat]")){
+    const a = ACC[sp.dataset.etat], c = CT_ADMIN[sp.dataset.etat];
+    const [txt, cl] = !a ? ["", "cache"] : a.etape === "offert" ? ["🎁 Offert", "offert"]
+      : a.ok ? [a.statut === "trialing" ? "🟢 En essai" : "🟢 Actif", "ok"]
+      : a.etape === "arret" || a.etape === "termine" ? ["⏸️ Arrêté", "bloque"]
+      : c && !c.signe_le ? ["📄 À signer", "bloque"] : ["🔒 Bloqué", "bloque"];
+    sp.textContent = txt; sp.className = "cmEtat " + cl;
+  }
 }
 async function ouvrirContratAdmin(x){
   CT_COMMERCE = x;
@@ -3777,7 +3824,7 @@ async function actionCommerce(b){
       const activer = !PALIER_ADMIN[x.id];
       if (!confirm(activer ? `Activer la roue des 100 points pour « ${x.commerce} » ? Au palier, le client tourne la roue (cadeaux de sa roue de la fortune, sans case « perdu ») au lieu d'avoir sa réduction.` : `Couper la roue des 100 points pour « ${x.commerce} » ? Au palier, le client retrouve sa réduction en %.`)) return;
       await API.adminPalierRoue(x.id, activer);
-      PALIER_ADMIN[x.id] = activer; b.textContent = activer ? "🎡 Couper la roue des 100 points" : "🎡 Activer la roue des 100 points";
+      PALIER_ADMIN[x.id] = activer; b.textContent = activer ? "🎁 Couper la roue des 100 points" : "🎁 Activer la roue des 100 points";
       if (SESSION && SESSION.commerce && SESSION.commerce.id === x.id) SESSION.commerce.palier_roue = activer;
       alerte(activer ? `🎡 Roue des 100 points activée pour ${x.commerce}` : `Roue des 100 points coupée pour ${x.commerce}`);
     } else if (b.dataset.roue){
