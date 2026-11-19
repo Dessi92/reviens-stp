@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="69">
+<meta name="app-version" content="70">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -275,6 +275,10 @@
   details.compte .cFleche{font-size:28px;line-height:1;color:var(--doux);transition:transform .25s ease;flex:none}
   details[open]>summary .cFleche{transform:rotate(90deg)}
   details.compte .compteCorps{padding:0 14px 14px;display:flex;flex-direction:column;gap:8px}
+  details.compte .reglCorps{padding:0 18px 18px}
+  details.compte .reglCorps>label:first-child,details.compte .reglCorps>.note:first-child{margin-top:0}
+  .copieRoue{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px}
+  .copieRoue .btn{margin:0;flex:1 1 220px;font-size:15px;padding:10px}
   details.sous{border:1px solid var(--bord);border-radius:14px;background:#fff}
   details.sous>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:14px;cursor:pointer;font-weight:600;font-size:16px}
   details.sous>summary span:first-child{font-size:20px}
@@ -770,8 +774,13 @@
 </main>
 
 <main id="ecranReglages" class="cache">
-  <div class="carte">
-    <h2 id="rTitre">Mon programme de fidélité</h2>
+  <details class="carte compte" id="carteProgramme">
+    <summary>
+      <span class="cIcone">🎯</span>
+      <span class="cTexte"><b id="rTitre">Mon programme de fidélité</b><small>Nom, thème, points et récompense</small></span>
+      <span class="cFleche" aria-hidden="true">›</span>
+    </summary>
+    <div class="reglCorps">
     <p class="note cache" id="rIntro" style="margin-top:-6px">Vérifiez les réglages proposés et ajustez-les si besoin. Vous pourrez les changer à tout moment dans ⚙️.</p>
     <div id="rBlocNom">
       <label for="rNom">Nom du commerce</label>
@@ -791,7 +800,7 @@
         <input id="rSeuil" class="inline" type="number" min="1" step="1" inputmode="numeric" aria-label="Nombre de points pour avoir la réduction"> points,
         <span id="rRemiseBloc">il reçoit <b>une réduction de</b>
         <input id="rRemise" class="inline" type="number" min="1" max="100" step="1" inputmode="numeric" aria-label="Pourcentage de réduction"> %
-        sur son prochain achat.</span><span id="rPalierRoueTxt" class="cache">il gagne <b>un tour de la roue des <span id="rSeuilRoue">100</span> points</b> (les cadeaux et réductions se règlent dans « Roue de la fortune », plus bas).</span> Ses points repartent ensuite à 0.</div>
+        sur son prochain achat.</span><span id="rPalierRoueTxt" class="cache">il gagne <b>un tour de la roue des <span id="rSeuilRoue">100</span> points</b> (ses cadeaux et réductions se règlent dans « Roue des <span id="rSeuilRoue2">100</span> points », plus bas).</span> Ses points repartent ensuite à 0.</div>
     </div>
     <div class="etape">
       <span class="num">3</span>
@@ -808,14 +817,21 @@
     <div class="resume" id="rResume"></div>
     <button class="btn principal" id="bEnregistrer">Enregistrer</button>
     <div id="msgReglages"></div>
-  </div>
+    </div>
+  </details>
   <div id="rAutres">
-  <div class="carte cache" id="carteRoue">
-    <h2>🎡 Roue de la fortune</h2>
-    <p class="note" style="margin-top:-6px">Tous les <b>N</b> passages en caisse (tous clients confondus), la roue s'affiche pour le client en caisse. Un cadeau ou une réduction gagné devient un <b>bon</b> sur la fiche du client, valable <b>jusqu'à la fin du mois</b> ; les points gagnés sont ajoutés tout de suite.</p>
+  <details class="carte compte cache" id="carteRoue">
+    <summary>
+      <span class="cIcone">🎡</span>
+      <span class="cTexte"><b>Roue de la fortune</b><small>Tous les N passages : cadeaux et chances</small></span>
+      <span class="cFleche" aria-hidden="true">›</span>
+    </summary>
+    <div class="reglCorps">
+    <p class="note">Tous les <b>N</b> passages en caisse (tous clients confondus), la roue s'affiche pour le client en caisse. Un cadeau ou une réduction gagné devient un <b>bon</b> sur la fiche du client, valable <b>jusqu'à la fin du mois</b> ; les points gagnés sont ajoutés tout de suite.</p>
     <label for="roueFreq">La roue apparaît tous les … passages</label>
     <input id="roueFreq" type="number" min="1" step="1" inputmode="numeric">
     <label style="margin-top:14px">Les cadeaux et leurs chances</label>
+    <div class="copieRoue cache" id="roueCopieBloc"><button class="btn gris" id="bRoueCopier" type="button">📋 Reprendre les cadeaux de la roue des <span class="seuilTxt">100</span> points</button></div>
     <p class="note" style="margin-top:-2px">Plus le pourcentage est grand, plus la part est grande sur la roue, et plus le client a de chances de tomber dessus.</p>
     <div class="lotsTete">
       <div>Texte affiché sur la roue</div>
@@ -829,23 +845,59 @@
     <div id="msgRoue"></div>
     <p class="note" id="roueInfo"></p>
     <button class="btn gris" id="bRoueVoirRegl">📄 Voir / imprimer le règlement</button>
-  </div>
-  <div class="carte" id="carteParrain">
-    <h2>🤝 Parrainer un commerçant</h2>
-    <p class="note" style="margin-top:-6px">Présentez Reviens STP à un commerçant que vous connaissez : son <b>1er mois est offert</b>, et vous gagnez <b>1 mois offert</b> dès qu'il paie sa première facture. Pas de limite : 12 commerces présentés, un an gratuit.</p>
+    </div>
+  </details>
+  <details class="carte compte cache" id="cartePalier">
+    <summary>
+      <span class="cIcone">🎁</span>
+      <span class="cTexte"><b>Roue des <span class="seuilTxt">100</span> points</b><small>Au palier : la récompense du client</small></span>
+      <span class="cFleche" aria-hidden="true">›</span>
+    </summary>
+    <div class="reglCorps">
+    <p class="note">Quand un client atteint <b><span class="seuilTxt">100</span> points</b>, il tourne cette roue au lieu d'avoir une réduction : il gagne <b>toujours</b> quelque chose (pas de case « perdu »). Un cadeau ou une réduction devient un <b>bon</b> sur sa fiche, valable jusqu'à la fin du mois ; les points gagnés sont ajoutés tout de suite.</p>
+    <label style="margin-top:14px">Les cadeaux et leurs chances</label>
+    <div class="copieRoue" id="palierCopieBloc"><button class="btn gris" id="bPalierCopier" type="button">📋 Reprendre les cadeaux de la roue de la fortune</button></div>
+    <p class="note" style="margin-top:-2px">Ensuite, modifiez ce que vous voulez : les deux roues peuvent être différentes. Plus le pourcentage est grand, plus la part est grande.</p>
+    <div class="lotsTete">
+      <div>Texte affiché sur la roue</div>
+      <div class="lotLigne"><span>Type de gain</span><span>Points</span><span>Taille de la part</span><span></span></div>
+    </div>
+    <div id="palierLots"></div>
+    <button class="btn gris" id="bPalierAjout">+ Ajouter une part</button>
+    <div class="total" id="palierTotal"></div>
+    <canvas id="palierApercu" class="apercu" width="480" height="480" aria-label="Aperçu de la roue des points"></canvas>
+    <button class="btn principal" id="bPalierEnregistrer">Enregistrer la roue des <span class="seuilTxt">100</span> points</button>
+    <div id="msgPalier"></div>
+    </div>
+  </details>
+  <details class="carte compte" id="carteParrain">
+    <summary>
+      <span class="cIcone">🤝</span>
+      <span class="cTexte"><b>Parrainer un commerçant</b><small>1 mois offert pour vous et pour lui</small></span>
+      <span class="cFleche" aria-hidden="true">›</span>
+    </summary>
+    <div class="reglCorps">
+    <p class="note">Présentez Reviens STP à un commerçant que vous connaissez : son <b>1er mois est offert</b>, et vous gagnez <b>1 mois offert</b> dès qu'il paie sa première facture. Pas de limite : 12 commerces présentés, un an gratuit.</p>
     <div id="parContenu"><p class="note">Chargement…</p></div>
     <div id="msgParrain"></div>
-  </div>
-  <div class="carte">
-    <h2>Mes données</h2>
-    <p class="note" style="margin-top:0">Vos clients sont enregistrés en ligne, dans votre compte. Vous seul y avez accès. Vous pouvez télécharger la liste à tout moment.</p>
+    </div>
+  </details>
+  <details class="carte compte" id="carteDonnees">
+    <summary>
+      <span class="cIcone">💾</span>
+      <span class="cTexte"><b>Mes données</b><small>Télécharger ou effacer ma liste de clients</small></span>
+      <span class="cFleche" aria-hidden="true">›</span>
+    </summary>
+    <div class="reglCorps">
+    <p class="note">Vos clients sont enregistrés en ligne, dans votre compte. Vous seul y avez accès. Vous pouvez télécharger la liste à tout moment.</p>
     <button class="btn gris" id="bExporterCsv">Télécharger ma liste de clients (Excel)</button>
     <label for="mdpVider" style="margin-top:22px">Repartir à zéro : tapez votre mot de passe</label>
     <input id="mdpVider" type="password" autocomplete="current-password" placeholder="Mot de passe actuel">
     <button class="btn rouge" id="bVider">🗑 Effacer tous mes clients</button>
     <p class="note">Efface tous les clients, leurs points et leur historique. Votre compte, vos réglages et votre thème sont gardés. Impossible à annuler : téléchargez la liste avant si besoin.</p>
     <div id="msgVider"></div>
-  </div>
+    </div>
+  </details>
   <details class="carte compte" id="carteCompte">
     <summary>
       <span class="cIcone">👤</span>
@@ -2526,11 +2578,12 @@ function remplirReglages(){
   const c = SESSION.commerce, premier = !c.programme_choisi;
   $("rTitre").textContent = premier ? "Votre programme en 30 secondes" : "Mon programme de fidélité";
   $("rIntro").classList.toggle("cache", !premier);
+  if (premier) $("carteProgramme").open = true;
   $("rBlocNom").classList.toggle("cache", premier);
   $("rAutres").classList.toggle("cache", premier);
   $("bEnregistrer").textContent = premier ? "C'est parti !" : "Enregistrer";
   $("rNom").value = c.nom; $("rPoints").value = c.points_par_passage; $("rSeuil").value = c.seuil; $("rRemise").value = c.remise;
-  $("rSeuilRoue").textContent = c.seuil; $("rRemiseBloc").classList.toggle("cache", !!c.palier_roue); $("rPalierRoueTxt").classList.toggle("cache", !c.palier_roue);
+  $("rSeuilRoue").textContent = c.seuil; $("rSeuilRoue2").textContent = c.seuil; $("rRemiseBloc").classList.toggle("cache", !!c.palier_roue); $("rPalierRoueTxt").classList.toggle("cache", !c.palier_roue);
   // Au premier passage, on propose le bonus gros panier (70 € → double de points) déjà coché
   const bonus = premier || c.points_bonus != null;
   $("rBonusActif").checked = bonus;
@@ -2642,6 +2695,7 @@ function montrerEtape(){
   $("tSuiv").textContent = t.i === n - 1 ? "Terminer" : "Suivant ›";
   const trou = document.querySelector("#tuto .tTrou"), voile = document.querySelector("#tuto .tVoile"), bulle = document.querySelector("#tuto .tBulle");
   const cible = e.cible && (document.getElementById(e.cible) || document.querySelector(e.cible));
+  if (cible){ const d = cible.tagName === "DETAILS" ? null : cible.closest("details"); if (d) d.open = true; }
   trou.classList.toggle("vide", !cible); voile.classList.toggle("plein", !cible);
   t.cible = cible || null; t.lim = null;
   const placer = ()=>{
@@ -3559,7 +3613,7 @@ function nomLot(l){
 }
 const lotsRoue = () => ((SESSION && SESSION.commerce.roue && SESSION.commerce.roue.lots) || []);
 // Roue au palier (réglée par le gérant) : au palier, le client gagne un tour de roue au lieu de « −X % » ; jamais de part « perdu »
-const lotsPalierDe = r => ((r && r.lots) || []).filter(l=>l.type !== "perdu" && Number(l.chance) > 0);
+const lotsPalierDe = r => (((r && r.palier_lots && r.palier_lots.length) ? r.palier_lots : (r && r.lots)) || []).filter(l=>l.type !== "perdu" && Number(l.chance) > 0);
 const palierRoue = () => !!(SESSION && SESSION.commerce && SESSION.commerce.palier_roue);
 
 // Dessin : chaque part a la taille de sa vraie chance (honnête)
@@ -3645,67 +3699,113 @@ $("bRoueLancer").onclick = async ()=>{
 };
 $("bRoueOk").onclick = ()=>{ $("roueFond").classList.add("cache"); tirageEnCours = null; };
 
-// Réglages de la roue (commerçant)
-let LOTS_EDIT = [];
+// Réglages des roues (commerçant) : roue de la fortune (tous les N passages) et roue des 100 points (au palier).
+// Chaque roue a ses cadeaux ; on peut reprendre ceux de l'autre, puis les modifier.
+const ED = {
+  roue:  {lots:[], box:"roueLots",   total:"roueTotal",   apercu:"roueApercu",   msg:"msgRoue",   perdu:true},
+  palier:{lots:[], box:"palierLots", total:"palierTotal", apercu:"palierApercu", msg:"msgPalier", perdu:false}
+};
+const lotEdit = l => ({...l, type: l.type === "remise" ? "cadeau" : l.type, nom: l.nom || nomLot(l)});
 function afficherReglagesRoue(){
-  const c = SESSION.commerce, actif = !!c.roue_active;
-  $("carteRoue").classList.toggle("cache", !actif);
-  if (!actif) return;
+  const c = SESSION.commerce, actif = !!c.roue_active, palier = !!c.palier_roue;
   const r = c.roue || {frequence:30, lots:[]};
-  $("roueFreq").value = r.frequence || 30;
-  LOTS_EDIT = (r.lots || []).map(l=>({...l, type: l.type === "remise" ? "cadeau" : l.type, nom: l.nom || nomLot(l)}));
-  dessinerLotsEdit();
-  const n = c.roue_compteur || 0, f = Math.max(1, Number(r.frequence)||30);
-  $("roueInfo").textContent = `Passages comptés depuis l'activation : ${n}. Prochaine roue au passage n° ${n + (f - n % f)}.`;
-  message("msgRoue","");
+  for (const el of document.querySelectorAll("#ecranReglages .seuilTxt")) el.textContent = c.seuil;
+  $("carteRoue").classList.toggle("cache", !actif);
+  $("cartePalier").classList.toggle("cache", !palier);
+  $("roueCopieBloc").classList.toggle("cache", !palier);
+  if (actif){
+    $("roueFreq").value = r.frequence || 30;
+    ED.roue.lots = (r.lots || []).map(lotEdit);
+    dessinerLotsEdit("roue");
+    const n = c.roue_compteur || 0, f = Math.max(1, Number(r.frequence)||30);
+    $("roueInfo").textContent = `Passages comptés depuis l'activation : ${n}. Prochaine roue au passage n° ${n + (f - n % f)}.`;
+    message("msgRoue","");
+  }
+  if (palier){
+    ED.palier.lots = lotsPalierDe(r).map(lotEdit);
+    dessinerLotsEdit("palier");
+    if (r.palier_lots && r.palier_lots.length) message("msgPalier","");
+    else message("msgPalier", "Pour l'instant, cette roue reprend les cadeaux de la roue de la fortune (sans « perdu »). Modifiez-les puis enregistrez pour qu'elle ait les siens.", "info");
+  }
 }
-function dessinerLotsEdit(){
-  const st = getComputedStyle(document.documentElement);
+function dessinerLotsEdit(k = "roue"){
+  const E = ED[k], st = getComputedStyle(document.documentElement);
   const couleurs = [st.getPropertyValue("--accent").trim(), st.getPropertyValue("--accent2").trim(), "#e9d9b5", "#d9d4cc"];
-  $("roueLots").innerHTML = LOTS_EDIT.map((l,i)=>`<div class="lot" data-i="${i}" style="--c:${couleurs[couleurPart(i, LOTS_EDIT.length)]}">
+  const types = Object.entries(TYPES_LOT).filter(([t])=>E.perdu || t !== "perdu");
+  $(E.box).innerHTML = E.lots.map((l,i)=>`<div class="lot" data-i="${i}" style="--c:${couleurs[couleurPart(i, E.lots.length)]}">
       <input data-k="nom" type="text" maxlength="40" placeholder="${l.type==="points" ? "ex. +20 points" : l.type==="perdu" ? "ex. Perdu, retentez !" : "ex. -10 % sur les terrines"}" value="${echapper(l.nom||"")}">
       <div class="lotLigne">
-        <select data-k="type">${Object.entries(TYPES_LOT).map(([k,t])=>`<option value="${k}" ${l.type===k?"selected":""}>${t}</option>`).join("")}</select>
+        <select data-k="type">${types.map(([t,n])=>`<option value="${t}" ${l.type===t?"selected":""}>${n}</option>`).join("")}</select>
         ${l.type === "points" ? `<input data-k="valeur" type="number" min="1" step="1" inputmode="numeric" placeholder="points" value="${Number(l.valeur)||""}">` : `<span></span>`}
         <span class="pct"><input data-k="chance" type="number" min="0" max="100" step="1" inputmode="numeric" value="${Number(l.chance)||0}" title="Chance en %"><b>%</b></span>
         <button type="button" data-k="suppr" title="Retirer cette part">✕</button>
       </div></div>`).join("");
-  for (const row of $("roueLots").querySelectorAll(".lot")){
+  for (const row of $(E.box).querySelectorAll(".lot")){
     const i = Number(row.dataset.i);
     for (const el of row.querySelectorAll("[data-k]")){
-      const k = el.dataset.k;
-      if (k === "suppr") el.onclick = ()=>{ LOTS_EDIT.splice(i,1); dessinerLotsEdit(); };
-      else if (k === "type") el.onchange = ()=>{ LOTS_EDIT[i].type = el.value; if (el.value === "points" && !LOTS_EDIT[i].valeur) LOTS_EDIT[i].valeur = 20; dessinerLotsEdit(); };
-      else el.oninput = ()=>{ LOTS_EDIT[i][k] = k === "nom" ? el.value : Number(el.value); majTotalRoue(); };
+      const f = el.dataset.k;
+      if (f === "suppr") el.onclick = ()=>{ E.lots.splice(i,1); dessinerLotsEdit(k); };
+      else if (f === "type") el.onchange = ()=>{ E.lots[i].type = el.value; if (el.value === "points" && !E.lots[i].valeur) E.lots[i].valeur = 20; dessinerLotsEdit(k); };
+      else el.oninput = ()=>{ E.lots[i][f] = f === "nom" ? el.value : Number(el.value); majTotalRoue(k); };
     }
   }
-  majTotalRoue();
+  majTotalRoue(k);
 }
-function majTotalRoue(){
-  const t = LOTS_EDIT.reduce((a,l)=>a+(Number(l.chance)||0),0);
-  $("roueTotal").textContent = `Total des parts : ${t} %` + (t === 100 ? " ✓" : " (doit faire 100 %)");
-  $("roueTotal").classList.toggle("ko", t !== 100);
-  dessinerRoue(LOTS_EDIT.map(l=>({...l})), $("roueApercu"));
+function majTotalRoue(k = "roue"){
+  const E = ED[k], t = E.lots.reduce((a,l)=>a+(Number(l.chance)||0),0);
+  $(E.total).textContent = `Total des parts : ${t} %` + (t === 100 ? " ✓" : " (doit faire 100 %)");
+  $(E.total).classList.toggle("ko", t !== 100);
+  dessinerRoue(E.lots.map(l=>({...l})), $(E.apercu));
 }
-$("bRoueAjout").onclick = ()=>{ LOTS_EDIT.push({type:"cadeau", nom:"", valeur:0, chance:0}); dessinerLotsEdit(); };
+// Vérifie les parts d'une roue : renvoie les cadeaux prêts à enregistrer, ou null (message affiché)
+function lotsValides(k){
+  const E = ED[k], m = E.msg;
+  if (E.lots.length < 2){ message(m, "Mettez au moins 2 parts dans la roue.", "err"); return null; }
+  for (const l of E.lots){
+    if (l.type === "points" && !(Number.isInteger(l.valeur) && l.valeur > 0)){ message(m, "Indiquez combien de points ajouter (nombre entier).", "err"); return null; }
+    if (l.type === "cadeau" && !(l.nom||"").trim()){ message(m, "Écrivez le texte de chaque part (ex. « -10 % sur les terrines »).", "err"); return null; }
+    if (!(Number.isInteger(l.chance) && l.chance >= 0)){ message(m, "Les chances sont des nombres entiers (en %).", "err"); return null; }
+  }
+  const total = E.lots.reduce((a,l)=>a+l.chance,0);
+  if (total !== 100){ message(m, `Le total des chances doit faire 100 % (actuellement ${total} %).`, "err"); return null; }
+  return E.lots.map(l=>({type:l.type, valeur:l.type==="points"?l.valeur:0, chance:l.chance, nom:(l.nom||"").trim() || nomLot(l)}));
+}
+// Reprendre les cadeaux d'une roue dans l'autre (rien n'est enregistré avant « Enregistrer »)
+function copierLots(de, vers){
+  const r = SESSION.commerce.roue || {};
+  let lots = ED[de].lots.length ? ED[de].lots : (de === "palier" ? lotsPalierDe(r) : (r.lots || []));
+  lots = lots.map(l=>lotEdit({...l}));
+  if (!ED[vers].perdu){
+    const perdus = lots.filter(l=>l.type === "perdu").reduce((a,l)=>a+(Number(l.chance)||0),0);
+    lots = lots.filter(l=>l.type !== "perdu");
+    if (perdus && lots.length) lots[0].chance = (Number(lots[0].chance)||0) + perdus;   // la part « perdu » va au 1er cadeau : total toujours 100 %
+  }
+  if (!lots.length) return message(ED[vers].msg, "L'autre roue n'a pas encore de cadeaux à reprendre.", "err");
+  ED[vers].lots = lots; dessinerLotsEdit(vers);
+  message(ED[vers].msg, "📋 Cadeaux repris. Modifiez ce que vous voulez, puis enregistrez.", "info");
+}
+$("bRoueCopier").onclick = ()=> copierLots("palier", "roue");
+$("bPalierCopier").onclick = ()=> copierLots("roue", "palier");
+$("bRoueAjout").onclick = ()=>{ ED.roue.lots.push({type:"cadeau", nom:"", valeur:0, chance:0}); dessinerLotsEdit("roue"); };
+$("bPalierAjout").onclick = ()=>{ ED.palier.lots.push({type:"cadeau", nom:"", valeur:0, chance:0}); dessinerLotsEdit("palier"); };
 $("bRoueEnregistrer").onclick = ()=> occupe($("bRoueEnregistrer"), async ()=>{
   const f = Number($("roueFreq").value);
   if (!Number.isInteger(f) || f < 1) return message("msgRoue","Indiquez tous les combien de passages la roue apparaît (1 ou plus).","err");
-  if (!LOTS_EDIT.length) return message("msgRoue","Ajoutez au moins un cadeau.","err");
-  if (LOTS_EDIT.length < 2) return message("msgRoue","Mettez au moins 2 parts dans la roue.","err");
-  for (const l of LOTS_EDIT){
-    if (l.type === "points" && !(Number.isInteger(l.valeur) && l.valeur > 0)) return message("msgRoue","Indiquez combien de points ajouter (nombre entier).","err");
-    if (l.type === "cadeau" && !(l.nom||"").trim()) return message("msgRoue","Écrivez le texte de chaque part (ex. « -10 % sur les terrines »).","err");
-    if (!(Number.isInteger(l.chance) && l.chance >= 0)) return message("msgRoue","Les chances sont des nombres entiers (en %).","err");
-  }
-  const total = LOTS_EDIT.reduce((a,l)=>a+l.chance,0);
-  if (total !== 100) return message("msgRoue",`Le total des chances doit faire 100 % (actuellement ${total} %).`,"err");
-  const lots = LOTS_EDIT.map(l=>({type:l.type, valeur:l.type==="points"?l.valeur:0, chance:l.chance, nom:(l.nom||"").trim() || nomLot(l)}));
+  const lots = lotsValides("roue"); if (!lots) return;
   try{
-    SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {roue:{frequence:f, lots}});
+    // on garde les cadeaux de la roue des 100 points (même colonne)
+    SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {roue:{...(SESSION.commerce.roue || {}), frequence:f, lots}});
     afficherReglagesRoue();
     message("msgRoue","✓ Roue enregistrée.","ok");
   }catch(e){ message("msgRoue", e.message, "err"); }
+});
+$("bPalierEnregistrer").onclick = ()=> occupe($("bPalierEnregistrer"), async ()=>{
+  const lots = lotsValides("palier"); if (!lots) return;
+  try{
+    SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {roue:{...(SESSION.commerce.roue || {}), palier_lots:lots}});
+    afficherReglagesRoue();
+    message("msgPalier", `✓ Roue des ${SESSION.commerce.seuil} points enregistrée.`, "ok");
+  }catch(e){ message("msgPalier", e.message, "err"); }
 });
 
 // Règlement généré à partir des vrais réglages
