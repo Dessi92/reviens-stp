@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="64">
+<meta name="app-version" content="65">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -228,6 +228,7 @@
   #ecranAccueil.seul{min-height:calc(100vh - 70px);min-height:calc(100dvh - 70px);justify-content:center}
   .entete{text-align:center;margin:4px 0 18px}
   .entete img{width:120px;height:120px;object-fit:contain;display:block;margin:0 auto 6px}
+  .entete img.large{width:min(380px,82vw);height:auto;margin:0 auto 10px}
   .entete .sur{font-family:var(--police);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-size:18px;line-height:1}
   .entete h1{font-family:var(--police);font-weight:700;font-size:44px;line-height:1.05;margin:2px 0 0;color:var(--accent);letter-spacing:.01em;overflow-wrap:anywhere}
   .entete .sous{margin:6px 0 0;color:var(--doux);letter-spacing:.16em;text-transform:uppercase;font-size:12px;font-weight:700}
@@ -2040,14 +2041,17 @@ function appliquerTheme(cle){
     const nom = SESSION.commerce.nom;
     $("titreCommerce").textContent = (marque && marque.logo ? "" : t.e[0] + " ") + nom;
     $("logoEntete").classList.toggle("cache", !(marque && marque.logo));
-    if (marque && marque.logo) $("logoEntete").src = marque.logo;
+    if (marque && marque.logo) $("logoEntete").src = marque.icone || marque.logo;   // icône carrée si le logo est large
     // En-tête de l'écran de caisse
     $("aLogo").classList.toggle("cache", !(marque && marque.logo));
     if (marque && marque.logo) $("aLogo").src = marque.logo;
-    const sur = marque && marque.surtitre;
+    const large = !!(marque && marque.logo && marque.logo_large);    // logo qui contient déjà le nom (ex. T-bone)
+    $("aLogo").classList.toggle("large", large); $("aLogo").alt = large ? nom : "";
+    $("aTitre").classList.toggle("cache", large);
+    const sur = !large && marque && marque.surtitre;
     $("aSur").textContent = sur || ""; $("aSur").classList.toggle("cache", !sur);
     $("aTitre").textContent = (marque && marque.titre) || nom;
-    $("aSous").textContent = (marque && marque.sous_titre) || ""; $("aSous").classList.toggle("cache", !(marque && marque.sous_titre));
+    $("aSous").textContent = (marque && marque.sous_titre) || ""; $("aSous").classList.toggle("cache", large || !(marque && marque.sous_titre));
     majAccroche();
   }
   // Décor de fond : petits émojis discrets, toujours aux mêmes places
@@ -2143,7 +2147,7 @@ $("palierFond").onclick = e=>{ if (e.target === $("palierFond")) $("bPalierOk").
 let themeChoisi = "defaut";
 function afficherThemes(){
   const perso = SESSION && SESSION.commerce.perso;
-  const vignettePerso = perso ? `<button type="button" data-k="perso" class="${themeChoisi==="perso"?"choisi":""}"><span>${perso.logo ? `<img src="${echapper(perso.logo)}" alt="" style="width:30px;height:30px;object-fit:contain;vertical-align:middle">` : "⭐"}</span>${echapper(perso.nom_theme || SESSION.commerce.nom)}</button>` : "";
+  const vignettePerso = perso ? `<button type="button" data-k="perso" class="${themeChoisi==="perso"?"choisi":""}"><span>${perso.logo ? `<img src="${echapper(perso.icone || perso.logo)}" alt="" style="width:30px;height:30px;object-fit:contain;vertical-align:middle">` : "⭐"}</span>${echapper(perso.nom_theme || SESSION.commerce.nom)}</button>` : "";
   $("rThemes").innerHTML = vignettePerso + Object.entries(THEMES).map(([k,t]) =>
     `<button type="button" data-k="${k}" class="${k===themeChoisi?"choisi":""}"><span>${t.e[0]}</span>${t.nom}</button>`).join("");
   for (const b of $("rThemes").querySelectorAll("button")) b.onclick = () => {
