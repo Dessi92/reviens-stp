@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="70">
+<meta name="app-version" content="71">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -551,7 +551,7 @@
         <div><label for="cEnseigne">Nom du commerce (société ou enseigne)</label><input id="cEnseigne" type="text" maxlength="120" autocomplete="organization"></div>
         <div><label for="cEtab">Nom de l'établissement</label><input id="cEtab" type="text" maxlength="120"></div>
         <div><label for="cAdresse">Adresse de l'établissement</label><input id="cAdresse" type="text" maxlength="200" autocomplete="street-address" placeholder="n°, rue, code postal, ville"></div>
-        <div><label for="cSiret">SIRET (si vous l'avez sous la main)</label><input id="cSiret" type="text" inputmode="numeric" maxlength="20" placeholder="14 chiffres"></div>
+        <div><label for="cSiret">SIRET (14 chiffres, sur le Kbis)</label><input id="cSiret" type="text" inputmode="numeric" maxlength="17" placeholder="ex. 123 456 789 00012"></div>
         <div><label for="cSignataire">Votre nom et prénom</label><input id="cSignataire" type="text" maxlength="120" autocomplete="name"></div>
         <div><label for="cFonction">Votre fonction</label><input id="cFonction" type="text" maxlength="60" placeholder="Gérant(e)"></div>
         <div style="grid-column:1/-1"><label for="cContact">E-mail ou téléphone pour les factures</label><input id="cContact" type="text" maxlength="200" autocomplete="email"></div>
@@ -3268,8 +3268,17 @@ function remplirContrat(html, vals, brut){
   return r;
 }
 const cAccessoires = l => C_ACCESSOIRES.map(a => "<span>" + ((l || []).includes(a) ? "☑" : "☐") + " " + a + "</span>").join("");
+// SIRET : exactement 14 chiffres + clé de contrôle (formule de Luhn ; La Poste a sa propre règle)
+function siretValide(s){
+  s = String(s || "").replace(/\s/g, "");
+  if (!/^\d{14}$/.test(s)) return false;
+  if (s.startsWith("356000000")) return [...s].reduce((a,d)=>a+Number(d),0) % 5 === 0;
+  let t = 0;
+  for (let i = 0; i < 14; i++){ let d = Number(s[i]); if (i % 2 === 0){ d *= 2; if (d > 9) d -= 9; } t += d; }
+  return t % 10 === 0;
+}
 function cInfos(){
-  return {enseigne:$("cEnseigne").value, siret:$("cSiret").value, signataire:$("cSignataire").value, fonction:$("cFonction").value,
+  return {enseigne:$("cEnseigne").value, siret:$("cSiret").value.replace(/\s/g, ""), signataire:$("cSignataire").value, fonction:$("cFonction").value,
           contact:$("cContact").value, adresse:$("cAdresse").value, etablissement:$("cEtab").value};
 }
 // Ajoute l'icône, la signature et (si signé) la preuve de signature à un texte de contrat
@@ -3389,6 +3398,7 @@ $("bContratSigner").onclick = ()=> occupe($("bContratSigner"), async ()=>{
                   [i.fonction.trim().length >= 2, "votre fonction"]].filter(([ok]) => !ok).map(m => m[1]);
   if (!$("cSerieZone").classList.contains("cache") && !/^[A-Z0-9]{6,20}$/.test(cSerieSaisie())) manque.push("le numéro de série de la tablette (Reviens STP)");
   if (manque.length) return message("msgContrat", "Il manque " + manque.join(", ") + " (en haut).", "err");
+  if (!siretValide(i.siret)) return message("msgContrat", i.siret.length !== 14 ? `Le SIRET doit avoir exactement 14 chiffres (vous en avez tapé ${i.siret.replace(/\D/g, "").length}). Il est sur le Kbis.` : "Ce SIRET n'existe pas (un chiffre est sans doute faux) : vérifiez-le sur le Kbis.", "err");
   if (!$("cAccord").checked) return message("msgContrat", "Cochez la case « J'ai lu le contrat… » pour signer.", "err");
   if (!$("cDebut").checked) return message("msgContrat", "Cochez la case « le service commence dès aujourd'hui » (sinon l'installation attend 14 jours).", "err");
   if (!C_SIG) return message("msgContrat", "Signez avec le doigt dans le cadre en pointillés.", "err");
