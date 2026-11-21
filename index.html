@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="75">
+<meta name="app-version" content="76">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -517,6 +517,21 @@
       <button class="btn principal" id="bMailEnregistrer">Enregistrer</button>
     </div>
     <div id="msgMail"></div>
+  </div>
+</div>
+<div id="idsFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="idsTitre">
+  <div class="boite" style="text-align:left">
+    <h2 id="idsTitre" style="margin-top:4px;text-align:center">🔑 Choisissez vos identifiants</h2>
+    <p style="font-size:17px">Votre compte a été créé avec une adresse provisoire. Mettez <b>votre adresse e-mail</b> et <b>votre mot de passe</b> : le compte est à vous.</p>
+    <label for="idsEmail">Nouvelle adresse e-mail</label>
+    <input id="idsEmail" type="email" autocomplete="email" placeholder="contact@moncommerce.fr">
+    <label for="idsMdp">Nouveau mot de passe (6 caractères minimum)</label>
+    <input id="idsMdp" type="text" autocomplete="new-password" autocapitalize="off" spellcheck="false">
+    <div class="ligne">
+      <button class="btn gris" id="bIdsPlusTard">Plus tard</button>
+      <button class="btn principal" id="bIdsOk">Enregistrer</button>
+    </div>
+    <div id="msgIds"></div>
   </div>
 </div>
 <div id="telFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="telTitre">
@@ -1248,6 +1263,7 @@ function apiSupabase(sb){
     async oubli(email){ v(await sb.auth.resetPasswordForEmail(email, {redirectTo: adresseApp()})); },
     async nouveauMdp(mdp){ v(await sb.auth.updateUser({password:mdp})); },
     async nouvelEmail(email){ v(await sb.auth.updateUser({email}, {emailRedirectTo: adresseApp()})); },
+    async mesIdentifiants(email, mdp){ v(await sb.rpc("mes_identifiants", {p_email: email, p_mdp: mdp})); await sb.auth.refreshSession().catch(()=>{}); },
     async verifierMdp(email, mdp){
       const r = await sb.auth.signInWithPassword({email, password:mdp});
       if (r.error){
@@ -1456,6 +1472,7 @@ function apiDemo(){
     async identifiantLibre(){ return true; },
     async nouveauMdp(mdp){ D.mdp = mdp; sauver(); },
     async nouvelEmail(email){ D.email = email; sauver(); },
+    async mesIdentifiants(email, mdp){ if (!D.commerce.rappel_identifiants) throw new Error("Rien à changer sur ce compte"); D.email = email.trim().toLowerCase(); D.mdp = mdp; D.commerce.rappel_identifiants = false; sauver(); },
     async verifierMdp(email, mdp){ if (D.mdp && mdp !== D.mdp) throw new Error("Mot de passe actuel incorrect."); },
     async deconnexion(){ D.connecte = false; sauver(); },
     async majCommerce(id, champs){ Object.assign(D.commerce, champs); sauver(); return copie(D.commerce); },
@@ -1979,8 +1996,34 @@ async function enregistrerTelCommerce(brut){
 }
 function demanderTelCommerce(){ $("telSaisie").value = ""; message("msgTel",""); $("telFond").classList.remove("cache"); $("telSaisie").focus(); }
 $("bTelPlusTard").onclick = ()=> $("telFond").classList.add("cache");
+// Compte créé par le gérant avec une adresse provisoire : tous les 2 jours, « nouvelle adresse e-mail, nouveau mot de passe »
+// (sans confirmation ni ancien mot de passe), jusqu'à ce que ce soit fait. La base décoche la case une fois fait.
+function proposerIdentifiants(){
+  if (!SESSION || !SESSION.commerce || !SESSION.commerce.rappel_identifiants || ADMIN) return false;
+  if (!$("telFond").classList.contains("cache") || !$("nouvFond").classList.contains("cache")) return false;
+  const cle = "reviens_ids_propose";
+  try{ const t = Number(localStorage.getItem(cle)) || 0; if (Date.now() - t < 2*86400000 - 3600000) return false; localStorage.setItem(cle, String(Date.now())); }catch(e){}
+  $("idsEmail").value = ""; $("idsMdp").value = ""; message("msgIds","");
+  $("idsFond").classList.remove("cache"); $("idsEmail").focus();
+  return true;
+}
+$("bIdsPlusTard").onclick = ()=>{ $("idsFond").classList.add("cache"); focusTel(); };
+$("bIdsOk").onclick = ()=> occupe($("bIdsOk"), async ()=>{
+  const e = $("idsEmail").value.trim(), m = $("idsMdp").value;
+  if (!/^\S+@\S+\.\S+$/.test(e) || sansEmail(e)) return message("msgIds","Adresse e-mail invalide.","err");
+  if (m.length < 6) return message("msgIds","Mot de passe : 6 caractères minimum.","err");
+  try{
+    await API.mesIdentifiants(e, m);
+    SESSION.email = e.toLowerCase(); SESSION.commerce.rappel_identifiants = false;
+    $("idsFond").classList.add("cache"); focusTel();
+    alerte("✓ C'est fait : votre adresse e-mail et votre mot de passe sont enregistrés");
+  }catch(err){ message("msgIds", err.message, "err"); }
+});
+$("idsMdp").addEventListener("keydown", e=>{ if (e.key === "Enter") $("bIdsOk").click(); });
 // Compte créé avec un identifiant : une fois par jour, on propose d'ajouter l'adresse e-mail (mot de passe oublié)
 function proposerEmail(){
+  if (proposerIdentifiants()) return;
+  if (SESSION && SESSION.commerce && SESSION.commerce.rappel_identifiants) return;
   if (!SESSION || !sansEmail(SESSION.email) || !$("telFond").classList.contains("cache")) return;
   const cle = "reviens_mail_propose", jour = new Date().toISOString().slice(0, 10);
   try{ if (localStorage.getItem(cle) === jour) return; localStorage.setItem(cle, jour); }catch(e){}
