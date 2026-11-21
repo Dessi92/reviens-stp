@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="73">
+<meta name="app-version" content="74">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -62,6 +62,8 @@
   .infoRgpd u{white-space:nowrap}
   .infoRgpd p{margin:6px 0 0}
   .case input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--vert)}
+  .case.bonusSms{background:#fff6dc;border:2px solid #f0b429;border-radius:12px;padding:10px 12px}
+  .bonusSmsTxt{display:block;font-weight:800;font-size:17px;color:#8a5a00;margin-bottom:2px}
   .btn{display:block;width:100%;border:0;border-radius:12px;padding:14px;font-size:18px;font-weight:700;cursor:pointer;margin-top:10px}
   .btn.principal{background:var(--accent);color:#fff}
   .btn.vert{background:var(--vert);color:#fff}
@@ -782,8 +784,8 @@
     <input id="nomNouveau" type="text" placeholder="ex. Mme Dupont">
     <label for="emailNouveau">Adresse e-mail (facultatif)</label>
     <input id="emailNouveau" type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ex. marie.dupont@gmail.com">
-    <label class="case"><input type="checkbox" id="accordNouveau">
-      <span>Le client accepte de recevoir des SMS du commerce (offres, réduction disponible). Il pourra se désinscrire à tout moment.</span></label>
+    <label class="case" id="caseAccordNouveau"><input type="checkbox" id="accordNouveau">
+      <span><b class="bonusSmsTxt cache" id="bonusSmsTxt"></b>Le client accepte de recevoir des SMS du commerce (offres, réduction disponible). Il pourra se désinscrire à tout moment.</span></label>
     <details class="infoRgpd">
       <summary>🔒 Ses coordonnées servent seulement à sa carte de fidélité chez <b id="rgpdNom">nous</b>. Jamais vendues ni partagées, effacées après 3 ans sans passage. Il peut les faire modifier ou supprimer à tout moment au comptoir. <u>En savoir plus</u></summary>
       <p>Le commerce est responsable de ces données ; elles sont hébergées par Reviens STP pour son compte. Base légale : l'accord du client pour participer au programme. Le client peut aussi s'adresser à la CNIL (cnil.fr).</p>
@@ -1454,7 +1456,7 @@ function apiDemo(){
     async creerClient(tel, nom, accord, gros, email){
       if (D.clients.some(c=>c.telephone===tel)) throw new Error("Ce numéro a déjà une carte");
       const now = new Date().toISOString(), id = D.suivant++;
-      D.clients.push({id, telephone:tel, nom:(nom||"").trim(), email:(email||"").trim().toLowerCase(), points:0, visites:0, recompenses:0,
+      D.clients.push({id, telephone:tel, nom:(nom||"").trim(), email:(email||"").trim().toLowerCase(), points: accord ? (Number(D.commerce.bonus_accord_sms) || 0) : 0, visites:0, recompenses:0,
         accord_sms:!!accord, accord_sms_le: accord ? now : null, cree_le:now, derniere_visite:null});
       return api.ajouterPoints(id, gros);
     },
@@ -2349,6 +2351,9 @@ async function chercher(){
     if (c) return ouvrirClient(c);
     enAttente = n;
     $("rgpdNom").textContent = (SESSION && SESSION.commerce && SESSION.commerce.nom) || "nous"; $("nomNouveau").value = ""; $("emailNouveau").value = ""; message("msgNouveau",""); $("accordNouveau").checked = false;
+    const bSms = Number(SESSION && SESSION.commerce && SESSION.commerce.bonus_accord_sms) || 0;
+    $("caseAccordNouveau").classList.toggle("bonusSms", bSms > 0); $("bonusSmsTxt").classList.toggle("cache", !bSms);
+    $("bonusSmsTxt").textContent = bSms ? `🎁 +${bSms} points offerts s'il accepte les SMS` : "";
     boutonsPoints($("bCreer"), $("bCreerGros"), aBonus() ? "" : "Créer la carte · ");
     $("blocNouveau").classList.remove("cache");
     message("msgAccueil", `Aucune carte pour le ${joli(n)}.`, "info");
