@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="74">
+<meta name="app-version" content="75">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -448,6 +448,15 @@
     <button class="btn principal" id="bRoueLancer" style="font-size:20px;padding:16px">🎡 Lancer la roue</button>
     <button class="btn vert cache" id="bRoueOk" style="font-size:20px;padding:16px">✓ C'est noté</button>
     <p class="note" style="text-align:center"><a class="lien" id="bRoueReglement">Règlement du jeu</a></p>
+  </div>
+</div>
+<div id="nouvFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="nouvTitre">
+  <div class="boite" style="text-align:center">
+    <div style="font-size:54px;line-height:1">🎁</div>
+    <h2 id="nouvTitre" style="margin:8px 0">Nouveau : <span id="nouvPts">10</span> points offerts !</h2>
+    <p style="font-size:17px;margin:0 0 10px">Quand vous créez la carte d'un nouveau client, <b>proposez-lui les SMS</b> : s'il accepte, il reçoit <b><span id="nouvPts2">10</span> points en cadeau</b>.</p>
+    <p class="note" style="margin:0 0 14px">La case est maintenant en jaune sur la fiche du nouveau client. C'est au client de dire oui : ne la cochez jamais à sa place.</p>
+    <button class="btn principal" id="bNouvOk" style="width:100%">👍 J'ai compris</button>
   </div>
 </div>
 <div id="reglFond" class="fond cache">
@@ -2157,7 +2166,8 @@ async function entrer(){
   if (!DEMO && !admin && !await appareilAutorise()) return;
   verifierNotifs();
   if (!DEMO && !admin && !await accesVerifie()){ montrer("ecranAccueil"); return; }   // pas encore abonné : accueil visible, bouton « Activer », rien ne peut être tapé
-  if (!DEMO && !admin && !SESSION.commerce.telephone) setTimeout(demanderTelCommerce, 600);   // comptes créés avant le 10/11/2026
+  if (!DEMO && !admin && !SESSION.commerce.telephone) setTimeout(demanderTelCommerce, 600);
+  nouveauteBonusSms();   // comptes créés avant le 10/11/2026
   if (!admin) setTimeout(proposerEmail, 1500);   // comptes avec identifiant : ajouter un e-mail (une fois par jour)
   if (!SESSION.commerce.programme_choisi) return montrer("ecranReglages");   // premier passage : choisir son programme
   montrer("ecranAccueil");
@@ -2353,7 +2363,7 @@ async function chercher(){
     $("rgpdNom").textContent = (SESSION && SESSION.commerce && SESSION.commerce.nom) || "nous"; $("nomNouveau").value = ""; $("emailNouveau").value = ""; message("msgNouveau",""); $("accordNouveau").checked = false;
     const bSms = Number(SESSION && SESSION.commerce && SESSION.commerce.bonus_accord_sms) || 0;
     $("caseAccordNouveau").classList.toggle("bonusSms", bSms > 0); $("bonusSmsTxt").classList.toggle("cache", !bSms);
-    $("bonusSmsTxt").textContent = bSms ? `🎁 +${bSms} points offerts s'il accepte les SMS` : "";
+    $("bonusSmsTxt").textContent = bSms ? `🎁 +${bSms} points si vous acceptez de recevoir les promotions par SMS` : "";
     boutonsPoints($("bCreer"), $("bCreerGros"), aBonus() ? "" : "Créer la carte · ");
     $("blocNouveau").classList.remove("cache");
     message("msgAccueil", `Aucune carte pour le ${joli(n)}.`, "info");
@@ -3456,6 +3466,15 @@ async function afficherMonContrat(){
   const rects = c.signe_le ? await afficherMesRectificatifs() : [];
   if (rects.some(r => !r.signe_le)) $("contratPastille").innerHTML = `<span class="pastille">à signer</span>`;
   return c;
+}
+// Nouveauté « points offerts si le client accepte les SMS » : affichée à l'ouverture jusqu'à « J'ai compris » (une fois par tablette)
+function nouveauteBonusSms(){
+  const n = Number(SESSION && SESSION.commerce && SESSION.commerce.bonus_accord_sms) || 0, cle = "nouveaute_bonus_sms_vue";
+  if (!n || ADMIN) return;
+  try{ if (localStorage.getItem(cle)) return; }catch(e){}
+  $("nouvPts").textContent = $("nouvPts2").textContent = n;
+  $("nouvFond").classList.remove("cache");
+  $("bNouvOk").onclick = ()=>{ $("nouvFond").classList.add("cache"); try{ localStorage.setItem(cle, "1"); }catch(e){} };
 }
 async function rappelContrat(){
   try{
