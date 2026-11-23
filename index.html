@@ -211,6 +211,18 @@
   #palierEmo{font-size:44px;letter-spacing:4px;margin:2px 0 6px}
   #palierTitre{font-size:30px!important;line-height:1.15}
   #palierTexte{font-size:20px;font-weight:700;margin:10px 0 16px}
+  /* La veille d'un palier (49 → 50) : grande fenêtre qui reste jusqu'à « C'est parti » */
+  #palierFond.veille .boite{max-width:640px;padding:28px 24px}
+  #palierFond.veille #palierEmo{font-size:60px}
+  #palierFond.veille #palierTitre{font-size:42px!important}
+  #palierFond.veille #palierTexte{font-size:24px;line-height:1.4}
+  #palierFond.veille #bPalierOk{font-size:24px;padding:16px}
+  .palierPetit{display:block;margin-top:10px;font-size:19px;font-weight:600;color:var(--doux)}
+  @media (max-width:600px){#palierFond.veille #palierTitre{font-size:30px!important}#palierFond.veille #palierTexte{font-size:19px}}
+  .confettis{position:fixed;inset:0;pointer-events:none;z-index:61;overflow:hidden}
+  .confettis i{position:absolute;top:-24px;border-radius:2px;animation:confetti linear forwards}
+  @keyframes confetti{to{transform:translate(var(--d),110vh) rotate(var(--r))}}
+  @media (prefers-reduced-motion:reduce){.confettis{display:none}}
   /* Support */
   header button{position:relative}
   .badge{position:absolute;top:-6px;right:-6px;background:#ffd84d;color:#3a2a00;border-radius:99px;min-width:20px;height:20px;padding:0 5px;font-size:12px;font-weight:800;line-height:20px;text-align:center}
@@ -224,6 +236,9 @@
   .msgsup.nonlu{background:var(--orclair);border-radius:10px;padding:10px;margin:4px 0}
   .msgsup .actions{display:flex;gap:8px;margin-top:6px}
   .msgsup .actions button{border:0;border-radius:10px;padding:8px 12px;font-size:15px;font-weight:600;cursor:pointer;background:var(--gris);color:var(--texte)}
+  /* Sans internet : bandeau en haut, la caisse continue */
+  .bandeauHL{position:sticky;top:0;z-index:40;background:#fff3cd;color:#5c4400;border-bottom:2px solid #e0b100;padding:10px 14px;font-weight:700;font-size:17px;text-align:center}
+  .bandeauHL.envoi{background:#e6f1fb;color:#123c63;border-bottom-color:#5b9bd5}
   .alerte{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:60;background:#2b2118;color:#fff;border-radius:14px;padding:12px 16px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:92vw;cursor:pointer}
   /* Écran de caisse centré + en-tête du commerce */
   #ecranAccueil{display:flex;flex-direction:column}
@@ -577,7 +592,7 @@
     <h2 id="palierTitre"></h2>
     <p id="palierTexte"></p>
     <button class="btn principal" id="bPalierOk" style="width:100%">Merci ! 🎉</button>
-    <p class="note" style="margin:8px 0 0">Se ferme tout seul dans quelques secondes</p>
+    <p class="note" id="palierAuto" style="margin:8px 0 0">Se ferme tout seul dans quelques secondes</p>
   </div>
 </div>
 <div id="accesFond" class="fond cache" role="alertdialog" aria-modal="true" aria-labelledby="accesTitre" style="z-index:54">
@@ -762,6 +777,7 @@
   </div>
 </div>
 <div id="app" class="cache">
+<div id="bandeauHL" class="bandeauHL cache" role="status" aria-live="polite"></div>
 <div id="deco" aria-hidden="true"></div>
 <header>
   <button id="bResetDemo" class="cache" title="Remettre la démo au départ" onclick="recommencerDemo()">↺<span class="txtReset"> Réinitialiser</span></button>
@@ -1994,8 +2010,14 @@ async function enregistrerTelCommerce(brut){
   SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {telephone:t});
   return t;
 }
-function demanderTelCommerce(){ $("telSaisie").value = ""; message("msgTel",""); $("telFond").classList.remove("cache"); $("telSaisie").focus(); }
-$("bTelPlusTard").onclick = ()=> $("telFond").classList.add("cache");
+// Fenêtres d'ouverture l'une après l'autre (jamais empilées) : Nouveauté → téléphone → identifiants / e-mail
+let TEL_EN_ATTENTE = false;
+const ouverte = id => !$(id).classList.contains("cache");
+function demanderTelCommerce(){
+  if (ouverte("nouvFond")){ TEL_EN_ATTENTE = true; return; }   // la « Nouveauté » d'abord ; le téléphone suit « J'ai compris »
+  $("telSaisie").value = ""; message("msgTel",""); $("telFond").classList.remove("cache"); $("telSaisie").focus();
+}
+$("bTelPlusTard").onclick = ()=>{ $("telFond").classList.add("cache"); if (!ADMIN) setTimeout(proposerEmail, 400); };
 // Compte créé par le gérant avec une adresse provisoire : tous les 2 jours, « nouvelle adresse e-mail, nouveau mot de passe »
 // (sans confirmation ni ancien mot de passe), jusqu'à ce que ce soit fait. La base décoche la case une fois fait.
 function proposerIdentifiants(){
@@ -2022,6 +2044,8 @@ $("bIdsOk").onclick = ()=> occupe($("bIdsOk"), async ()=>{
 $("idsMdp").addEventListener("keydown", e=>{ if (e.key === "Enter") $("bIdsOk").click(); });
 // Compte créé avec un identifiant : une fois par jour, on propose d'ajouter l'adresse e-mail (mot de passe oublié)
 function proposerEmail(){
+  if (ouverte("idsFond") || ouverte("mailFond")) return;
+  if (ouverte("telFond") || ouverte("nouvFond")) return;   // relancé à la fermeture de ces fenêtres
   if (proposerIdentifiants()) return;
   if (SESSION && SESSION.commerce && SESSION.commerce.rappel_identifiants) return;
   if (!SESSION || !sansEmail(SESSION.email) || !$("telFond").classList.contains("cache")) return;
@@ -2046,7 +2070,7 @@ $("bMailEnregistrer").onclick = ()=> occupe($("bMailEnregistrer"), async ()=>{
 });
 $("mailMdp").addEventListener("keydown", e=>{ if (e.key === "Enter") $("bMailEnregistrer").click(); });
 $("bTelEnregistrer").onclick = ()=> occupe($("bTelEnregistrer"), async ()=>{
-  try{ await enregistrerTelCommerce($("telSaisie").value); $("telFond").classList.add("cache"); alerte("✓ Merci, numéro enregistré"); }
+  try{ await enregistrerTelCommerce($("telSaisie").value); $("telFond").classList.add("cache"); alerte("✓ Merci, numéro enregistré"); if (!ADMIN) setTimeout(proposerEmail, 400); }
   catch(e){ message("msgTel", e.message, "err"); }
 });
 $("telSaisie").addEventListener("keydown", e=>{ if (e.key === "Enter") $("bTelEnregistrer").click(); });
@@ -2064,6 +2088,187 @@ function codeInvitation(){
   return CODE_OK(c) ? c : "";
 }
 
+// ---------- Sans internet (23/11/2026) ----------
+// Pas de Wi-Fi à la boutique : on cherche les clients dans une copie gardée sur la tablette, les points et les nouvelles
+// cartes sont mis en file d'attente (dans la tablette), puis envoyés tout seuls dès que le Wi-Fi revient.
+// La base reste la seule à compter les points : la tablette n'affiche qu'une estimation en attendant.
+// Hors ligne : réduction, roue, bons et modifications de fiche attendent le retour du Wi-Fi (le hasard de la roue est fait par la base).
+const RESEAU_KO = e => !navigator.onLine || /Pas de connexion internet|Failed to fetch|NetworkError|Load failed|network|fetch/i.test((e && e.message) || "");
+const cleHL = k => `reviens_hl_${k}_${(SESSION && SESSION.commerce && SESSION.commerce.id) || "x"}`;
+function lireHL(k, d){ try{ const t = localStorage.getItem(cleHL(k)); return t ? JSON.parse(t) : d; }catch(e){ return d; } }
+function ecrireHL(k, val){ try{ localStorage.setItem(cleHL(k), JSON.stringify(val)); return true; }catch(e){ return false; } }
+const fileHL = () => lireHL("file", []);
+const pasInternet = quoi => new Error(`📴 Pas d'internet : ${quoi} dès que le Wi-Fi revient. Les points du client sont bien gardés.`);
+function cacheClient(c){
+  if (!c || !c.telephone) return;
+  const l = lireHL("clients", []), i = l.findIndex(x => x.telephone === c.telephone);
+  if (i >= 0) l[i] = c; else l.unshift(c);
+  ecrireHL("clients", l);
+}
+const clientConnu = id => (courant && courant.id === id) ? courant : lireHL("clients", []).find(c => c.id === id) || null;
+const ptsPassage = gros => (gros && SESSION.commerce.points_bonus != null) ? Number(SESSION.commerce.points_bonus) : Number(SESSION.commerce.points_par_passage) || 0;
+function mettreEnFile(x){
+  const f = fileHL();
+  f.push({...x, n: Date.now().toString(36) + Math.random().toString(36).slice(2, 7)});
+  if (!ecrireHL("file", f)) throw new Error("Mémoire de la tablette pleine : ce passage n'a pas pu être gardé. Notez-le sur papier.");
+  majBandeauHL();
+}
+function retirerDeFile(x){ ecrireHL("file", fileHL().filter(y => y.n !== x.n)); }
+function pointsHL(c0, gros){
+  if (!c0) throw new Error("📴 Pas d'internet, et ce client n'est pas encore connu de cette tablette.");
+  const now = Date.now();
+  if (fileHL().some(x => x.tel === c0.telephone && now - new Date(x.le) < DELAI_DOUBLE)) throw new Error("Points déjà donnés à ce client il y a moins de 2 minutes");
+  const pts = ptsPassage(gros), le = new Date().toISOString();
+  mettreEnFile({t:"points", tel:c0.telephone, id:c0.id, gros:!!gros, le, pts});
+  const c = {...c0, points:(Number(c0.points) || 0) + pts, visites:(Number(c0.visites) || 0) + 1, derniere_visite:le};
+  cacheClient(c);
+  return c;
+}
+// Passages encore dans la file, présentés comme l'historique (pour l'anti double appui et la fiche du client)
+const mouvementsHL = tel => fileHL().filter(x => x.tel === tel).reverse().map(x => ({type:"points", points:x.pts, le:x.le, gros_panier:x.gros, attente:true}));
+const SESSION_HL = "reviens_hl_session";
+function avecHorsLigne(api){
+  const enAttente = id => { const c = clientConnu(id); return !!c && fileHL().some(x => x.tel === c.telephone); };
+  // Réduction, roue, bon, fiche : jamais sans internet, et jamais avant l'envoi des passages en attente de ce client
+  const enLigneSeulement = (nom, quoi) => async (id, ...r) => {
+    if (String(id).startsWith("hl:") || !navigator.onLine) throw pasInternet(quoi);
+    if (enAttente(id)){ await envoyerFile(); if (enAttente(id)) throw new Error("⏳ Les passages gardés sans internet de ce client sont en cours d'envoi : réessayez dans 2 minutes."); }
+    try{ const c = await api[nom](id, ...r); if (c && c.telephone) cacheClient(c); return c; }
+    catch(e){ if (RESEAU_KO(e)) throw pasInternet(quoi); throw e; }
+  };
+  return Object.assign({}, api, {
+    brut: api,
+    async session(){
+      let s;
+      try{ s = await api.session(); }
+      catch(e){ if (!RESEAU_KO(e)) throw e; return sessionMemo(); }
+      if (s){ try{ localStorage.setItem(SESSION_HL, JSON.stringify(s)); }catch(e){} return s; }
+      return navigator.onLine ? null : sessionMemo();
+    },
+    async deconnexion(){ try{ localStorage.removeItem(SESSION_HL); }catch(e){} return api.deconnexion(); },
+    async liste(){ const l = await api.liste(); ecrireHL("clients", l); return l; },
+    async trouverClient(tel, ...r){
+      try{ const c = await api.trouverClient(tel, ...r); if (c) cacheClient(c); return c; }
+      catch(e){ if (!RESEAU_KO(e)) throw e; majBandeauHL(); return lireHL("clients", []).find(c => c.telephone === tel) || null; }
+    },
+    async creerClient(tel, nom, accord, gros, email){
+      try{ const c = await api.creerClient(tel, nom, accord, gros, email); cacheClient(c); return c; }
+      catch(e){
+        if (!RESEAU_KO(e)) throw e;
+        const bonus = accord ? (Number(SESSION.commerce.bonus_accord_sms) || 0) : 0, pts = bonus + ptsPassage(gros), le = new Date().toISOString();
+        mettreEnFile({t:"creer", tel, nom:nom || "", accord:!!accord, gros:!!gros, email:email || "", le, pts});
+        const c = {id:"hl:" + tel, telephone:tel, nom:(nom || "").trim(), email:(email || "").trim().toLowerCase(), points:pts, visites:1, recompenses:0,
+                   accord_sms:!!accord, accord_sms_le:accord ? le : null, derniere_visite:le, horsLigne:true};
+        cacheClient(c);
+        return c;
+      }
+    },
+    async ajouterPoints(id, gros){
+      const c0 = clientConnu(id);
+      if (String(id).startsWith("hl:")) return pointsHL(c0, gros);   // carte créée sans internet : elle passe par la file
+      try{ const c = await api.ajouterPoints(id, gros); cacheClient(c); return c; }
+      catch(e){ if (!RESEAU_KO(e)) throw e; return pointsHL(c0, gros); }
+    },
+    async annulerDernier(id){
+      const c0 = clientConnu(id), f = fileHL(), dernier = c0 ? f.filter(x => x.tel === c0.telephone).pop() : null;
+      if (dernier){   // le dernier passage est encore sur la tablette : on l'enlève simplement de la file
+        if (dernier.t === "creer") throw pasInternet("l'annulation d'une carte créée sans internet sera possible");
+        retirerDeFile(dernier); majBandeauHL();
+        const c = {...c0, points:Math.max(0, (Number(c0.points) || 0) - dernier.pts), visites:Math.max(0, (Number(c0.visites) || 0) - 1)};
+        cacheClient(c);
+        return c;
+      }
+      if (String(id).startsWith("hl:")) throw pasInternet("l'annulation sera possible");
+      try{ const c = await api.annulerDernier(id); cacheClient(c); return c; }
+      catch(e){ if (RESEAU_KO(e)) throw pasInternet("l'annulation sera possible"); throw e; }
+    },
+    async historique(id){
+      const c0 = clientConnu(id), loc = c0 ? mouvementsHL(c0.telephone) : [];
+      if (String(id).startsWith("hl:")) return loc;
+      try{ return [...loc, ...await api.historique(id)]; }
+      catch(e){ if (!RESEAU_KO(e)) throw e; return loc; }
+    },
+    async bonsActifs(){ try{ return await api.bonsActifs(); }catch(e){ if (RESEAU_KO(e)) return []; throw e; } },
+    async roueEnAttente(id){
+      if (String(id).startsWith("hl:")) return null;
+      try{ return await api.roueEnAttente(id); }catch(e){ if (RESEAU_KO(e)) return null; throw e; }
+    },
+    utiliserReduction: enLigneSeulement("utiliserReduction", "la réduction pourra être enregistrée"),
+    utiliserPalierRoue: enLigneSeulement("utiliserPalierRoue", "la roue pourra être lancée"),
+    majClient: enLigneSeulement("majClient", "la fiche du client pourra être modifiée"),
+    async bonUtilise(id){ try{ return await api.bonUtilise(id); }catch(e){ if (RESEAU_KO(e)) throw pasInternet("le bon pourra être marqué utilisé"); throw e; } },
+  });
+}
+// Ouverture de l'appli sans internet : on reprend le commerce mémorisé, si la tablette est bien connectée à ce compte
+function sessionMemo(){
+  try{
+    if (!Object.keys(localStorage).some(k => /^sb-.*-auth-token$/.test(k))) return null;
+    return JSON.parse(localStorage.getItem(SESSION_HL)) || null;
+  }catch(e){ return null; }
+}
+// Envoi de la file : dans l'ordre, un passage à la fois ; la base recalcule les points (règles du jour de l'envoi)
+let envoiHL = null;
+function envoyerFile(){
+  if (!envoiHL) envoiHL = envoyerFileSuite().catch(()=>{}).finally(()=>{ envoiHL = null; majBandeauHL(); });
+  return envoiHL;
+}
+async function envoyerFileSuite(){
+  if (DEMO || !SESSION || !API || !API.brut || !navigator.onLine) return;
+  const f = fileHL(); if (!f.length) return;
+  majBandeauHL(true);
+  const brut = API.brut, ids = lireHL("ids", {}), bloques = new Set();
+  let envoyes = 0;
+  for (const x of f){
+    if (bloques.has(x.tel)) continue;
+    try{
+      if (x.t === "creer"){
+        let c;
+        try{ c = await brut.creerClient(x.tel, x.nom, x.accord, x.gros, x.email); }
+        catch(e){
+          if (!/déjà une carte/.test(e.message)) throw e;
+          // Carte déjà là : soit ce même envoi est arrivé mais la réponse s'est perdue (rien à refaire),
+          // soit la carte existait déjà sur le serveur (on donne alors seulement les points du passage)
+          c = await brut.trouverClient(x.tel);
+          if (c && !(c.derniere_visite && new Date(c.derniere_visite) >= new Date(x.le))) c = await brut.ajouterPoints(c.id, x.gros);
+        }
+        if (c){ ids[x.tel] = c.id; cacheClient(c); }
+      } else if (x.t === "points"){
+        let id = ids[x.tel] || (String(x.id).startsWith("hl:") ? null : x.id);
+        if (!id){ const c = await brut.trouverClient(x.tel); if (!c) throw new Error("Client introuvable"); id = ids[x.tel] = c.id; }
+        cacheClient(await brut.ajouterPoints(id, x.gros));
+      }
+      retirerDeFile(x); envoyes++;
+    }catch(e){
+      if (RESEAU_KO(e)) break;                                                       // le Wi-Fi est reparti : on réessaiera
+      if (/2 minutes|JWT|token/i.test(e.message)){ bloques.add(x.tel); continue; }   // même client deux fois de suite : la base veut 2 minutes d'écart
+      retirerDeFile(x); bloques.add(x.tel);
+      const er = lireHL("erreurs", []); er.push({...x, erreur:e.message}); ecrireHL("erreurs", er);
+      alerte(`⚠️ Un passage gardé sans internet n'a pas pu être envoyé (${joli(x.tel)}) : ${e.message}`);
+    }
+  }
+  ecrireHL("ids", ids);
+  if (courant && courant.telephone && !String(courant.id).startsWith("hl:")){ const c = lireHL("clients", []).find(y => y.telephone === courant.telephone); if (c) courant = c; }
+  if (envoyes) alerte(`✅ Internet revenu : ${pluriel(envoyes, "passage")} envoyé${envoyes > 1 ? "s" : ""}. Tous les points sont à jour.`);
+}
+function majBandeauHL(envoi){
+  const b = $("bandeauHL"); if (!b) return;
+  const n = SESSION ? fileHL().length : 0;
+  if (!navigator.onLine){
+    b.textContent = `📴 Pas d'internet : l'appli continue. ${n ? pluriel(n, "passage") + " gardé" + (n > 1 ? "s" : "") + " sur la tablette, envoyé" + (n > 1 ? "s" : "") : "Les passages sont gardés sur la tablette et envoyés"} tout seuls au retour du Wi-Fi.`;
+    b.className = "bandeauHL";
+  } else if (n){
+    b.textContent = `🔄 ${pluriel(n, "passage")} gardé${n > 1 ? "s" : ""} sans internet : envoi en cours…`;
+    b.className = "bandeauHL envoi";
+  } else b.className = "bandeauHL cache";
+}
+window.addEventListener("online", ()=>{ majBandeauHL(); setTimeout(envoyerFile, 1500); });
+window.addEventListener("offline", ()=> majBandeauHL());
+setInterval(()=>{ if (fileHL().length) envoyerFile(); }, 30000);
+setInterval(()=>{ if (SESSION && navigator.onLine && API && API.brut) API.liste().catch(()=>{}); }, 30 * 60000);   // copie des clients rafraîchie toutes les 30 min
+// Garder la page elle-même sur la tablette (pour l'ouvrir même sans internet)
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "127.0.0.1" || location.hostname === "localhost"))
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+
 async function demarrer(){
   if (DEMO){
     $("bandeauDemo").classList.remove("cache"); $("bResetDemo").classList.remove("cache");
@@ -2073,7 +2278,7 @@ async function demarrer(){
   } else {
     await chargerScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js");
     const sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
-    API = apiSupabase(sb);
+    API = avecHorsLigne(apiSupabase(sb));   // sans internet : passages gardés sur la tablette, envoyés au retour du Wi-Fi
     sb.auth.onAuthStateChange(async (evt)=>{
       if (evt === "PASSWORD_RECOVERY"){
         const mdp = prompt("Choisissez votre nouveau mot de passe (6 caractères minimum) :");
@@ -2212,10 +2417,13 @@ async function entrer(){
   if (!DEMO && !admin && !SESSION.commerce.telephone) setTimeout(demanderTelCommerce, 600);
   nouveauteBonusSms();   // comptes créés avant le 10/11/2026
   if (!admin) setTimeout(proposerEmail, 1500);   // comptes avec identifiant : ajouter un e-mail (une fois par jour)
+  if (!DEMO && !admin) setTimeout(rappelContrat, 2500);   // rectificatif montré par le gérant, pas encore signé (rappel perdu depuis la v63)
   if (!SESSION.commerce.programme_choisi) return montrer("ecranReglages");   // premier passage : choisir son programme
   montrer("ecranAccueil");
   focusTel();
   if (!admin) setTimeout(verifierPalierClients, 900);
+  majBandeauHL();
+  if (!DEMO) setTimeout(()=>{ envoyerFile(); if (admin && navigator.onLine) API.liste().catch(()=>{}); }, 3000);   // passages gardés sans internet + copie des clients
 }
 
 // Textes des boutons de points, selon le programme du commerce
@@ -2344,7 +2552,8 @@ async function verifierPalierClients(){
   let n; try{ n = (await API.liste()).length; }catch(e){ return; }
   const p = PALIERS_CLIENTS.find(x => n === x - 1 || n === x);
   if (!p) return;
-  const veille = n === p - 1, cle = `reviens_palier_${SESSION.commerce.id}_${p}_${veille ? "veille" : "atteint"}`;
+  // « veille2 » (23/11/2026) : nouvelle grande fenêtre, montrée même si l'ancienne petite a déjà été vue
+  const veille = n === p - 1, cle = `reviens_palier_${SESSION.commerce.id}_${p}_${veille ? "veille2" : "atteint"}`;
   try{ if (localStorage.getItem(cle)) return; localStorage.setItem(cle, "1"); }catch(e){}
   montrerPalier(p, veille);
 }
@@ -2352,14 +2561,38 @@ function montrerPalier(p, veille){
   const t = leTheme(themeActif), em = t.e.slice(0, 3);
   const pluie = [...t.e, ...t.e, "⭐", "🌟", "✨", "⭐", "🌟"];
   $("palierEmo").textContent = `⭐${em.join("")}⭐`;
-  $("palierTitre").textContent = veille ? `Plus qu'un client pour le palier des ${p} clients !` : `${p} clients ! 🎉`;
-  $("palierTexte").textContent = veille ? `Bravo, vous êtes les meilleurs ! ${em[0]}⭐` : `Palier des ${p} clients atteint. Bravo, vous êtes les meilleurs ! ${em[0]}⭐`;
+  $("palierFond").classList.toggle("veille", veille);
+  $("palierTitre").textContent = veille ? `Plus qu'un client et vous serez à ${p} ! 🎉` : `${p} clients ! 🎉`;
+  $("palierTexte").innerHTML = veille
+    ? `Bravo, vous avez déjà <b>${p - 1} clients fidèles</b> ! ${em[0]}<br>Le prochain client qui passe la porte fera entrer la boutique dans le <b>club des ${p}</b>.<br><span class="palierPetit">Merci pour votre super travail, toute l'équipe peut être fière. Allez, on va le chercher ! 💪</span>`
+    : `Palier des ${p} clients atteint. Bravo, vous êtes les meilleurs ! ${em[0]}⭐`;
+  $("bPalierOk").textContent = veille ? "C'est parti ! 💪" : "Merci ! 🎉";
+  $("palierAuto").classList.toggle("cache", veille);
   $("palierFond").classList.remove("cache");
+  confettis();
   fete(true, pluie);
   setTimeout(() => fete(true, pluie), 1300);
-  setTimeout(() => fete(true, pluie), 2600);
+  setTimeout(() => { fete(true, pluie); confettis(); }, 2600);
   clearTimeout(palierMinuteur);
-  palierMinuteur = setTimeout(fermerPalier, 7000);   // juste un clin d'œil : se ferme tout seul après 7 s
+  if (!veille) palierMinuteur = setTimeout(fermerPalier, 7000);   // le palier atteint : clin d'œil de 7 s ; la veille : reste jusqu'à « C'est parti »
+}
+// Pluie de confettis de couleur (en plus des émojis), sans bibliothèque
+function confettis(){
+  const z = document.createElement("div"); z.className = "confettis"; z.setAttribute("aria-hidden", "true");
+  const couleurs = ["#e63946", "#f4a261", "#2a9d8f", "#457b9d", "#ffbe0b", "#8338ec", "#ff006e", "#06d6a0"];
+  for (let i = 0; i < 140; i++){
+    const s = document.createElement("i");
+    s.style.left = Math.random() * 100 + "vw";
+    s.style.background = couleurs[i % couleurs.length];
+    s.style.width = (6 + Math.random() * 8) + "px"; s.style.height = (10 + Math.random() * 10) + "px";
+    s.style.animationDuration = (2.6 + Math.random() * 2.4) + "s";
+    s.style.animationDelay = (Math.random() * 1.2) + "s";
+    s.style.setProperty("--d", (Math.random() * 40 - 20) + "vw");
+    s.style.setProperty("--r", (360 + Math.random() * 720) + "deg");
+    z.appendChild(s);
+  }
+  document.body.appendChild(z);
+  setTimeout(() => z.remove(), 6500);
 }
 let palierMinuteur = null;
 function fermerPalier(){
@@ -2937,6 +3170,8 @@ $("bExporterCsv").onclick = ()=> occupe($("bExporterCsv"), async ()=>{
   document.body.appendChild(a); a.click(); a.remove();
 });
 $("bDeconnexion").onclick = async ()=>{
+  const nHL = fileHL().length;
+  if (nHL && !confirm(`${pluriel(nHL, "passage")} gardé${nHL > 1 ? "s" : ""} sans internet ne sont pas encore envoyés. Ils partiront à la prochaine connexion de ce compte sur cette tablette. Se déconnecter quand même ?`)) return;
   await API.deconnexion(); SESSION = null; courant = null; appliquerTheme("defaut");
   $("tel").value = ""; $("blocClient").classList.add("cache");
   afficherConnexion();
@@ -3517,7 +3752,10 @@ function nouveauteBonusSms(){
   try{ if (localStorage.getItem(cle)) return; }catch(e){}
   $("nouvPts").textContent = $("nouvPts2").textContent = n;
   $("nouvFond").classList.remove("cache");
-  $("bNouvOk").onclick = ()=>{ $("nouvFond").classList.add("cache"); try{ localStorage.setItem(cle, "1"); }catch(e){} };
+  $("bNouvOk").onclick = ()=>{
+    $("nouvFond").classList.add("cache"); try{ localStorage.setItem(cle, "1"); }catch(e){}
+    if (TEL_EN_ATTENTE){ TEL_EN_ATTENTE = false; setTimeout(demanderTelCommerce, 400); } else setTimeout(proposerEmail, 400);
+  };
 }
 async function rappelContrat(){
   try{
@@ -3741,8 +3979,8 @@ async function afficherContratsGerant(){
       <div class="sousCorps">${parCommerce[n].map(c => {
         const rr = rs.filter(r => r.contrat_id === c.id && !r.annule_le);
         return `<div class="ctLigne"><div><b>Contrat n° ${c.id}</b> · ${echapper(c.modele)}${c.tablette_serie ? " · tablette " + echapper(c.tablette_serie) : ""}<br>
-            <span class="note">${c.signe_le ? `✅ signé le ${echapper(cJourHeure(new Date(c.signe_le)))} par ${echapper((c.infos || {}).signataire || "")}` : `📄 préparé le ${jourFr(c.prepare_le)}, pas encore signé`}</span></div>
-            <div class="ctBtns">${c.signe_le ? `<button class="petitbtn roue" data-ctvoir="${c.id}">📄 Voir</button><button class="petitbtn" data-ctrect="${c.id}">✏️ Rectificatif…</button>` : ""}</div></div>` +
+            <span class="note">${c.signe_le && c.annule_le ? `⛔ annulé le ${jourFr(c.annule_le)} (signé le ${echapper(jourFr(c.signe_le))})` : c.signe_le ? `✅ signé le ${echapper(cJourHeure(new Date(c.signe_le)))} par ${echapper((c.infos || {}).signataire || "")}` : `📄 préparé le ${jourFr(c.prepare_le)}, pas encore signé`}</span></div>
+            <div class="ctBtns">${c.signe_le ? `<button class="petitbtn roue" data-ctvoir="${c.id}">📄 Voir</button>${c.annule_le ? "" : `<button class="petitbtn" data-ctrect="${c.id}">✏️ Rectificatif…</button>`}` : ""}</div></div>` +
           rr.map(r => `<div class="ctLigne ctRect"><div>↳ <b>Rectificatif n° ${r.id}</b> : ${echapper(r.objet)}<br><span class="note">${r.signe_le ? `✅ signé le ${echapper(cJourHeure(new Date(r.signe_le)))} par ${echapper(r.signataire)}` : r.montre_le ? `✍️ montré au commerce le ${jourFr(r.montre_le)} : en attente de sa signature` : "🙈 caché : le commerce ne le voit pas encore"}</span></div>
             <div class="ctBtns"><button class="petitbtn roue" data-rvoir="${r.id}">📄 Voir</button>${r.signe_le ? "" : `<button class="petitbtn${r.montre_le ? "" : " roue"}" data-rmontrer="${r.id}" data-oui="${r.montre_le ? "" : "1"}">${r.montre_le ? "🙈 Cacher" : "📨 Montrer au commerçant"}</button><button class="petitbtn vider" data-rretirer="${r.id}">Retirer</button>`}</div></div>`).join("");
       }).join("")}</div></details>`).join("");

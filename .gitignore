@@ -12,3 +12,5 @@ journal.md
 *.crt
 # Brouillons des documents légaux : jamais en ligne
 documents/
+# Fichiers créés par erreur à la racine (variable shell non remplacée) : jamais en ligne
+/documents*.pdf
