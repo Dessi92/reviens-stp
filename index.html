@@ -385,6 +385,19 @@
   .jourTab small{display:block;color:var(--doux);font-size:12px;white-space:normal}
   .jourTab small.plus{color:#1d7a2e}
   .jourTab small.moins{color:#9a6a00}
+  .jourTab tr.clic{cursor:pointer}
+  .jourTab tr.clic:hover td{background:var(--bg)}
+  .jourTab td.spk{width:96px;padding-left:2px;padding-right:2px}
+  .jourTab td.spk svg{display:block;width:92px;height:28px}
+  .jourTab .voir{display:block;color:var(--accent);font-size:13px;white-space:nowrap;margin-top:2px}
+  @media (max-width:500px){ .jourTab .red{display:none} .jourTab td.spk{width:62px} .jourTab td.spk svg{width:60px} .jourTab{font-size:14px} .jourTab th, .jourTab td{padding:7px 4px} }
+  .grZone{margin:10px 0 2px;text-align:left}
+  .grLeg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--doux);margin:0 2px 4px}
+  .grLeg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+  .grLeg i.tir{width:14px;height:0;border-top:2px dashed #8a7f76;border-radius:0;vertical-align:3px}
+  .grCadre{background:var(--carte);border:1px solid var(--bord);border-radius:14px;padding:6px 4px 2px}
+  .grCadre svg{display:block;width:100%;height:auto}
+  .grReperes{display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 10px;font-size:13px;color:var(--doux);margin:6px 2px 0}
   .fond{position:fixed;inset:0;background:rgba(20,14,8,.6);z-index:55;display:flex;align-items:center;justify-content:center;padding:12px}
   .boite{background:var(--carte);border-radius:20px;padding:18px;width:min(96vw,500px);max-height:96vh;overflow:auto;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35)}
   .boite h2{font-family:var(--police);font-size:26px;color:var(--accent);margin:0 0 4px}
@@ -619,6 +632,7 @@
     <div class="finOnglets" id="finOnglets" role="tablist" aria-label="Période du bilan"></div>
     <p class="note" id="finDate" style="margin:2px 0 12px"></p>
     <div class="finChiffres" id="finChiffres"></div>
+    <div class="grZone cache" id="finGraphe"></div>
     <p id="finPhrase" class="finPhrase"></p>
     <p class="note" id="finNote"></p>
     <button class="btn principal" id="bFinOk" style="width:100%">Bonne soirée ! 👋</button>
@@ -1303,6 +1317,21 @@ async function calculBilan(n, periode){
   const de = joursAvant(n - 1), [cur, precedent] = await Promise.all([periode(de, null), periode(joursAvant(2 * n - 1), de)]);
   return {...cur, n, debut:de.toISOString(), precedent};
 }
+// Barres du graphique : 24 heures (aujourd'hui), un jour (7 et 30 jours) ou une semaine (6 mois = 26 semaines)
+function seauxBilan(n){
+  const plus = (d, j) => { const x = new Date(d); x.setDate(x.getDate() + j); return x; };
+  if (n === 1) return Array.from({length:24}, (_, h) => { const de = debutJour(), a = debutJour(); de.setHours(h); a.setHours(h + 1); return {de, a}; });
+  const pas = n === 182 ? 7 : 1, d0 = joursAvant(n - 1);
+  return Array.from({length:n / pas}, (_, i) => { const de = plus(d0, i * pas), a = plus(d0, (i + 1) * pas); return {de, a, de_av:plus(de, -n), a_av:plus(a, -n)}; });
+}
+// Totaux et repère à partir des barres (mêmes chiffres que ceux du graphique)
+function totauxCourbe(n, l){
+  const somme = k => l.reduce((t, x) => t + Number(x[k] || 0), 0), arr = v => Math.round(v * 10) / 10;
+  const b = {passages:somme("passages"), nouveaux:somme("nouveaux"), reductions:somme("reductions")};
+  const okRef = l.length && (n === 1 ? Number(l[0].jours_ref) >= 2 : l[0].passages_avant != null);
+  const ref = okRef ? {passages:arr(somme("passages_avant")), nouveaux:arr(somme("nouveaux_avant")), reductions:arr(somme("reductions_avant")), jours:Number(l[0].jours_ref) || 0} : null;
+  return {b, ref};
+}
 // Repère de comparaison : l'habituel (jour) ou la période d'avant, seulement si le commerce existait déjà à son début
 function refBilan(n, b, creeLe){
   if (n === 1) return habituel(b.avant);
@@ -1491,6 +1520,8 @@ function apiSupabase(sb){
       return calculBilan(n, periode);
     },
     async adminBilan(n){ return v(await sb.rpc("admin_bilan_jour", {p_jours:n})); },
+    // Barres du graphique (par heure, jour ou semaine) : son commerce, ou n'importe lequel pour le gérant
+    async courbe(n, id){ return v(await sb.rpc("bilan_courbe", {p_jours:n, p_commerce:id || null})); },
     async rechargerCommerce(){ return v(await sb.from("commerces").select("*").eq("id", SESSION.commerce.id).single()); },
     // Support
     async supEnvoyer(texte){ v(await sb.from("messages_support").insert({texte})); },
@@ -1703,12 +1734,36 @@ function apiDemo(){
       };
       return calculBilan(n, periode);
     },
+    async courbe(n, id){
+      const S = seauxBilan(n);
+      if (id && id !== "demo"){   // commerces d'exemple de l'espace gérant : chiffres inventés mais stables
+        const k = id === "ex1" ? 1 : 0.15, forme = n === 1 ? [0,0,0,0,0,0,0,1,3,5,7,8,6,2,1,2,4,5,3,1,0,0,0,0] : null;
+        return S.map((x, i) => {
+          const j = new Date(x.de).getDay(), base = forme ? forme[i] : (n === 182 ? 140 : [0,4,5,5,6,8,10][j]);
+          const p = Math.round(base * k * (n === 182 ? 1 + i / 40 : 1)), nv = Math.round(p * 0.12);
+          return {debut:x.de.toISOString(), passages:p, nouveaux:nv, reductions:Math.round(p / 15), passages_avant:Math.round(p * 0.9), nouveaux_avant:nv, reductions_avant:Math.round(p / 15), jours_ref:n === 1 ? 4 : null};
+        });
+      }
+      const compte = (de, a) => { const dans = d => d && new Date(d) >= de && new Date(d) < a;
+        return [D.mouvements.filter(m=>m.type==="points" && dans(m.le)).length, D.clients.filter(c=>dans(c.cree_le)).length, D.mouvements.filter(m=>m.type==="reduction" && dans(m.le)).length]; };
+      const plus = (d, j) => { const x = new Date(d); x.setDate(x.getDate() + j); return x; };
+      if (n === 1){
+        const ouverts = [7, 14, 21, 28].map(joursAvant).filter(d => compte(d, plus(d, 1))[0] > 0), nb = ouverts.length;
+        return S.map(x => { const c = compte(x.de, x.a), h = x.de.getHours();
+          const av = q => nb >= 2 ? Math.round(ouverts.reduce((t, d) => { const de = new Date(d); de.setHours(h); const a = new Date(d); a.setHours(h + 1); return t + compte(de, a)[q]; }, 0) / nb * 100) / 100 : null;
+          return {debut:x.de.toISOString(), passages:c[0], nouveaux:c[1], reductions:c[2], passages_avant:av(0), nouveaux_avant:av(1), reductions_avant:av(2), jours_ref:nb}; });
+      }
+      const valide = !D.commerce.cree_le || new Date(D.commerce.cree_le) <= joursAvant(2 * n - 1);
+      return S.map(x => { const c = compte(x.de, x.a), a = valide ? compte(x.de_av, x.a_av) : [null, null, null];
+        return {debut:x.de.toISOString(), passages:c[0], nouveaux:c[1], reductions:c[2], passages_avant:a[0], nouveaux_avant:a[1], reductions_avant:a[2], jours_ref:null}; });
+    },
     async adminBilan(n){
-      const b = await this.bilan(n), r = refBilan(n, b, D.commerce.cree_le), f = n === 1 ? 1 : n * 6 / 7;   // boulangerie d'exemple : fermée le dimanche
-      return [{id:"demo", commerce:D.commerce.nom, passages:b.passages, nouveaux:b.nouveaux, reductions:b.reductions,
-               passages_ref:r && r.passages, nouveaux_ref:r && r.nouveaux, derniere_activite:D.mouvements.length ? D.mouvements[D.mouvements.length-1].le : null},
-        {id:"ex1", commerce:"Boulangerie (exemple)", passages:Math.round(23*f), nouveaux:Math.round(2*f), reductions:Math.round(f), passages_ref:Math.round(19.5*f), nouveaux_ref:Math.round(1.5*f), derniere_activite:new Date().toISOString()},
-        {id:"ex2", commerce:"Fleuriste (exemple)", passages:n >= 7 ? 3 : 0, nouveaux:n >= 7 ? 1 : 0, reductions:0, passages_ref:null, nouveaux_ref:null, derniere_activite:new Date(Date.now()-6*864e5).toISOString()}];
+      // Les commerces d'exemple prennent leurs totaux dans leurs barres : la ligne et leur bilan affichent les mêmes chiffres
+      const ligne = async (id, commerce, derniere) => { const {b, ref} = totauxCourbe(n, await this.courbe(n, id));
+        return {id, commerce, passages:b.passages, nouveaux:b.nouveaux, reductions:b.reductions, passages_ref:ref && ref.passages, nouveaux_ref:ref && ref.nouveaux, derniere_activite:derniere}; };
+      return [await ligne("demo", D.commerce.nom, D.mouvements.length ? D.mouvements[D.mouvements.length-1].le : null),
+        await ligne("ex1", "Boulangerie (exemple)", new Date().toISOString()),
+        await ligne("ex2", "Fleuriste (exemple)", new Date(Date.now()-6*864e5).toISOString())];
     },
     async bonUtilise(id){
       const t = (D.tirages||[]).find(t=>t.id===id);
@@ -2683,35 +2738,96 @@ function ongletsBilan(zone, n, action){
   zone.querySelectorAll(".ong").forEach(b => b.onclick = () => action(Number(b.dataset.n)));
 }
 const jourMois = d => new Date(d).toLocaleDateString("fr-FR", {day:"numeric", month:"long"});
+// Graphique en barres dessiné par l'appli (sans bibliothèque, marche sans internet) : fidèles (foncé) + nouveaux (clair), période d'avant en pointillés
+function grapheBilan(n, l){
+  let s0 = 0, s1 = l.length;
+  if (n === 1){   // aujourd'hui : de 8 h à 19 h au moins, élargi si des passages ont lieu plus tôt ou plus tard
+    const act = l.map((x, i) => Number(x.passages) || Number(x.passages_avant) ? i : -1).filter(i => i >= 0);
+    s0 = Math.min(8, ...act); s1 = Math.max(20, ...act.map(i => i + 1));
+  }
+  const L = l.slice(s0, s1), w = 320, h = 160, pg = 24, pd = 6, ph = 10, pb = 20, W = w - pg - pd, H = h - ph - pb;
+  const tot = x => Number(x.passages) || 0, av = x => x.passages_avant == null ? null : Number(x.passages_avant);
+  const max = Math.max(1, ...L.map(tot), ...L.map(x => av(x) || 0)) * 1.12;
+  const e = Math.pow(10, Math.floor(Math.log10(max))), pas = max / e > 5 ? 2 * e : max / e > 2 ? e : e / 2;
+  const y = v => ph + H - v / max * H, nb = L.length, bw = Math.min(22, W / nb * 0.64), x = i => pg + (i + 0.5) * W / nb;
+  let svg = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Passages ${PERIODES[n].titre.replace("Bilan ", "")}">`;
+  for (let v = 0; v <= max; v += Math.max(1, pas)) svg += `<line x1="${pg}" x2="${w - pd}" y1="${y(v)}" y2="${y(v)}" stroke="var(--bord)" stroke-width="1"/><text x="${pg - 4}" y="${y(v) + 3}" font-size="9" fill="var(--doux)" text-anchor="end">${v}</text>`;
+  const etiq = (d, i) => {
+    if (n === 1) return (s0 + i) % 2 === 0 ? `${s0 + i}h` : "";
+    if (n === 7) return d.toLocaleDateString("fr-FR", {weekday:"short"}).replace(".", "");
+    if (n === 30) return i % 5 === 0 ? String(d.getDate()) : "";
+    const prec = i ? new Date(L[i - 1].debut) : null;
+    return !prec || prec.getMonth() !== d.getMonth() ? d.toLocaleDateString("fr-FR", {month:"short"}).replace(".", "") : "";
+  };
+  L.forEach((b, i) => {
+    const nv = Math.min(Number(b.nouveaux) || 0, tot(b)), fi = tot(b) - nv, yf = y(fi), yt = y(fi + nv), x0 = x(i) - bw / 2;
+    if (fi) svg += `<rect x="${x0}" y="${yf}" width="${bw}" height="${y(0) - yf}" fill="var(--accent)"/>`;
+    if (nv) svg += `<rect x="${x0}" y="${yt}" width="${bw}" height="${yf - yt}" fill="var(--accent)" fill-opacity=".38"/>`;
+    const t = etiq(new Date(b.debut), i);
+    if (t) svg += `<text x="${x(i)}" y="${h - 6}" font-size="9" fill="var(--doux)" text-anchor="middle">${t}</text>`;
+  });
+  if (L.some(b => av(b) != null)) svg += `<polyline fill="none" stroke="#8a7f76" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round" points="${L.map((b, i) => `${x(i)},${y(av(b) || 0)}`).join(" ")}"/>`;
+  return svg + "</svg>";
+}
+// Petite courbe des passages pour la liste du gérant
+function miniCourbe(l){
+  const v = l.map(x => Number(x.passages) || 0), m = Math.max(1, ...v), w = 92, h = 28;
+  if (!v.some(Boolean)) return `<svg viewBox="0 0 ${w} ${h}"><line x1="2" x2="${w - 2}" y1="${h - 3}" y2="${h - 3}" stroke="var(--bord)" stroke-width="2"/></svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}"><polyline fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${v.map((x, i) => `${2 + i * (w - 4) / Math.max(1, v.length - 1)},${h - 3 - x / m * (h - 6)}`).join(" ")}"/></svg>`;
+}
+// Repères sous le graphique : heure de pointe, meilleur jour, meilleure semaine
+function reperesBilan(n, l){
+  const i = l.reduce((m, x, k) => Number(x.passages) > Number(l[m].passages) ? k : m, 0), b = l[i];
+  if (!b || !Number(b.passages)) return "";
+  const d = new Date(b.debut);
+  if (n === 1) return `⏰ Heure de pointe : ${d.getHours()} h (${b.passages})`;
+  if (n === 182) return `🏆 Meilleure semaine : du ${jourMois(d)} (${b.passages})`;
+  return `🏆 Meilleur jour : ${d.toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:n === 30 ? "long" : undefined})} (${b.passages})`;
+}
 let jetonBilan = 0;
-async function fermerJournee(n = 1){
+// cible : un commerce choisi par le gérant ({id, nom}) ; sinon le commerce connecté
+async function fermerJournee(n = 1, cible = null){
   const per = PERIODES[n], jeton = ++jetonBilan, jourNom = new Date().toLocaleDateString("fr-FR", {weekday:"long"});
   $("finTitre").textContent = per.titre;
-  ongletsBilan($("finOnglets"), n, fermerJournee);
+  ongletsBilan($("finOnglets"), n, k => fermerJournee(k, cible));
   $("finDate").textContent = (n === 1 ? new Date().toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"long"})
-    : `du ${jourMois(joursAvant(n - 1))} au ${jourMois(new Date())}`) + " · " + SESSION.commerce.nom;
+    : `du ${jourMois(joursAvant(n - 1))} au ${jourMois(new Date())}`) + " · " + (cible ? cible.nom : SESSION.commerce.nom);
   $("finChiffres").innerHTML = `<p class="note" style="grid-column:1/-1">Calcul du bilan…</p>`;
+  $("finGraphe").classList.add("cache"); $("finGraphe").innerHTML = "";
   $("finPhrase").textContent = ""; $("finNote").textContent = "";
-  $("bFinOk").textContent = n === 1 ? "Bonne soirée ! 👋" : "Fermer";
+  $("bFinOk").textContent = n === 1 && !cible ? "Bonne soirée ! 👋" : "Fermer";
   $("finFond").classList.remove("cache");
-  let b;
-  try{ b = await API.bilan(n); }
+  let l = null, b, r;
+  try{ l = await API.courbe(n, cible && cible.id); }
   catch(e){
     if (jeton !== jetonBilan) return;
-    $("finChiffres").innerHTML = "";
-    $("finPhrase").textContent = RESEAU_KO(e) ? "📴 Pas d'internet : le bilan s'affichera dès que le Wi-Fi revient." : e.message;
-    return;
+    if (cible || RESEAU_KO(e)){ $("finChiffres").innerHTML = ""; $("finPhrase").textContent = RESEAU_KO(e) ? "📴 Pas d'internet : le bilan s'affichera dès que le Wi-Fi revient." : e.message; return; }
+    l = null;   // graphique pas encore disponible : les chiffres seuls
   }
-  if (jeton !== jetonBilan) return;   // un autre onglet a été choisi entre-temps
-  // Passages gardés sans internet, pas encore arrivés dans la base
-  const f = (DEMO || !API.brut) ? [] : fileHL().filter(x => new Date(x.le) >= new Date(b.debut));
+  if (jeton !== jetonBilan) return;
+  if (l && l.length){ ({b, ref:r} = totauxCourbe(n, l)); }
+  else {
+    try{ b = await API.bilan(n); }
+    catch(e){ if (jeton !== jetonBilan) return; $("finChiffres").innerHTML = ""; $("finPhrase").textContent = RESEAU_KO(e) ? "📴 Pas d'internet : le bilan s'affichera dès que le Wi-Fi revient." : e.message; return; }
+    if (jeton !== jetonBilan) return;
+    r = refBilan(n, b, SESSION.commerce.cree_le);
+  }
+  // Passages gardés sans internet sur cette tablette, pas encore arrivés dans la base
+  const debut = n === 1 ? debutJour() : joursAvant(n - 1);
+  const f = (cible || DEMO || !API.brut) ? [] : fileHL().filter(x => new Date(x.le) >= debut);
   b.passages += f.length; b.nouveaux += f.filter(x => x.t === "creer").length;
-  const r = refBilan(n, b, SESSION.commerce.cree_le), sens = r ? ecartNet(b.passages, r.passages) : 0;
+  const sens = r ? ecartNet(b.passages, r.passages) : 0;
   const tuile = (v, mot, motP, ref) => { const c = comparerHabituel(v, ref, per);
     return `<div><b>${v}</b><span>${v > 1 ? motP : mot}</span>${c.texte ? `<em class="${c.sens}">${c.texte}</em>` : ""}</div>`; };
   $("finChiffres").innerHTML = tuile(b.passages, "passage", "passages", r && r.passages)
     + tuile(b.nouveaux, "nouveau client", "nouveaux clients", r && r.nouveaux)
     + tuile(b.reductions, "réduction", "réductions", r && r.reductions);
+  if (l && l.length){
+    const avant = n === 1 ? `${jourNom} habituel` : `${per.onglet} d'avant`;
+    $("finGraphe").innerHTML = `<div class="grLeg"><span><i style="background:var(--accent)"></i>Clients fidèles</span><span><i style="background:var(--accent);opacity:.38"></i>Nouveaux clients</span>${r ? `<span><i class="tir"></i>${avant}</span>` : ""}</div>
+      <div class="grCadre">${grapheBilan(n, l)}</div><div class="grReperes"><span>${reperesBilan(n, l)}</span>${n === 182 ? "<span>Une barre = une semaine</span>" : ""}</div>`;
+    $("finGraphe").classList.remove("cache");
+  }
   // Phrase vraie, jamais décourageante
   const nouv = b.nouveaux > 1 ? `${b.nouveaux} nouveaux clients ont rejoint le programme.` : b.nouveaux ? "1 nouveau client a rejoint le programme." : "";
   let p;
@@ -2719,7 +2835,7 @@ async function fermerJournee(n = 1){
   else if (n === 1){
     if (sens > 0) p = `Belle journée : plus de passages qu'un ${jourNom} habituel ! 🎉 ${nouv}`;
     else if (sens < 0) p = `Journée plus calme qu'un ${jourNom} habituel. ${nouv || "Chaque carte créée fera revenir des clients."} 💪`;
-    else p = (r ? `Une journée comme un ${jourNom} habituel. ` : "") + `${nouv} Merci pour votre travail ! 👏`;
+    else p = (r ? `Une journée comme un ${jourNom} habituel. ` : "") + `${nouv} ${cible ? "" : "Merci pour votre travail ! 👏"}`;
   } else {
     if (sens > 0) p = `Plus de passages ${per.que} : ça progresse ! 🎉 ${nouv}`;
     else if (sens < 0) p = `Un peu moins de passages ${per.que}. ${nouv || "Chaque carte créée fera revenir des clients."} 💪`;
@@ -2733,8 +2849,9 @@ async function fermerJournee(n = 1){
     if (new Date().getHours() < 12) notes.push("Journée en cours.");
   } else notes.push(r ? `Comparé aux ${per.onglet} d'avant (du ${jourMois(joursAvant(2 * n - 1))} au ${jourMois(joursAvant(n))}).` : "Pas encore de période d'avant à comparer : le compte est plus récent.");
   if (f.length) notes.push(`Dont ${pluriel(f.length, "passage")} encore gardé${f.length > 1 ? "s" : ""} sur la tablette (envoi au retour du Wi-Fi).`);
+  if (cible) notes.push("Vue du gérant : c'est exactement le bilan que voit ce commerce.");
   $("finNote").textContent = notes.join(" ");
-  if (n === 1 && sens > 0) fete(false);
+  if (n === 1 && sens > 0 && !cible) fete(false);
 }
 $("bFinJournee").onclick = ()=> occupe($("bFinJournee"), () => fermerJournee(1));
 $("bVoirBilan").onclick = ()=> occupe($("bVoirBilan"), () => fermerJournee(1));
@@ -2763,13 +2880,21 @@ async function afficherBilanGerant(n = periodeGerant){
     .map(([v, t]) => `<div class="chiffre"><b>${v}</b><span>${t}</span></div>`).join("");
   const comp = (v, h) => { const c = comparerHabituel(Number(v), h == null ? null : Number(h), per);
     return c.texte ? `<small class="${c.sens}">${c.texte.replace(" " + per.que, "").replace(per.comme, "pareil")}</small>` : ""; };
-  $("gJourListe").innerHTML = `<div class="tableau"><table class="jourTab"><thead><tr><th>Commerce</th><th class="n">Passages</th><th class="n">Nouveaux</th><th class="n">Réduc.</th></tr></thead><tbody>`
-    + l.map(x => `<tr><td><b>${echapper(x.commerce || "")}</b>${Number(x.passages) ? "" : `<small>${x.derniere_activite ? "dernier passage le " + jourFr(x.derniere_activite) : "aucun passage encore"}</small>`}</td>
+  $("gJourListe").innerHTML = `<div class="tableau"><table class="jourTab"><thead><tr><th>Commerce</th><th class="spk"></th><th class="n">Passages</th><th class="n">Nouveaux</th><th class="n red">Réduc.</th></tr></thead><tbody>`
+    + l.map(x => `<tr class="clic" data-id="${echapper(x.id)}" data-nom="${echapper(x.commerce || "")}" tabindex="0" title="Voir le bilan de ${echapper(x.commerce || "")}"><td><b>${echapper(x.commerce || "")}</b>${Number(x.passages) ? "" : `<small>${x.derniere_activite ? "dernier passage le " + jourFr(x.derniere_activite) : "aucun passage encore"}</small>`}<span class="voir">Voir le bilan ›</span></td><td class="spk" data-spk="${echapper(x.id)}"></td>
       <td class="n"><b>${x.passages}</b>${comp(x.passages, x.passages_ref)}</td>
       <td class="n"><b>${x.nouveaux}</b>${comp(x.nouveaux, x.nouveaux_ref)}</td>
-      <td class="n">${x.reductions}</td></tr>`).join("")
+      <td class="n red">${x.reductions}</td></tr>`).join("")
     + `</tbody></table></div><p class="note">${n === 1 ? "Comparé à l'habituel : moyenne des mêmes jours des 4 semaines d'avant (jours fermés exclus)."
-      : `Comparé aux ${per.onglet} d'avant (rien si le commerce n'existait pas encore).`} Les passages gardés sans internet arrivent quand la tablette retrouve le Wi-Fi.</p>`;
+      : `Comparé aux ${per.onglet} d'avant (rien si le commerce n'existait pas encore).`} Touchez un commerce pour voir son bilan complet, avec ses graphiques. Les passages gardés sans internet arrivent quand la tablette retrouve le Wi-Fi.</p>`;
+  $("gJourListe").querySelectorAll("tr.clic").forEach(tr => {
+    const ouvrir = () => fermerJournee(periodeGerant, {id:tr.dataset.id, nom:tr.dataset.nom});
+    tr.onclick = ouvrir; tr.onkeydown = e => { if (e.key === "Enter") ouvrir(); };
+  });
+  // Petites courbes, commerce par commerce (si l'une échoue, les autres restent)
+  for (const x of l){
+    API.courbe(n, x.id).then(c => { if (jeton !== jetonGerant) return; const z = $("gJourListe").querySelector(`[data-spk="${CSS.escape(String(x.id))}"]`); if (z) z.innerHTML = miniCourbe(c || []); }).catch(()=>{});
+  }
 }
 $("bJourMaj").onclick = ()=> occupe($("bJourMaj"), () => afficherBilanGerant());
 
