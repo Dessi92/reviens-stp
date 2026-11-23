@@ -359,6 +359,32 @@
     background-size:32px 32px}
   body.vichy #deco{display:none}
   /* Roue de la fortune */
+  /* Bilan de la journée */
+  .finJournee{text-align:center;margin:4px 0 18px}
+  .finJournee .btn{width:auto;display:inline-block;padding:10px 20px;font-size:16px}
+  .finLune{font-size:44px;line-height:1}
+  .finChiffres{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .finChiffres > div{background:var(--bg);border:1px solid var(--bord);border-radius:14px;padding:10px 6px}
+  .finChiffres b{display:block;font-size:34px;line-height:1.1;color:var(--accent)}
+  .finChiffres span{display:block;font-size:13px;color:var(--doux)}
+  .finChiffres em{display:block;font-style:normal;font-size:12px;margin-top:4px;color:var(--doux)}
+  .finChiffres em.plus{color:#1d7a2e;font-weight:600}
+  .finChiffres em.moins{color:#9a6a00}
+  .finPhrase{font-size:17px;margin:14px 0 6px}
+  .finOnglets{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:10px 0 6px}
+  .finOnglets.gauche{justify-content:flex-start;margin:0 0 10px}
+  .finOnglets .ong{border:1px solid var(--bord);background:var(--carte);color:inherit;border-radius:999px;padding:7px 13px;font:inherit;font-size:14px;cursor:pointer;width:auto;margin:0}
+  @media (max-width:420px){ .finOnglets{gap:4px} .finOnglets .ong{padding:6px 9px;font-size:13px} }
+  .finOnglets .ong.actif{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  @media (max-width:420px){ .finChiffres b{font-size:28px} .finChiffres span{font-size:12px} }
+  #gJourTotal{grid-template-columns:repeat(3,1fr);margin-bottom:10px}
+  @media (max-width:500px){ #gJourTotal .chiffre{padding:10px 8px} #gJourTotal .chiffre b{font-size:24px} #gJourTotal .chiffre span{font-size:12px} }
+  .jourTab{width:100%;border-collapse:collapse;font-size:15px}
+  .jourTab th, .jourTab td{padding:7px 6px;border-bottom:1px solid var(--bord);text-align:left;vertical-align:top}
+  .jourTab td.n, .jourTab th.n{text-align:right;white-space:nowrap}
+  .jourTab small{display:block;color:var(--doux);font-size:12px;white-space:normal}
+  .jourTab small.plus{color:#1d7a2e}
+  .jourTab small.moins{color:#9a6a00}
   .fond{position:fixed;inset:0;background:rgba(20,14,8,.6);z-index:55;display:flex;align-items:center;justify-content:center;padding:12px}
   .boite{background:var(--carte);border-radius:20px;padding:18px;width:min(96vw,500px);max-height:96vh;overflow:auto;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35)}
   .boite h2{font-family:var(--police);font-size:26px;color:var(--accent);margin:0 0 4px}
@@ -584,6 +610,18 @@
       <button class="btn gris" id="bAppareilQuitter">Se déconnecter</button>
       <button class="btn principal" id="bAppareilIci">Utiliser cet appareil</button>
     </div>
+  </div>
+</div>
+<div id="finFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="finTitre">
+  <div class="boite">
+    <div class="finLune" aria-hidden="true">🌙</div>
+    <h2 id="finTitre" style="margin:4px 0 0">Bilan de la journée</h2>
+    <div class="finOnglets" id="finOnglets" role="tablist" aria-label="Période du bilan"></div>
+    <p class="note" id="finDate" style="margin:2px 0 12px"></p>
+    <div class="finChiffres" id="finChiffres"></div>
+    <p id="finPhrase" class="finPhrase"></p>
+    <p class="note" id="finNote"></p>
+    <button class="btn principal" id="bFinOk" style="width:100%">Bonne soirée ! 👋</button>
   </div>
 </div>
 <div id="palierFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="palierTitre">
@@ -817,6 +855,7 @@
     <button class="btn principal" id="bChercher">Valider</button>
     <div id="msgAccueil"></div>
   </div>
+  <div class="finJournee" id="finJournee"><button class="btn gris" id="bFinJournee" type="button">🌙 Fermer la journée</button></div>
 
   <div class="carte cache" id="blocNouveau">
     <h2>Nouveau client</h2>
@@ -989,6 +1028,18 @@
     <div id="msgParrain"></div>
     </div>
   </details>
+  <details class="carte compte" id="carteBilan">
+    <summary>
+      <span class="cIcone">📊</span>
+      <span class="cTexte"><b>Mon bilan</b><small>Passages et nouveaux clients : aujourd'hui, 7 jours, 30 jours, 6 mois</small></span>
+      <span class="cFleche" aria-hidden="true">›</span>
+    </summary>
+    <div class="reglCorps">
+    <button class="btn principal" id="bVoirBilan" type="button">📊 Voir mon bilan</button>
+    <label class="case"><input type="checkbox" id="rBoutonBilan"> <span>Afficher le bouton « 🌙 Fermer la journée » sur l'accueil de cette tablette</span></label>
+    <p class="note">Le bilan est facultatif : le regarder ou non ne change aucun chiffre. Il est recalculé à chaque fois, et celui du jour compte seulement depuis minuit (jamais la veille, même si la journée d'hier n'a pas été « fermée »).</p>
+    </div>
+  </details>
   <details class="carte compte" id="carteDonnees">
     <summary>
       <span class="cIcone">💾</span>
@@ -1133,6 +1184,14 @@
 </main>
 
 <main id="ecranGerant" class="cache large">
+  <div class="carte" id="gJour">
+    <h2 id="gJourTitre">📅 Mes commerces aujourd'hui</h2>
+    <div class="finOnglets gauche" id="gJourOnglets" role="tablist" aria-label="Période"></div>
+    <p class="note" id="gJourDate" style="margin-top:-6px"></p>
+    <div class="chiffres" id="gJourTotal"></div>
+    <div id="gJourListe"><p class="note">Chargement…</p></div>
+    <button class="btn gris" id="bJourMaj" type="button">↻ Actualiser</button>
+  </div>
   <div class="carte" id="gProspection">
     <h2>🎯 Prospection</h2>
     <div class="tunnel" id="pTunnel"></div>
@@ -1220,6 +1279,44 @@ const dateCourte = iso => { if (!iso) return "—"; const d = new Date(iso); ret
 const debutMois = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); };
 const finMoisFr = iso => { const d = new Date(iso); return new Date(d.getFullYear(), d.getMonth()+1, 0).toLocaleDateString("fr-FR", {day:"numeric", month:"long"}); };
 const debutJour = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const joursAvant = k => { const d = debutJour(); d.setDate(d.getDate() - k); return d; };   // minuit, il y a k jours (heure de la tablette)
+// Habituel : moyenne des mêmes jours des semaines d'avant où il y a eu au moins un passage (jours fermés exclus), s'il y en a au moins 2
+function habituel(avant){
+  const ouverts = (avant || []).filter(x => x.passages > 0);
+  if (ouverts.length < 2) return null;
+  const moy = k => Math.round(ouverts.reduce((t, x) => t + x[k], 0) / ouverts.length * 10) / 10;
+  return {passages:moy("passages"), nouveaux:moy("nouveaux"), reductions:moy("reductions"), jours:ouverts.length};
+}
+// Périodes du bilan : aujourd'hui (depuis minuit, jamais la veille), 7 jours, 30 jours, 6 mois (aujourd'hui compris)
+const PERIODES = {
+  1:  {onglet:"Aujourd'hui", titre:"Bilan de la journée",          que:"que d'habitude",          comme:"comme d'habitude"},
+  7:  {onglet:"7 jours",     titre:"Bilan des 7 derniers jours",   que:"que les 7 jours d'avant",  comme:"comme les 7 jours d'avant"},
+  30: {onglet:"30 jours",    titre:"Bilan des 30 derniers jours",  que:"que les 30 jours d'avant", comme:"comme les 30 jours d'avant"},
+  182:{onglet:"6 mois",      titre:"Bilan des 6 derniers mois",    que:"que les 6 mois d'avant",   comme:"comme les 6 mois d'avant"},
+};
+// periode(de, a) compte passages, nouveaux clients et réductions entre deux dates (a vide = jusqu'à maintenant)
+async function calculBilan(n, periode){
+  if (n === 1){
+    const [auj, ...avant] = await Promise.all([periode(debutJour(), null), ...[7, 14, 21, 28].map(k => periode(joursAvant(k), joursAvant(k - 1)))]);
+    return {...auj, n, debut:debutJour().toISOString(), avant};
+  }
+  const de = joursAvant(n - 1), [cur, precedent] = await Promise.all([periode(de, null), periode(joursAvant(2 * n - 1), de)]);
+  return {...cur, n, debut:de.toISOString(), precedent};
+}
+// Repère de comparaison : l'habituel (jour) ou la période d'avant, seulement si le commerce existait déjà à son début
+function refBilan(n, b, creeLe){
+  if (n === 1) return habituel(b.avant);
+  if (creeLe && new Date(creeLe) > joursAvant(2 * n - 1)) return null;
+  return b.precedent;
+}
+// Comparaison douce : jamais de rouge, « comme d'habitude » si l'écart est petit (≤ 10 % ou ≤ 1)
+const ecartNet = (n, h) => h != null && Math.abs(n - h) > Math.max(1, h * 0.1) ? Math.sign(n - h) : 0;
+function comparerHabituel(n, h, per = PERIODES[1]){
+  if (h == null) return {sens:"", texte:""};
+  const hTxt = String(h).replace(".", ","), e = Math.round(Math.abs(n - h)), sens = ecartNet(n, h);
+  if (!sens) return {sens:"egal", texte:`${per.comme} (${hTxt})`};
+  return sens > 0 ? {sens:"plus", texte:`▲ ${e} de plus ${per.que} (${hTxt})`} : {sens:"moins", texte:`▼ ${e} de moins ${per.que} (${hTxt})`};
+}
 const estBon = t => !!(t && t.tire_le && !t.utilise_le && t.lot && !["points","perdu"].includes(t.lot.type) && new Date(t.tire_le) >= debutMois());
 const echapper = s => String(s ?? "").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const pluriel = (n, mot) => n + " " + mot + (n>1 ? "s" : "");
@@ -1380,6 +1477,20 @@ function apiSupabase(sb){
         sb.from("roue_tirages").select("client_id,lot,utilise_le").gte("utilise_le", d).order("utilise_le").limit(500)]);
       return {reductions: v(r) || [], bons: v(b) || []};
     },
+    // Bilan (bouton « Fermer la journée ») : comptages seulement, refaits à chaque ouverture (rien n'est enregistré)
+    async bilan(n){
+      const compte = async (table, col, de, a, type) => {
+        let q = sb.from(table).select("id", {count:"exact", head:true}).gte(col, de.toISOString());
+        if (a) q = q.lt(col, a.toISOString());
+        if (type) q = q.eq("type", type);
+        const r = await q; if (r.error) throw traduire(r.error); return r.count || 0;
+      };
+      const periode = async (de, a) => { const [passages, nouveaux, reductions] = await Promise.all([
+        compte("mouvements", "le", de, a, "points"), compte("clients", "cree_le", de, a), compte("mouvements", "le", de, a, "reduction")]);
+        return {passages, nouveaux, reductions}; };
+      return calculBilan(n, periode);
+    },
+    async adminBilan(n){ return v(await sb.rpc("admin_bilan_jour", {p_jours:n})); },
     async rechargerCommerce(){ return v(await sb.from("commerces").select("*").eq("id", SESSION.commerce.id).single()); },
     // Support
     async supEnvoyer(texte){ v(await sb.from("messages_support").insert({texte})); },
@@ -1583,6 +1694,21 @@ function apiDemo(){
       const d = debutJour();
       return {reductions: copie(D.mouvements.filter(m=>m.type==="reduction" && new Date(m.le) >= d)),
               bons: copie((D.tirages||[]).filter(t=>t.utilise_le && new Date(t.utilise_le) >= d))};
+    },
+    async bilan(n){
+      const periode = (de, a) => {
+        const dans = d => d && new Date(d) >= de && (!a || new Date(d) < a);
+        return {passages:D.mouvements.filter(m=>m.type==="points" && dans(m.le)).length, nouveaux:D.clients.filter(c=>dans(c.cree_le)).length,
+                reductions:D.mouvements.filter(m=>m.type==="reduction" && dans(m.le)).length};
+      };
+      return calculBilan(n, periode);
+    },
+    async adminBilan(n){
+      const b = await this.bilan(n), r = refBilan(n, b, D.commerce.cree_le), f = n === 1 ? 1 : n * 6 / 7;   // boulangerie d'exemple : fermée le dimanche
+      return [{id:"demo", commerce:D.commerce.nom, passages:b.passages, nouveaux:b.nouveaux, reductions:b.reductions,
+               passages_ref:r && r.passages, nouveaux_ref:r && r.nouveaux, derniere_activite:D.mouvements.length ? D.mouvements[D.mouvements.length-1].le : null},
+        {id:"ex1", commerce:"Boulangerie (exemple)", passages:Math.round(23*f), nouveaux:Math.round(2*f), reductions:Math.round(f), passages_ref:Math.round(19.5*f), nouveaux_ref:Math.round(1.5*f), derniere_activite:new Date().toISOString()},
+        {id:"ex2", commerce:"Fleuriste (exemple)", passages:n >= 7 ? 3 : 0, nouveaux:n >= 7 ? 1 : 0, reductions:0, passages_ref:null, nouveaux_ref:null, derniere_activite:new Date(Date.now()-6*864e5).toISOString()}];
     },
     async bonUtilise(id){
       const t = (D.tirages||[]).find(t=>t.id===id);
@@ -2411,6 +2537,7 @@ async function entrer(){
   try{ admin = await API.estAdmin(); }catch(e){}
   $("bGerant").classList.toggle("cache", !admin);
   ADMIN = admin; dernierNonLus = null;
+  majBoutonBilan();
   if (!DEMO && !admin && !await appareilAutorise()) return;
   verifierNotifs();
   if (!DEMO && !admin && !await accesVerifie()){ montrer("ecranAccueil"); return; }   // pas encore abonné : accueil visible, bouton « Activer », rien ne peut être tapé
@@ -2543,6 +2670,109 @@ function fete(grand, emojis){
     setTimeout(() => s.remove(), 5500);
   }
 }
+// ---------- Bilan (23/11/2026) ----------
+// Bouton « Fermer la journée » (facultatif) : passages, nouveaux clients et réductions, sur aujourd'hui, 7 jours, 30 jours ou 6 mois,
+// comparés à l'habituel (jour) ou à la période d'avant. Rien n'est enregistré ni bloqué : recalculé à chaque ouverture.
+const BOUTON_BILAN = "reviens_bouton_bilan";
+const boutonBilanVisible = () => { try{ return localStorage.getItem(BOUTON_BILAN) !== "non"; }catch(e){ return true; } };
+function majBoutonBilan(){ $("finJournee").classList.toggle("cache", !!ADMIN || !boutonBilanVisible()); $("rBoutonBilan").checked = boutonBilanVisible(); }
+$("rBoutonBilan").onchange = ()=>{ try{ localStorage.setItem(BOUTON_BILAN, $("rBoutonBilan").checked ? "oui" : "non"); }catch(e){} majBoutonBilan(); };
+function ongletsBilan(zone, n, action){
+  zone.innerHTML = Object.entries(PERIODES).map(([k, p]) =>
+    `<button type="button" class="ong${Number(k) === n ? " actif" : ""}" role="tab" aria-selected="${Number(k) === n}" data-n="${k}">${p.onglet}</button>`).join("");
+  zone.querySelectorAll(".ong").forEach(b => b.onclick = () => action(Number(b.dataset.n)));
+}
+const jourMois = d => new Date(d).toLocaleDateString("fr-FR", {day:"numeric", month:"long"});
+let jetonBilan = 0;
+async function fermerJournee(n = 1){
+  const per = PERIODES[n], jeton = ++jetonBilan, jourNom = new Date().toLocaleDateString("fr-FR", {weekday:"long"});
+  $("finTitre").textContent = per.titre;
+  ongletsBilan($("finOnglets"), n, fermerJournee);
+  $("finDate").textContent = (n === 1 ? new Date().toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"long"})
+    : `du ${jourMois(joursAvant(n - 1))} au ${jourMois(new Date())}`) + " · " + SESSION.commerce.nom;
+  $("finChiffres").innerHTML = `<p class="note" style="grid-column:1/-1">Calcul du bilan…</p>`;
+  $("finPhrase").textContent = ""; $("finNote").textContent = "";
+  $("bFinOk").textContent = n === 1 ? "Bonne soirée ! 👋" : "Fermer";
+  $("finFond").classList.remove("cache");
+  let b;
+  try{ b = await API.bilan(n); }
+  catch(e){
+    if (jeton !== jetonBilan) return;
+    $("finChiffres").innerHTML = "";
+    $("finPhrase").textContent = RESEAU_KO(e) ? "📴 Pas d'internet : le bilan s'affichera dès que le Wi-Fi revient." : e.message;
+    return;
+  }
+  if (jeton !== jetonBilan) return;   // un autre onglet a été choisi entre-temps
+  // Passages gardés sans internet, pas encore arrivés dans la base
+  const f = (DEMO || !API.brut) ? [] : fileHL().filter(x => new Date(x.le) >= new Date(b.debut));
+  b.passages += f.length; b.nouveaux += f.filter(x => x.t === "creer").length;
+  const r = refBilan(n, b, SESSION.commerce.cree_le), sens = r ? ecartNet(b.passages, r.passages) : 0;
+  const tuile = (v, mot, motP, ref) => { const c = comparerHabituel(v, ref, per);
+    return `<div><b>${v}</b><span>${v > 1 ? motP : mot}</span>${c.texte ? `<em class="${c.sens}">${c.texte}</em>` : ""}</div>`; };
+  $("finChiffres").innerHTML = tuile(b.passages, "passage", "passages", r && r.passages)
+    + tuile(b.nouveaux, "nouveau client", "nouveaux clients", r && r.nouveaux)
+    + tuile(b.reductions, "réduction", "réductions", r && r.reductions);
+  // Phrase vraie, jamais décourageante
+  const nouv = b.nouveaux > 1 ? `${b.nouveaux} nouveaux clients ont rejoint le programme.` : b.nouveaux ? "1 nouveau client a rejoint le programme." : "";
+  let p;
+  if (!b.passages) p = n === 1 ? "Pas de passage enregistré aujourd'hui." : "Pas de passage enregistré sur cette période.";
+  else if (n === 1){
+    if (sens > 0) p = `Belle journée : plus de passages qu'un ${jourNom} habituel ! 🎉 ${nouv}`;
+    else if (sens < 0) p = `Journée plus calme qu'un ${jourNom} habituel. ${nouv || "Chaque carte créée fera revenir des clients."} 💪`;
+    else p = (r ? `Une journée comme un ${jourNom} habituel. ` : "") + `${nouv} Merci pour votre travail ! 👏`;
+  } else {
+    if (sens > 0) p = `Plus de passages ${per.que} : ça progresse ! 🎉 ${nouv}`;
+    else if (sens < 0) p = `Un peu moins de passages ${per.que}. ${nouv || "Chaque carte créée fera revenir des clients."} 💪`;
+    else p = (r ? `Autant de passages ${per.que}. ` : "") + nouv;
+  }
+  $("finPhrase").textContent = p.replace(/\s+/g, " ").trim();
+  const notes = [];
+  if (n === 1){
+    notes.push(r ? `Comparé à la moyenne des ${r.jours} derniers ${jourNom}s ouverts.` : `Comparaison avec un ${jourNom} habituel dès que 2 ${jourNom}s seront enregistrés.`);
+    notes.push("Seulement aujourd'hui, depuis minuit : jamais la veille.");
+    if (new Date().getHours() < 12) notes.push("Journée en cours.");
+  } else notes.push(r ? `Comparé aux ${per.onglet} d'avant (du ${jourMois(joursAvant(2 * n - 1))} au ${jourMois(joursAvant(n))}).` : "Pas encore de période d'avant à comparer : le compte est plus récent.");
+  if (f.length) notes.push(`Dont ${pluriel(f.length, "passage")} encore gardé${f.length > 1 ? "s" : ""} sur la tablette (envoi au retour du Wi-Fi).`);
+  $("finNote").textContent = notes.join(" ");
+  if (n === 1 && sens > 0) fete(false);
+}
+$("bFinJournee").onclick = ()=> occupe($("bFinJournee"), () => fermerJournee(1));
+$("bVoirBilan").onclick = ()=> occupe($("bVoirBilan"), () => fermerJournee(1));
+$("bFinOk").onclick = ()=>{ $("finFond").classList.add("cache"); if (!$("ecranAccueil").classList.contains("cache")) focusTel(); };
+
+// Espace gérant : tous les commerces, sur la même période
+let periodeGerant = 1, jetonGerant = 0;
+async function afficherBilanGerant(n = periodeGerant){
+  periodeGerant = n;
+  const per = PERIODES[n], jeton = ++jetonGerant;
+  $("gJourTitre").textContent = n === 1 ? "📅 Mes commerces aujourd'hui" : `📅 Mes commerces : ${per.titre.replace("Bilan des ", "")}`;
+  ongletsBilan($("gJourOnglets"), n, afficherBilanGerant);
+  $("gJourDate").textContent = n === 1 ? new Date().toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"long"}) + " · depuis minuit"
+    : `du ${jourMois(joursAvant(n - 1))} au ${jourMois(new Date())}`;
+  let l;
+  try{ l = await API.adminBilan(n); }
+  catch(e){
+    if (jeton !== jetonGerant) return;
+    $("gJourTotal").innerHTML = "";
+    $("gJourListe").innerHTML = `<p class="note">${/admin_bilan_jour|function|schema cache/i.test(e.message) ? "À activer : la mise à jour de la base « bilan du jour » n'est pas encore installée." : echapper(e.message)}</p>`;
+    return;
+  }
+  if (jeton !== jetonGerant) return;
+  const somme = k => l.reduce((t, x) => t + Number(x[k] || 0), 0);
+  $("gJourTotal").innerHTML = [[somme("passages"), "passages"], [somme("nouveaux"), "nouveaux clients"], [somme("reductions"), "réductions"]]
+    .map(([v, t]) => `<div class="chiffre"><b>${v}</b><span>${t}</span></div>`).join("");
+  const comp = (v, h) => { const c = comparerHabituel(Number(v), h == null ? null : Number(h), per);
+    return c.texte ? `<small class="${c.sens}">${c.texte.replace(" " + per.que, "").replace(per.comme, "pareil")}</small>` : ""; };
+  $("gJourListe").innerHTML = `<div class="tableau"><table class="jourTab"><thead><tr><th>Commerce</th><th class="n">Passages</th><th class="n">Nouveaux</th><th class="n">Réduc.</th></tr></thead><tbody>`
+    + l.map(x => `<tr><td><b>${echapper(x.commerce || "")}</b>${Number(x.passages) ? "" : `<small>${x.derniere_activite ? "dernier passage le " + jourFr(x.derniere_activite) : "aucun passage encore"}</small>`}</td>
+      <td class="n"><b>${x.passages}</b>${comp(x.passages, x.passages_ref)}</td>
+      <td class="n"><b>${x.nouveaux}</b>${comp(x.nouveaux, x.nouveaux_ref)}</td>
+      <td class="n">${x.reductions}</td></tr>`).join("")
+    + `</tbody></table></div><p class="note">${n === 1 ? "Comparé à l'habituel : moyenne des mêmes jours des 4 semaines d'avant (jours fermés exclus)."
+      : `Comparé aux ${per.onglet} d'avant (rien si le commerce n'existait pas encore).`} Les passages gardés sans internet arrivent quand la tablette retrouve le Wi-Fi.</p>`;
+}
+$("bJourMaj").onclick = ()=> occupe($("bJourMaj"), () => afficherBilanGerant());
+
 // Paliers du nombre de clients : fenêtre de fête la veille (99 → « plus qu'un client ») et le jour du palier (100)
 // Une seule fois par palier et par appareil (souvenir dans le navigateur de la tablette).
 const PALIERS_CLIENTS = [50, 100, 150, 200, 300, 400, 500, 750, 1000, 1500, 2000];
@@ -3180,6 +3410,7 @@ $("bDeconnexion").onclick = async ()=>{
 // ---------- Espace gérant ----------
 let DERNIERES_STATS = [];
 async function afficherGerant(){
+  afficherBilanGerant();
   afficherSupportGerant();
   afficherProspection();
   $("gListe").innerHTML = `<p class="note">Chargement…</p>`;
