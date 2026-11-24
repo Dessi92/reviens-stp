@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="86">
+<meta name="app-version" content="87">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -99,6 +99,8 @@
   .smsTags button{border:1px solid var(--bord);background:var(--carte);color:var(--texte);border-radius:99px;padding:4px 10px;font-size:13px;cursor:pointer}
   .smsBloc{border:1px solid var(--bord);border-radius:14px;padding:12px;margin:12px 0;background:#fff}
   .smsBloc .case{margin-top:0}
+  .smsAvis{border:2px solid var(--or, #d4a017);border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.4;margin:0 0 12px;background:var(--orclair)}
+  .smsAvis p{margin:6px 0}.smsAvis ul{margin:6px 0;padding-left:20px}
   .smsBandeau{border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.4;margin:0 0 12px;background:var(--orclair)}
   .smsRech{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
   .smsRech button{border:2px solid var(--bord);background:#fff;color:var(--texte);border-radius:14px;padding:10px 8px;cursor:pointer;text-align:center;font:inherit;line-height:1.25}
@@ -1152,6 +1154,18 @@
 <main id="ecranSms" class="cache">
   <div class="carte">
     <h2>📱 SMS à vos clients</h2>
+    <div id="smsAvisPrix" class="smsAvis cache">
+      <b>📢 Le prix des SMS : 8 centimes</b>
+      <p>Votre contrat indiquait « environ 7 centimes » le SMS. Maintenant que l'envoi des SMS est prêt, le prix exact est de <b>8 centimes le SMS</b>, tout compris.</p>
+      <ul>
+        <li>100 SMS = 8 € · une recharge de 10 € = 125 SMS.</li>
+        <li>Pas d'abonnement SMS : vous payez seulement ce que vous rechargez, et le solde n'expire jamais.</li>
+        <li>Un SMS qui ne part pas (numéro faux, client désinscrit) vous est remboursé automatiquement.</li>
+        <li>Le prix est toujours affiché avant chaque recharge et chaque envoi.</li>
+      </ul>
+      <p>Si vous n'utilisez pas les SMS, rien ne change pour vous. Une question ? Écrivez-nous avec le bouton 💬 Support.</p>
+      <button type="button" class="btn" id="btnAvisPrixLu">✓ J'ai compris</button>
+    </div>
     <div id="smsBandeau" class="smsBandeau"></div>
     <div class="chiffres" id="smsChiffres" style="margin-bottom:0"></div>
   </div>
@@ -2036,7 +2050,7 @@ function smsExpediteur(nom){
 const SMS_PRESQUE_ROUE = "Bonjour{nom}, plus qu'un passage chez {commerce} et un cadeau ou une réduction est à gagner sur notre roue !";
 function smsReglages(){
   const s = SESSION.commerce.sms || {};
-  const r = {expediteur_demande:s.expediteur_demande || "", relance:{...SMS_DEFAUT.relance, ...(s.relance || {})}, presque:{...SMS_DEFAUT.presque, ...(s.presque || {})}};
+  const r = {...s, expediteur_demande:s.expediteur_demande || "", relance:{...SMS_DEFAUT.relance, ...(s.relance || {})}, presque:{...SMS_DEFAUT.presque, ...(s.presque || {})}};
   // Roue des 100 points : pas de « réduction de X % » dans le texte proposé
   if (palierRoue() && r.presque.texte === SMS_DEFAUT.presque.texte) r.presque.texte = SMS_PRESQUE_ROUE;
   return r;
@@ -2184,7 +2198,7 @@ function smsPromoAttente(e){
 }
 function lireSmsForm(){
   const nb = (id, def) => { const v = parseInt($(id).value, 10); return Number.isFinite(v) ? v : def; };
-  return {
+  return {...(SESSION.commerce.sms || {}),
     expediteur_demande: $("smsExp").value.trim(),
     relance:{actif:$("smsRelActif").checked, jours:nb("smsRelJours", 30), texte:$("smsRelTexte").value.trim()},
     presque:{actif:$("smsPresActif").checked, jours:nb("smsPresJours", 14), texte:$("smsPresTexte").value.trim()},
@@ -2209,6 +2223,7 @@ async function afficherSms(){
   RECH = null; $("smsRechAutre").value = ""; message("msgSmsRech", "");
   $("smsRechHisto").innerHTML = SMS_ETAT && (SMS_ETAT.recharges || []).length ? "Dernières recharges : " + SMS_ETAT.recharges.slice(0, 5)
     .map(r=>`${dateCourte(r.cree_le)} ${Number(r.montant) > 0 ? "+" : ""}${eurosSms(Number(r.montant))}${r.mode === "manuel" ? " (support)" : r.mode === "rembourse" ? " (SMS non partis, remboursés)" : ""}`).join(" · ") : "";
+  majAvisPrix();
   const e = SMS_ETAT;
   $("smsBandeau").innerHTML = DEMO ? "🎬 <b>Démo</b> : aucun SMS n'est vraiment envoyé. Essayez d'écrire une promo pour voir ce que reçoit le client."
     : e && e.active ? "✅ <b>Service SMS actif.</b> Envois du lundi au samedi, de 10 h à 19 h, jamais les jours fériés."
@@ -2230,6 +2245,17 @@ async function afficherSms(){
 }
 for (const id of ["smsPromo","smsRelTexte","smsPresTexte","smsExp","smsRelJours","smsPresJours"]) $(id).addEventListener("input", majSmsApercus);
 $("smsExp").addEventListener("input", majSmsExpNote);
+// Avis du passage à 8 centimes : seulement pour les commerces inscrits avant le 24/11/2026 (ancien contrat à 7 c environ), jusqu'à « J'ai compris »
+const AVIS_PRIX_AVANT = "2026-11-24";
+function avisPrixAMontrer(c){
+  return !!c && !(c.sms || {}).avis_prix8 && (!c.cree_le || String(c.cree_le).slice(0, 10) < AVIS_PRIX_AVANT);
+}
+function majAvisPrix(){ $("smsAvisPrix").classList.toggle("cache", !avisPrixAMontrer(SESSION.commerce)); }
+$("btnAvisPrixLu").addEventListener("click", async () => {
+  const c = SESSION.commerce;
+  try{ SESSION.commerce = await API.majCommerce(c.id, {sms:{...(c.sms || {}), avis_prix8:new Date().toISOString()}}); majAvisPrix(); }
+  catch(e){ message("msgSms", e.message, "err"); }
+});
 // État de l'expéditeur : validé, demandé (en attente de Reviens STP) ou commun « ReviensSTP »
 function majSmsExpNote(){
   const c = SESSION.commerce, v = $("smsExp").value.trim(), dem = (c.sms || {}).expediteur_demande || "", ok = c.sms_expediteur;
