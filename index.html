@@ -359,6 +359,11 @@
     background-size:32px 32px}
   body.vichy #deco{display:none}
   /* Roue de la fortune */
+  .alerteCommerce{margin:0 0 10px;text-align:left}
+  .bandeauEssai{position:sticky;top:0;z-index:80;background:#e8730c;color:#fff;font-weight:700;text-align:center;padding:6px 10px;font-size:15px}
+  .mdpLigne{display:flex;gap:6px;align-items:stretch}
+  .mdpLigne input{flex:1;min-width:0}
+  .mdpVoir{flex:none;width:52px;border:1px solid var(--bord);background:var(--carte);border-radius:10px;font-size:20px;cursor:pointer;margin:0}
   /* Bilan de la journée */
   .finJournee{text-align:center;margin:4px 0 18px}
   .finJournee .btn{width:auto;display:inline-block;padding:10px 20px;font-size:16px}
@@ -576,11 +581,17 @@
 <div id="idsFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="idsTitre">
   <div class="boite" style="text-align:left">
     <h2 id="idsTitre" style="margin-top:4px;text-align:center">🔑 Choisissez vos identifiants</h2>
-    <p style="font-size:17px">Votre compte a été créé avec une adresse provisoire. Mettez <b>votre adresse e-mail</b> et <b>votre mot de passe</b> : le compte est à vous.</p>
-    <label for="idsEmail">Nouvelle adresse e-mail</label>
+    <p style="font-size:17px">Votre compte a été créé avec des identifiants provisoires. Choisissez maintenant <b>votre identifiant</b> (nom de compte) et <b>votre mot de passe</b> : ce sont eux qui serviront à vous connecter. Le compte est à vous.</p>
+    <label for="idsIdent">Identifiant (nom de compte)</label>
+    <input id="idsIdent" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ex. terrine">
+    <p class="note" style="margin-top:4px">Un mot simple, par exemple le nom du commerce : lettres et chiffres, sans espace ni accent.</p>
+    <label for="idsMdp">Mot de passe (8 caractères minimum, avec au moins une lettre et un chiffre)</label>
+    <div class="mdpLigne"><input id="idsMdp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false"><button type="button" class="mdpVoir" data-voir="idsMdp" aria-label="Afficher le mot de passe">👁</button></div>
+    <label for="idsEmail">Adresse e-mail <span class="note">(facultatif, utile si le mot de passe est oublié)</span></label>
     <input id="idsEmail" type="email" autocomplete="email" placeholder="contact@moncommerce.fr">
-    <label for="idsMdp">Nouveau mot de passe (6 caractères minimum)</label>
-    <input id="idsMdp" type="text" autocomplete="new-password" autocapitalize="off" spellcheck="false">
+    <div id="idsEmailBis" class="cache"><label for="idsEmail2">Retapez l'adresse e-mail</label>
+    <input id="idsEmail2" type="email" autocomplete="off" placeholder="contact@moncommerce.fr"></div>
+    <p class="note">✍️ Notez l'identifiant et le mot de passe dans un endroit sûr. Pas le temps maintenant ? « Plus tard » : la fenêtre reviendra demain.</p>
     <div class="ligne">
       <button class="btn gris" id="bIdsPlusTard">Plus tard</button>
       <button class="btn principal" id="bIdsOk">Enregistrer</button>
@@ -1090,13 +1101,25 @@
           <div id="msgTelReglages"></div>
         </div>
       </details>
+      <details class="sous" id="sousIdent">
+        <summary><span>🪪</span> Identifiant (nom de compte)<span class="cFleche" aria-hidden="true">›</span></summary>
+        <div class="sousCorps">
+          <p class="note" style="margin-top:0">Identifiant actuel : <b id="rIdent">—</b>. Il sert à vous connecter, avec votre mot de passe.</p>
+          <label for="nouvIdent">Nouvel identifiant</label>
+          <input id="nouvIdent" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ex. terrine">
+          <label for="mdpI">Mot de passe actuel</label>
+          <div class="mdpLigne"><input id="mdpI" type="password" autocomplete="current-password"><button type="button" class="mdpVoir" data-voir="mdpI" aria-label="Afficher le mot de passe">👁</button></div>
+          <button class="btn principal" id="bIdent">Changer mon identifiant</button>
+          <div id="msgIdent"></div>
+        </div>
+      </details>
       <details class="sous">
         <summary><span>🔒</span> Mot de passe<span class="cFleche" aria-hidden="true">›</span></summary>
         <div class="sousCorps">
           <label for="mdp0">Mot de passe actuel</label>
           <input id="mdp0" type="password" autocomplete="current-password">
           <label for="mdp1">Nouveau mot de passe</label>
-          <input id="mdp1" type="password" autocomplete="new-password" placeholder="6 caractères minimum">
+          <input id="mdp1" type="password" autocomplete="new-password" placeholder="8 caractères, une lettre et un chiffre">
           <label for="mdp2">Retapez le nouveau mot de passe</label>
           <input id="mdp2" type="password" autocomplete="new-password">
           <button class="btn principal" id="bMdp">Changer le mot de passe</button>
@@ -1199,6 +1222,7 @@
 
 <main id="ecranGerant" class="cache large">
   <div class="carte" id="gJour">
+    <div id="gAlertes"></div>
     <h2 id="gJourTitre">📅 Mes commerces aujourd'hui</h2>
     <div class="finOnglets gauche" id="gJourOnglets" role="tablist" aria-label="Période"></div>
     <p class="note" id="gJourDate" style="margin-top:-6px"></p>
@@ -1270,6 +1294,22 @@ const SANS_EMAIL = "@id.reviens-stp.fr";
 const sansEmail = e => (e || "").toLowerCase().endsWith(SANS_EMAIL);
 const nomIdentifiant = x => (x || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const IDENT_OK = x => /^[a-z0-9][a-z0-9._-]{2,29}$/.test(x);
+// Nouveau mot de passe : 8 caractères, au moins une lettre et un chiffre, pas un mot de passe trop courant ni le nom du commerce
+const MDP_COURANTS = ["12345678","123456789","1234567890","azerty123","azertyuiop","password1","motdepasse1","qwerty123","11111111","00000000","abcd1234","bonjour1","soleil123","password123","azerty1234"];
+function mdpFaible(m, interdits = []){
+  m = String(m || "");
+  if (m.length < 8) return "Mot de passe : 8 caractères minimum.";
+  if (!/[a-zA-ZÀ-ÿ]/.test(m) || !/\d/.test(m)) return "Mot de passe : mettez au moins une lettre et un chiffre.";
+  const b = m.toLowerCase();
+  if (MDP_COURANTS.includes(b) || /^(.)\1+$/.test(b)) return "Ce mot de passe est trop courant : choisissez-en un autre.";
+  const generiques = ["maison","contact","info","infos","gmail","orange","hotmail","yahoo","outlook","free","wanadoo","sfr","laposte","icloud","reviens"];
+  const net = b.replace(/[^a-z0-9à-ÿ]/g, "");
+  for (const x of interdits){
+    for (const t of String(x || "").toLowerCase().split(/[^a-z0-9à-ÿ]+/))
+      if (t.length >= 4 && !generiques.includes(t) && net.includes(t)) return "Le mot de passe ne doit pas contenir le nom du commerce ni l'adresse e-mail.";
+  }
+  return "";
+}
 function identifiant(saisie){   // « thibonne » ou « contact@… » → adresse de connexion, ou "" si illisible
   const x = (saisie || "").trim();
   if (x.includes("@")) return /^\S+@\S+\.\S+$/.test(x) ? x : "";
@@ -1384,7 +1424,7 @@ function apiSupabase(sb){
       if (!session) return null;
       const commerce = v(await sb.from("commerces").select("*").eq("id", session.user.id).maybeSingle());
       if (!commerce) throw new Error("Commerce introuvable pour ce compte.");
-      return {email: session.user.email, commerce};
+      return {email: session.user.email, identifiant: (session.user.user_metadata || {}).identifiant || null, commerce};
     },
     async connexion(email, mdp){ v(await sb.auth.signInWithPassword({email, password:mdp})); },
     async emailConnexion(ident, mdp){   // adresse du compte, rendue seulement si le mot de passe est bon
@@ -1406,6 +1446,10 @@ function apiSupabase(sb){
     async nouveauMdp(mdp){ v(await sb.auth.updateUser({password:mdp})); },
     async nouvelEmail(email){ v(await sb.auth.updateUser({email}, {emailRedirectTo: adresseApp()})); },
     async mesIdentifiants(email, mdp){ v(await sb.rpc("mes_identifiants", {p_email: email, p_mdp: mdp})); await sb.auth.refreshSession().catch(()=>{}); },
+    async mesPremiersIdentifiants(ident, email, mdp){ const i = v(await sb.rpc("mes_premiers_identifiants", {p_identifiant: ident, p_email: email || "", p_mdp: mdp})); await sb.auth.refreshSession().catch(()=>{}); return i; },
+    async changerIdentifiant(ident){ const i = v(await sb.rpc("changer_identifiant", {p_identifiant: ident})); await sb.auth.refreshSession().catch(()=>{}); return i; },
+    async adminIdentifiants(){ return v(await sb.rpc("admin_identifiants")); },
+    async adminRappelIdentifiants(id, oui){ v(await sb.rpc("admin_rappel_identifiants", {p_id: id, p_oui: !!oui})); },
     async verifierMdp(email, mdp){
       const r = await sb.auth.signInWithPassword({email, password:mdp});
       if (r.error){
@@ -1622,7 +1666,7 @@ function apiDemo(){
   const client = id => { const c = D.clients.find(c=>c.id===id); if (!c) throw new Error("Client introuvable"); return c; };
   const copie = o => JSON.parse(JSON.stringify(o));
   const api = {
-    async session(){ return D.connecte ? {email:D.email, commerce:copie(D.commerce)} : null; },
+    async session(){ return D.connecte ? {email:D.email, identifiant:D.identifiant || null, commerce:copie(D.commerce)} : null; },
     async connexion(email, mdp){ D.connecte = true; D.email = email; if (!D.mdp) D.mdp = mdp; sauver(); },
     async inscription(email, mdp, nom, code, tel){ if (tel) D.commerce.telephone = tel; D.connecte = true; D.email = email; D.mdp = mdp; if (nom) D.commerce.nom = nom; sauver(); return {aConfirmer:false}; },
     async oubli(){ },
@@ -1632,6 +1676,14 @@ function apiDemo(){
     async nouvelEmail(email){ D.email = email; sauver(); },
     async mesIdentifiants(email, mdp){ if (!D.commerce.rappel_identifiants) throw new Error("Rien à changer sur ce compte"); D.email = email.trim().toLowerCase(); D.mdp = mdp; D.commerce.rappel_identifiants = false; sauver(); },
     async verifierMdp(email, mdp){ if (D.mdp && mdp !== D.mdp) throw new Error("Mot de passe actuel incorrect."); },
+    async mesPremiersIdentifiants(ident, email, mdp){
+      if (!D.commerce.rappel_identifiants) throw new Error("Rien à changer sur ce compte");
+      if (ident === "pris") throw new Error("Cet identifiant est déjà pris : choisissez-en un autre");
+      D.identifiant = ident; D.email = email ? email.trim().toLowerCase() : ident + SANS_EMAIL; D.mdp = mdp; D.commerce.rappel_identifiants = false; sauver(); return ident; },
+    async changerIdentifiant(ident){ if (ident === "pris") throw new Error("Cet identifiant est déjà pris : choisissez-en un autre"); D.identifiant = ident; if (sansEmail(D.email)) D.email = ident + SANS_EMAIL; sauver(); return ident; },
+    async adminIdentifiants(){ return [{id:"demo", identifiant:D.identifiant || null, a_un_email:!sansEmail(D.email), rappel_identifiants:!!D.commerce.rappel_identifiants},
+      {id:"ex1", identifiant:"boulangerie", a_un_email:true, rappel_identifiants:false}, {id:"ex2", identifiant:"fleuriste", a_un_email:false, rappel_identifiants:true}]; },
+    async adminRappelIdentifiants(id, oui){ if (id === "demo"){ D.commerce.rappel_identifiants = !!oui; sauver(); } },
     async deconnexion(){ D.connecte = false; sauver(); },
     async majCommerce(id, champs){ Object.assign(D.commerce, champs); sauver(); return copie(D.commerce); },
     async trouverClient(tel, sansRemise){
@@ -2201,28 +2253,42 @@ function demanderTelCommerce(){
 $("bTelPlusTard").onclick = ()=>{ $("telFond").classList.add("cache"); if (!ADMIN) setTimeout(proposerEmail, 400); };
 // Compte créé par le gérant avec une adresse provisoire : tous les 2 jours, « nouvelle adresse e-mail, nouveau mot de passe »
 // (sans confirmation ni ancien mot de passe), jusqu'à ce que ce soit fait. La base décoche la case une fois fait.
+// Compte créé avec des identifiants provisoires (par Dessi à l'installation) : proposé dès l'ouverture ;
+// « Plus tard » possible (un client attend…) : la fenêtre revient une fois par jour jusqu'au choix des identifiants
+const CLE_IDS = "reviens_ids_propose";
 function proposerIdentifiants(){
   if (!SESSION || !SESSION.commerce || !SESSION.commerce.rappel_identifiants || ADMIN) return false;
   if (!$("telFond").classList.contains("cache") || !$("nouvFond").classList.contains("cache")) return false;
-  const cle = "reviens_ids_propose";
-  try{ const t = Number(localStorage.getItem(cle)) || 0; if (Date.now() - t < 2*86400000 - 3600000) return false; localStorage.setItem(cle, String(Date.now())); }catch(e){}
-  $("idsEmail").value = ""; $("idsMdp").value = ""; message("msgIds","");
+  try{ if (localStorage.getItem(CLE_IDS) === new Date().toDateString()) return false; }catch(e){}
+  $("idsIdent").value = SESSION.identifiant || nomIdentifiant(SESSION.commerce.nom || "").replace(/[^a-z0-9._-]/g, "").slice(0, 30);
+  $("idsEmail").value = sansEmail(SESSION.email) ? "" : (SESSION.email || ""); $("idsMdp").value = ""; message("msgIds","");
+  $("idsEmail2").value = ""; $("idsMdp").type = "password"; $("idsEmailBis").classList.add("cache");
   $("idsFond").classList.remove("cache"); $("idsEmail").focus();
   return true;
 }
-$("bIdsPlusTard").onclick = ()=>{ $("idsFond").classList.add("cache"); focusTel(); };
+$("bIdsPlusTard").onclick = ()=>{ try{ localStorage.setItem(CLE_IDS, new Date().toDateString()); }catch(e){} $("idsFond").classList.add("cache"); focusTel(); };
+// L'adresse e-mail est facultative : la case « retapez » n'apparaît que si une adresse est tapée
+$("idsEmail").addEventListener("input", ()=> $("idsEmailBis").classList.toggle("cache", !$("idsEmail").value.trim() || $("idsEmail").value.trim().toLowerCase() === (sansEmail(SESSION && SESSION.email) ? "" : (SESSION.email || "").toLowerCase())));
 $("bIdsOk").onclick = ()=> occupe($("bIdsOk"), async ()=>{
-  const e = $("idsEmail").value.trim(), m = $("idsMdp").value;
-  if (!/^\S+@\S+\.\S+$/.test(e) || sansEmail(e)) return message("msgIds","Adresse e-mail invalide.","err");
-  if (m.length < 6) return message("msgIds","Mot de passe : 6 caractères minimum.","err");
+  const ident = nomIdentifiant($("idsIdent").value), e = $("idsEmail").value.trim(), m = $("idsMdp").value;
+  if (!IDENT_OK(ident)) return message("msgIds","Identifiant : de 3 à 30 lettres ou chiffres, sans espace ni accent (ex. terrine).","err");
+  const faible = mdpFaible(m, [ident, e, SESSION && SESSION.commerce && SESSION.commerce.nom]);
+  if (faible) return message("msgIds", faible, "err");
+  if (e && (!/^\S+@\S+\.\S+$/.test(e) || sansEmail(e))) return message("msgIds","Adresse e-mail invalide (ou laissez la case vide).","err");
+  if (e && !$("idsEmailBis").classList.contains("cache") && e.toLowerCase() !== $("idsEmail2").value.trim().toLowerCase()) return message("msgIds","Les deux adresses e-mail ne sont pas identiques : vérifiez-les.","err");
   try{
-    await API.mesIdentifiants(e, m);
-    SESSION.email = e.toLowerCase(); SESSION.commerce.rappel_identifiants = false;
+    const i = await API.mesPremiersIdentifiants(ident, e, m);
+    SESSION.identifiant = i || ident; SESSION.email = e ? e.toLowerCase() : SESSION.identifiant + SANS_EMAIL; SESSION.commerce.rappel_identifiants = false;
     $("idsFond").classList.add("cache"); focusTel();
-    alerte("✓ C'est fait : votre adresse e-mail et votre mot de passe sont enregistrés");
+    alerte(`✓ C'est fait : identifiant « ${SESSION.identifiant} » et mot de passe enregistrés. Notez-les bien !`);
   }catch(err){ message("msgIds", err.message, "err"); }
 });
 $("idsMdp").addEventListener("keydown", e=>{ if (e.key === "Enter") $("bIdsOk").click(); });
+document.addEventListener("click", e => {
+  const b = e.target.closest(".mdpVoir"); if (!b) return;
+  const i = $(b.dataset.voir), voir = i.type === "password";
+  i.type = voir ? "text" : "password"; b.textContent = voir ? "🙈" : "👁"; b.setAttribute("aria-label", voir ? "Cacher le mot de passe" : "Afficher le mot de passe");
+});
 // Compte créé avec un identifiant : une fois par jour, on propose d'ajouter l'adresse e-mail (mot de passe oublié)
 function proposerEmail(){
   if (ouverte("idsFond") || ouverte("mailFond")) return;
@@ -2451,6 +2517,8 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
   navigator.serviceWorker.register("sw.js").catch(()=>{});
 
 async function demarrer(){
+  // Site d'essai (base de test, sur le PC de Dessi) : bandeau orange pour ne jamais le confondre avec la vraie appli
+  if (CFG.ESSAI){ const b = document.createElement("div"); b.className = "bandeauEssai"; b.textContent = "🧪 SITE D'ESSAI : base de test, aucun vrai client"; document.body.prepend(b); document.title = "🧪 ESSAI · " + document.title; }
   if (DEMO){
     $("bandeauDemo").classList.remove("cache"); $("bResetDemo").classList.remove("cache");
     // Démo ouverte depuis l'espace gérant : lien pour revenir à son vrai compte
@@ -2462,8 +2530,9 @@ async function demarrer(){
     API = avecHorsLigne(apiSupabase(sb));   // sans internet : passages gardés sur la tablette, envoyés au retour du Wi-Fi
     sb.auth.onAuthStateChange(async (evt)=>{
       if (evt === "PASSWORD_RECOVERY"){
-        const mdp = prompt("Choisissez votre nouveau mot de passe (6 caractères minimum) :");
-        if (mdp){
+        const mdp = prompt("Choisissez votre nouveau mot de passe (8 caractères minimum, avec une lettre et un chiffre) :");
+        if (mdp && mdpFaible(mdp)){ alert(mdpFaible(mdp) + " Recommencez avec le lien reçu par e-mail."); }
+        else if (mdp){
           try{ await API.nouveauMdp(mdp); alert("Mot de passe modifié."); }
           catch(e){ alert(e.message); }
         }
@@ -2511,7 +2580,7 @@ $("bConnexion").onclick = ()=> occupe($("bConnexion"), async ()=>{
     ? "Identifiant : de 3 à 30 lettres ou chiffres, sans espace (ex. thibonne)."
     : "Tapez votre identifiant ou votre adresse e-mail.","err");
   if (!mdp) return message("msgConnexion","Tapez votre mot de passe.","err");
-  if (modeInscription && mdp.length < 6) return message("msgConnexion","Mot de passe : 6 caractères minimum.","err");
+  if (modeInscription && mdpFaible(mdp, [saisie, nom])) return message("msgConnexion", mdpFaible(mdp, [saisie, nom]), "err");
   if (modeInscription && !nom) return message("msgConnexion","Indiquez le nom du commerce.","err");
   try{
     if (modeInscription && sansEmail(email) && !await API.identifiantLibre(email.split("@")[0]))
@@ -2897,6 +2966,25 @@ async function afficherBilanGerant(n = periodeGerant){
   }
 }
 $("bJourMaj").onclick = ()=> occupe($("bJourMaj"), () => afficherBilanGerant());
+// Alerte : un commerce qui n'enregistre rien alors qu'il travaille d'habitude ce jour-là (tablette éteinte, hors réseau, oubliée…)
+// Seulement à partir de midi, si le jour habituel compte au moins 4 passages ; ou plus aucun passage depuis 4 jours pour un commerce actif.
+function alertesCommerces(l, heure = new Date().getHours()){
+  const jourNom = new Date().toLocaleDateString("fr-FR", {weekday:"long"}), a = [];
+  for (const x of l){
+    const hab = x.passages_ref == null ? null : Number(x.passages_ref), auj = Number(x.passages) || 0;
+    const jours = x.derniere_activite ? Math.floor((Date.now() - new Date(x.derniere_activite)) / 864e5) : null;
+    if (heure >= 12 && hab != null && hab >= 4 && auj === 0)
+      a.push(`⚠️ <b>${echapper(x.commerce)}</b> : aucun passage aujourd'hui, alors qu'un ${jourNom} habituel en compte ${String(hab).replace(".", ",")}. Tablette éteinte, sans réseau ou oubliée ? À vérifier.`);
+    else if (jours != null && jours >= 4 && jours <= 30)
+      a.push(`⚠️ <b>${echapper(x.commerce)}</b> : plus aucun passage depuis ${jours} jours (dernier le ${jourFr(x.derniere_activite)}). À vérifier.`);
+  }
+  return a;
+}
+async function afficherAlertesGerant(){
+  let l; try{ l = await API.adminBilan(1); }catch(e){ $("gAlertes").innerHTML = ""; return; }
+  const a = alertesCommerces(l);
+  $("gAlertes").innerHTML = a.map(t => `<div class="msg info alerteCommerce">${t}</div>`).join("");
+}
 
 // Paliers du nombre de clients : fenêtre de fête la veille (99 → « plus qu'un client ») et le jour du palier (100)
 // Une seule fois par palier et par appareil (souvenir dans le navigateur de la tablette).
@@ -3324,6 +3412,7 @@ function remplirReglages(){
   $("rMontant").value = c.montant_bonus ?? 70;
   $("rPointsBonus").value = c.points_bonus ?? c.points_par_passage * 2;
   $("rEmail").textContent = affEmail(SESSION.email);
+  $("rIdent").textContent = SESSION.identifiant || "aucun (connexion par adresse e-mail)"; $("nouvIdent").value = ""; $("mdpI").value = ""; message("msgIdent", "");
   afficherMonContrat();
   $("rTel").value = c.telephone ? joli(c.telephone) : ""; message("msgTelReglages","");
   themeChoisi = (c.theme === "perso" && c.perso) || THEMES[c.theme] ? c.theme : "defaut";
@@ -3536,9 +3625,10 @@ $("bDeconnexion").onclick = async ()=>{
 let DERNIERES_STATS = [];
 async function afficherGerant(){
   afficherBilanGerant();
+  afficherAlertesGerant();
   afficherSupportGerant();
   afficherProspection();
-  $("gListe").innerHTML = `<p class="note">Chargement…</p>`;
+  if (!$("gListe").querySelector("details.cmFiche")) $("gListe").innerHTML = `<p class="note">Chargement…</p>`;   // garde les fiches ouvertes pendant le rechargement
   let s;
   try{ s = await API.stats(); DERNIERES_STATS = s; }
   catch(e){ $("gListe").innerHTML = `<p class="note">${echapper(e.message)}</p>`; return; }
@@ -3549,7 +3639,8 @@ async function afficherGerant(){
     [somme("nb_clients"), "clients au total"], [somme("passages_30j"), "passages ces 30 jours"],
   ].map(([n,t])=>`<div class="chiffre"><b>${n}</b><span>${t}</span></div>`).join("");
   const recent = d => d && Date.now() - new Date(d) < 30*864e5;
-  $("gListe").innerHTML = s.map(x=>`<details class="sous cmFiche">
+  const fichesOuvertes = new Set([...$("gListe").querySelectorAll("details.cmFiche[open]")].map(d => d.dataset.id));
+  $("gListe").innerHTML = s.map(x=>`<details class="sous cmFiche" data-id="${echapper(x.id)}"${fichesOuvertes.has(String(x.id)) ? " open" : ""}>
       <summary>
         <span class="cmNom"><b>${echapper(x.commerce)}</b><small>${pluriel(Number(x.nb_clients)||0, "client")} · ${x.passages_30j} passage${Number(x.passages_30j) > 1 ? "s" : ""} en 30 j · ${recent(x.derniere_activite) ? "actif le " + jourFr(x.derniere_activite) : x.derniere_activite ? "inactif depuis le " + jourFr(x.derniere_activite) : "jamais utilisé"}</small></span>
         <span class="cmEtat" data-etat="${x.id}">…</span>
@@ -3570,9 +3661,10 @@ async function afficherGerant(){
           <span data-ctinfo="${x.id}"></span>
           <span data-smsinfo="${x.id}"></span>
           <span data-appinfo="${x.id}"></span>
+          <span data-identinfo="${x.id}"></span>
         </div>
         <div class="cmTitre">Contrat et appareils</div>
-        <div class="cmBtns"><button class="petitbtn" data-contrat="${x.id}">📄 Contrat…</button><button class="petitbtn" data-app="${x.id}">📟 Appareils…</button></div>
+        <div class="cmBtns"><button class="petitbtn" data-contrat="${x.id}">📄 Contrat…</button><button class="petitbtn" data-app="${x.id}">📟 Appareils…</button><button class="petitbtn" data-ident="${x.id}">🔑 Identifiants…</button></div>
         <div class="cmTitre">Roues et SMS</div>
         <div class="cmBtns"><button class="petitbtn roue" data-roue="${x.id}">${x.roue_active ? "🎡 Couper la roue de la fortune" : "🎡 Activer la roue de la fortune"}</button><button class="petitbtn roue" data-palier="${x.id}">🎁 Roue des 100 points…</button><button class="petitbtn" data-sms="${x.id}">📱 SMS…</button></div>
         <div class="cmDanger cmBtns"><button class="petitbtn vider" data-vider="${x.id}">Vider ses clients</button><button class="petitbtn suppr" data-suppr="${x.id}">Supprimer le commerce</button></div>
@@ -3598,6 +3690,13 @@ async function afficherGerant(){
   try{ for (const c of await API.adminPalierListe()) PALIER_ADMIN[c.id] = !!c.palier_roue; }catch(e){}
   for (const b of $("gListe").querySelectorAll("[data-palier]"))
     if (b.dataset.palier in PALIER_ADMIN) b.textContent = PALIER_ADMIN[b.dataset.palier] ? "🎁 Couper la roue des 100 points" : "🎁 Activer la roue des 100 points";
+  IDENT_ADMIN = {};
+  try{ for (const c of await API.adminIdentifiants()) IDENT_ADMIN[c.id] = c; }catch(e){}
+  for (const sp of $("gListe").querySelectorAll("[data-identinfo]")){
+    const x = IDENT_ADMIN[sp.dataset.identinfo];
+    sp.innerHTML = !x ? "" : `🔑 ${x.identifiant ? `Identifiant « ${echapper(x.identifiant)} »` : "Connexion par e-mail"}${x.a_un_email ? " · e-mail ✓" : ""}`
+      + (x.rappel_identifiants ? ` · <b style="color:#9a6a00">à choisir à la prochaine ouverture</b>` : "");
+  }
   APP_ADMIN = {};
   try{ for (const c of await API.adminAppareils()) APP_ADMIN[c.commerce_id] = c; }catch(e){}
   for (const sp of $("gListe").querySelectorAll("[data-appinfo]")){
@@ -3607,7 +3706,7 @@ async function afficherGerant(){
       + (x.refus_24h ? ` · <b style="color:#b3261e">⚠️ ${x.refus_24h} refus</b>` : "");
   }
 }
-let APP_ADMIN = {};
+let APP_ADMIN = {}, IDENT_ADMIN = {};
 async function afficherParrainagesGerant(){
   const t = $("gParrains");
   let l;
@@ -4097,7 +4196,7 @@ async function afficherMonContrat(){
   }
   $("bVoirContrat").onclick = ()=> ouvrirContrat(c);
   if ($("bArretEssai")) $("bArretEssai").onclick = ()=> arreterEssai(c);
-  const rects = c.signe_le ? await afficherMesRectificatifs() : [];
+  const rects = await afficherMesRectificatifs();   // toujours : un nouveau contrat préparé ne doit pas cacher les rectificatifs de l'ancien
   if (rects.some(r => !r.signe_le)) $("contratPastille").innerHTML = `<span class="pastille">à signer</span>`;
   return c;
 }
@@ -4117,7 +4216,7 @@ async function rappelContrat(){
   try{
     const c = await API.monContrat();
     let rect = false;
-    if (c && c.signe_le) try{ rect = (await API.mesRectificatifs()).some(r => !r.signe_le && !r.annule_le); }catch(e){}
+    try{ rect = (await API.mesRectificatifs()).some(r => !r.signe_le && !r.annule_le && r.montre_le !== null); }catch(e){}
     if (rect) alerte("✍️ Un rectificatif de votre contrat est à signer : touchez ici", ()=>{ montrer("ecranReglages"); $("carteCompte").open = true; $("sousContrat").open = true; $("sousContrat").scrollIntoView({behavior:"smooth", block:"center"}); });
     if (c && !c.signe_le) alerte("📄 Votre contrat est prêt à signer : touchez ici", ()=>{ montrer("ecranReglages"); $("carteCompte").open = true; $("sousContrat").open = true; $("sousContrat").scrollIntoView({behavior:"smooth", block:"center"}); });
   }catch(e){}
@@ -4326,12 +4425,20 @@ async function afficherContratsGerant(){
   const z = $("gContrats"); if (!z) return;
   let cs = [], rs = [];
   try{ cs = await API.adminContrats(); rs = await API.adminRectificatifs(); }catch(e){ z.innerHTML = `<p class="note">${echapper(e.message)}</p>`; return; }
-  const parCommerce = {};
-  for (const c of cs){ if (c.annule_le && !c.signe_le) continue; (parCommerce[c.commerce_nom] = parCommerce[c.commerce_nom] || []).push(c); }
-  const noms = Object.keys(parCommerce).sort((a,b)=>a.localeCompare(b, "fr"));
+  // Rangés par commerce (son identifiant) : un commerce renommé garde un seul dossier, au nom de son contrat le plus récent
+  const parCommerce = {}, nomDe = {}, anciens = {};
+  for (const c of cs){
+    if (c.annule_le && !c.signe_le) continue;
+    const k = c.commerce_id || c.commerce_nom;
+    (parCommerce[k] = parCommerce[k] || []).push(c);
+    if (!nomDe[k]) nomDe[k] = c.commerce_nom;   // liste triée du plus récent au plus ancien
+    else if (c.commerce_nom && c.commerce_nom !== nomDe[k]) (anciens[k] = anciens[k] || new Set()).add(c.commerce_nom);
+  }
+  const noms = Object.keys(parCommerce).sort((a,b)=>String(nomDe[a]).localeCompare(String(nomDe[b]), "fr"));
+  const dossiersOuverts = new Set([...z.querySelectorAll("details.ctDossier[open]")].map(d => d.dataset.k));
   $("gContratsNb").textContent = cs.filter(c => c.signe_le && !c.annule_le).length;
   if (!noms.length){ z.innerHTML = `<p class="note">Aucun contrat pour l'instant.</p>`; return; }
-  z.innerHTML = noms.map(n => `<details class="sous ctDossier"><summary><span>📁</span> ${echapper(n)} <small class="note" style="margin-left:6px">${parCommerce[n].length} contrat${parCommerce[n].length > 1 ? "s" : ""}</small><span class="cFleche" aria-hidden="true">›</span></summary>
+  z.innerHTML = noms.map(n => `<details class="sous ctDossier" data-k="${echapper(n)}"${dossiersOuverts.has(String(n)) ? " open" : ""}><summary><span>📁</span> ${echapper(nomDe[n])}${anciens[n] ? ` <small class="note">(anciennement ${echapper([...anciens[n]].join(", "))})</small>` : ""} <small class="note" style="margin-left:6px">${parCommerce[n].length} contrat${parCommerce[n].length > 1 ? "s" : ""}</small><span class="cFleche" aria-hidden="true">›</span></summary>
       <div class="sousCorps">${parCommerce[n].map(c => {
         const rr = rs.filter(r => r.contrat_id === c.id && !r.annule_le);
         return `<div class="ctLigne"><div><b>Contrat n° ${c.id}</b> · ${echapper(c.modele)}${c.tablette_serie ? " · tablette " + echapper(c.tablette_serie) : ""}<br>
@@ -4367,13 +4474,27 @@ $("bRnOk").onclick = ()=> occupe($("bRnOk"), async ()=>{
   alerte("✓ Rectificatif prêt et caché. Touchez « 📨 Montrer au commerçant » quand vous voulez qu'il le signe.");
 });
 
-// ---------- Mon compte : mot de passe et e-mail ----------
+// ---------- Mon compte : identifiant, mot de passe et e-mail ----------
+$("bIdent").onclick = ()=> occupe($("bIdent"), async ()=>{
+  const i = nomIdentifiant($("nouvIdent").value);
+  if (!IDENT_OK(i)) return message("msgIdent","Identifiant : de 3 à 30 lettres ou chiffres, sans espace ni accent (ex. terrine).","err");
+  if (i === SESSION.identifiant) return message("msgIdent","C'est déjà votre identifiant.","info");
+  if (!$("mdpI").value) return message("msgIdent","Tapez votre mot de passe actuel.","err");
+  try{
+    await API.verifierMdp(SESSION.email, $("mdpI").value);
+    const nouvel = await API.changerIdentifiant(i);
+    SESSION.identifiant = nouvel || i; if (sansEmail(SESSION.email)) SESSION.email = SESSION.identifiant + SANS_EMAIL;
+    $("rIdent").textContent = SESSION.identifiant; $("rEmail").textContent = affEmail(SESSION.email);
+    $("nouvIdent").value = ""; $("mdpI").value = "";
+    message("msgIdent", `✓ Identifiant changé : connectez-vous désormais avec « ${SESSION.identifiant} ».`, "ok");
+  }catch(e){ message("msgIdent", e.message, "err"); }
+});
 $("bMdp").onclick = ()=> occupe($("bMdp"), async ()=>{
   const m0 = $("mdp0").value, m1 = $("mdp1").value, m2 = $("mdp2").value;
   if (!m0) return message("msgMdp","Tapez d'abord votre mot de passe actuel.","err");
   if (!m1) return message("msgMdp","Tapez le nouveau mot de passe.","err");
   if (m1 !== m2) return message("msgMdp","Les deux nouveaux mots de passe ne sont pas identiques.","err");
-  if (m1.length < 6) return message("msgMdp","Le nouveau mot de passe doit faire au moins 6 caractères (règle imposée par Supabase).","err");
+  if (mdpFaible(m1, [SESSION.email, SESSION.commerce.nom])) return message("msgMdp", mdpFaible(m1, [SESSION.email, SESSION.commerce.nom]), "err");
   try{
     await API.verifierMdp(SESSION.email, m0);
     await API.nouveauMdp(m1);
@@ -4451,9 +4572,18 @@ function demanderMdp(texteHtml){
 let PALIER_ADMIN = {};
 async function actionCommerce(b){
   const s = DERNIERES_STATS || [];
-  const id = b.dataset.vider || b.dataset.suppr || b.dataset.roue || b.dataset.palier || b.dataset.sms || b.dataset.app || b.dataset.contrat, x = s.find(c=>String(c.id)===String(id));
+  const id = b.dataset.vider || b.dataset.suppr || b.dataset.roue || b.dataset.palier || b.dataset.sms || b.dataset.app || b.dataset.contrat || b.dataset.ident, x = s.find(c=>String(c.id)===String(id));
   if (!x) return;
   if (b.dataset.contrat) return ouvrirContratAdmin(x);
+  if (b.dataset.ident){
+    const k = IDENT_ADMIN[x.id] || {}, deja = !!k.rappel_identifiants;
+    const q = deja ? `« ${x.commerce} » doit déjà choisir ses identifiants à la prochaine ouverture.\n\nAnnuler cette demande ?`
+      : `À la prochaine ouverture de l'appli, « ${x.commerce} » devra choisir son identifiant et son mot de passe (fenêtre obligatoire, à faire avec lui).\n\nIdentifiant actuel : ${k.identifiant || "aucun (e-mail)"}.\n\nContinuer ?`;
+    if (!confirm(q)) return;
+    try{ await API.adminRappelIdentifiants(x.id, !deja); alerte(deja ? "🔑 Demande annulée." : `🔑 ${x.commerce} choisira ses identifiants à la prochaine ouverture.`); afficherGerant(); }
+    catch(e){ alert(e.message); }
+    return;
+  }
   try{
     if (b.dataset.app){
       const a = APP_ADMIN[x.id] || {nb:0, max:1, changements_24h:0, refus_24h:0};
