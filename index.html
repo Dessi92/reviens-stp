@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="87">
+<meta name="app-version" content="88">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -1499,7 +1499,19 @@ function apiSupabase(sb){
     async adminSms(id, actif){ v(await sb.rpc("admin_sms", {p_id:id, p_active:actif})); },
     async adminSmsExpediteur(id, nom){ return v(await sb.rpc("admin_sms_expediteur", {p_id:id, p_nom:nom || null})); },
     async adminSmsSolde(id, montant){ return Number(v(await sb.rpc("admin_sms_solde", {p_id:id, p_montant:montant}))); },
-    async smsRecharger(){ throw new Error("Le paiement par carte arrive très bientôt. En attendant, écrivez au support 💬 pour recharger votre porte-monnaie SMS."); },
+    // Recharge par carte (24/11/2026) : la fonction serveur « sms-recharge » ouvre une page Stripe ; le porte-monnaie est crédité
+    // seulement quand Stripe confirme le paiement (stripe-webhook → stripe_evenement), avec le montant noté AVANT dans la base.
+    async smsRecharger(m){
+      const {data, error} = await sb.functions.invoke("sms-recharge", {body:{montant:m}});
+      if (error){
+        let t = "La page de paiement n'a pas pu s'ouvrir. Réessayez, ou écrivez au support 💬.";
+        try{ const j = await error.context.json(); if (j && j.erreur) t = j.erreur; }catch(_){}
+        throw new Error(t);
+      }
+      if (!data || !/^https:\/\/checkout\.stripe\.com\//.test(data.url || "")) throw new Error("La page de paiement n'a pas pu s'ouvrir. Réessayez, ou écrivez au support 💬.");
+      location.href = data.url;
+      return "stripe";
+    },
     async adminParrainValider(id, ok){ v(await sb.rpc("admin_parrainage_valider", {p_filleul:id, p_valide:!!ok})); },
     async stats(){ return v(await sb.rpc("stats_commerces")); },
     // Un appareil par compte (si la base n'a pas encore ces fonctions, on laisse passer)
@@ -1999,6 +2011,7 @@ function montrer(ecran){
 // ======================================================================
 const SMS_INCLUS = 0;                  // plus de SMS compris : le commerçant achète ses SMS d'avance (11/11/2026)
 let SMS_PRIX = 0.08;                   // prix compté par SMS (8 centimes, commission comprise, choisi par Dessi le 24/11 ; la base envoie le vrai prix)
+const RECH_MAX = 500;                  // recharge maximum par carte (vérifié aussi par la base)
 const RECH_MIN = 10;                   // recharge minimum du porte-monnaie SMS (frais de carte)
 const SMS_MAX_CLIENT = 2;              // un client reçoit au plus 2 SMS par mois de ce commerce
 const PROMO_JOURS = 7;                 // une promo par semaine au plus
@@ -2178,14 +2191,33 @@ function majRecharge(){
 }
 $("smsRechAutre").addEventListener("input", ()=>{
   const v = Math.round(Number(String($("smsRechAutre").value).replace(",", ".")) * 100) / 100;
-  RECH = v > 0 ? {montant:Math.min(v, 2000), cle:"autre"} : null; majRecharge();
+  RECH = v > 0 ? {montant:Math.min(v, RECH_MAX), cle:"autre"} : null; majRecharge();
 });
+// Retour de la page de paiement Stripe : on attend la confirmation (quelques secondes) puis on affiche le nouveau solde
+async function retourRecharge(){
+  const r = new URLSearchParams(location.search).get("recharge");
+  history.replaceState(null, "", location.pathname);
+  montrer("ecranSms"); await afficherSms();
+  if (r !== "ok") return message("msgSmsRech", "Paiement annulé : rien n'a été prélevé.", "");
+  message("msgSmsRech", "⏳ Paiement reçu : votre porte-monnaie se met à jour…", "");
+  for (let i = 0; i < 12; i++){
+    let d = null;
+    try{ d = ((await API.smsEtat()).recharges || [])[0]; }catch(_){}
+    if (d && d.mode === "carte" && Date.now() - new Date(d.cree_le).getTime() < 15 * 60e3){
+      await afficherSms();
+      return message("msgSmsRech", `✓ ${eurosSms(Number(d.montant))} ajoutés : ${nbSmsFr(Number(d.montant))} de plus. La facture arrive par e-mail.`, "ok");
+    }
+    await new Promise(ok => setTimeout(ok, 2500));
+  }
+  message("msgSmsRech", "Paiement reçu. Le porte-monnaie sera mis à jour dans quelques minutes (rouvrez cet écran). Si rien n'apparaît, écrivez au support 💬.", "");
+}
 $("bSmsRecharger").onclick = ()=> occupe($("bSmsRecharger"), async ()=>{
   if (!RECH || RECH.montant < RECH_MIN) return;
   const m = RECH.montant;
   if (DEMO && !confirm(`Démo : paiement simulé de ${eurosSms(m)} (${nbSmsFr(m)}). Avec un vrai compte, une page de paiement par carte s'ouvre ici.`)) return;
   try{
-    await API.smsRecharger(m);
+    if (!DEMO) message("msgSmsRech", "Ouverture de la page de paiement sécurisée (Stripe)…", "");
+    if (await API.smsRecharger(m) === "stripe") return;   // on part sur la page Stripe ; retour par ?recharge=ok
     await afficherSms();
     message("msgSmsRech", `✓ ${eurosSms(m)} ajoutés : ${nbSmsFr(m)} de plus.`, "ok");
   }catch(err){ message("msgSmsRech", err.message, "err"); }
@@ -2227,7 +2259,7 @@ async function afficherSms(){
   const e = SMS_ETAT;
   $("smsBandeau").innerHTML = DEMO ? "🎬 <b>Démo</b> : aucun SMS n'est vraiment envoyé. Essayez d'écrire une promo pour voir ce que reçoit le client."
     : e && e.active ? "✅ <b>Service SMS actif.</b> Envois du lundi au samedi, de 10 h à 19 h, jamais les jours fériés."
-    : "🚀 <b>Les SMS arrivent très bientôt.</b> Préparez vos messages dès maintenant : les envois démarreront dès l'ouverture du service.";
+    : "⏸️ <b>Les SMS sont coupés pour votre commerce.</b> Écrivez au support 💬 pour les rouvrir.";
   if (e){
     $("smsChiffres").innerHTML = [[SMS_DEST.length, "clients ont accepté les SMS"], [eurosSms(e.solde), `dans le porte-monnaie, soit ${nbSmsFr(e.solde)}`], [e.utilises, "SMS envoyés ce mois-ci"]]
       .map(([n,t])=>`<div class="chiffre"><b>${n}</b><span>${t}</span></div>`).join("");
@@ -2764,6 +2796,7 @@ async function entrer(){
   if (!SESSION.commerce.programme_choisi) return montrer("ecranReglages");   // premier passage : choisir son programme
   montrer("ecranAccueil");
   focusTel();
+  if (!admin && new URLSearchParams(location.search).has("recharge")) retourRecharge();
   if (!admin) setTimeout(verifierPalierClients, 900);
   majBandeauHL();
   if (!DEMO) setTimeout(()=>{ envoyerFile(); if (admin && navigator.onLine) API.liste().catch(()=>{}); }, 3000);   // passages gardés sans internet + copie des clients
