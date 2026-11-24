@@ -581,16 +581,16 @@
 <div id="idsFond" class="fond cache" role="dialog" aria-modal="true" aria-labelledby="idsTitre">
   <div class="boite" style="text-align:left">
     <h2 id="idsTitre" style="margin-top:4px;text-align:center">🔑 Choisissez vos identifiants</h2>
-    <p style="font-size:17px">Votre compte a été créé avec des identifiants provisoires. Choisissez maintenant <b>votre identifiant</b> (nom de compte) et <b>votre mot de passe</b> : ce sont eux qui serviront à vous connecter. Le compte est à vous.</p>
-    <label for="idsIdent">Identifiant (nom de compte)</label>
-    <input id="idsIdent" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ex. terrine">
-    <p class="note" style="margin-top:4px">Un mot simple, par exemple le nom du commerce : lettres et chiffres, sans espace ni accent.</p>
+    <p style="font-size:17px">Votre compte a été créé avec des identifiants provisoires. Choisissez maintenant <b>votre identifiant</b> et <b>votre mot de passe</b> : ce sont eux qui serviront à vous connecter. Le compte est à vous.</p>
+    <label for="idsIdent">Identifiant ou adresse e-mail</label>
+    <input id="idsIdent" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ex. terrine ou contact@moncommerce.fr">
+    <p class="note" style="margin-top:4px" id="idsIdentNote">Un mot simple (ex. le nom du commerce, sans espace ni accent) ou votre adresse e-mail.</p>
     <label for="idsMdp">Mot de passe (8 caractères minimum, avec au moins une lettre et un chiffre)</label>
     <div class="mdpLigne"><input id="idsMdp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false"><button type="button" class="mdpVoir" data-voir="idsMdp" aria-label="Afficher le mot de passe">👁</button></div>
-    <label for="idsEmail">Adresse e-mail <span class="note">(facultatif, utile si le mot de passe est oublié)</span></label>
+    <div id="idsEmailBloc"><label for="idsEmail">Adresse e-mail <span class="note">(facultatif, en cas de mot de passe oublié)</span></label>
     <input id="idsEmail" type="email" autocomplete="email" placeholder="contact@moncommerce.fr">
     <div id="idsEmailBis" class="cache"><label for="idsEmail2">Retapez l'adresse e-mail</label>
-    <input id="idsEmail2" type="email" autocomplete="off" placeholder="contact@moncommerce.fr"></div>
+    <input id="idsEmail2" type="email" autocomplete="off" placeholder="contact@moncommerce.fr"></div></div>
     <p class="note">✍️ Notez l'identifiant et le mot de passe dans un endroit sûr. Pas le temps maintenant ? « Plus tard » : la fenêtre reviendra demain.</p>
     <div class="ligne">
       <button class="btn gris" id="bIdsPlusTard">Plus tard</button>
@@ -1679,7 +1679,8 @@ function apiDemo(){
     async mesPremiersIdentifiants(ident, email, mdp){
       if (!D.commerce.rappel_identifiants) throw new Error("Rien à changer sur ce compte");
       if (ident === "pris") throw new Error("Cet identifiant est déjà pris : choisissez-en un autre");
-      D.identifiant = ident; D.email = email ? email.trim().toLowerCase() : ident + SANS_EMAIL; D.mdp = mdp; D.commerce.rappel_identifiants = false; sauver(); return ident; },
+      if (!ident && !email) throw new Error("Tapez un identifiant ou une adresse e-mail");
+      D.identifiant = ident || null; D.email = email ? email.trim().toLowerCase() : ident + SANS_EMAIL; D.mdp = mdp; D.commerce.rappel_identifiants = false; sauver(); return ident || D.email; },
     async changerIdentifiant(ident){ if (ident === "pris") throw new Error("Cet identifiant est déjà pris : choisissez-en un autre"); D.identifiant = ident; if (sansEmail(D.email)) D.email = ident + SANS_EMAIL; sauver(); return ident; },
     async adminIdentifiants(){ return [{id:"demo", identifiant:D.identifiant || null, a_un_email:!sansEmail(D.email), rappel_identifiants:!!D.commerce.rappel_identifiants},
       {id:"ex1", identifiant:"boulangerie", a_un_email:true, rappel_identifiants:false}, {id:"ex2", identifiant:"fleuriste", a_un_email:false, rappel_identifiants:true}]; },
@@ -2261,26 +2262,39 @@ function proposerIdentifiants(){
   if (!$("telFond").classList.contains("cache") || !$("nouvFond").classList.contains("cache")) return false;
   try{ if (localStorage.getItem(CLE_IDS) === new Date().toDateString()) return false; }catch(e){}
   $("idsIdent").value = SESSION.identifiant || nomIdentifiant(SESSION.commerce.nom || "").replace(/[^a-z0-9._-]/g, "").slice(0, 30);
+  majIdsMode();
   $("idsEmail").value = sansEmail(SESSION.email) ? "" : (SESSION.email || ""); $("idsMdp").value = ""; message("msgIds","");
   $("idsEmail2").value = ""; $("idsMdp").type = "password"; $("idsEmailBis").classList.add("cache");
   $("idsFond").classList.remove("cache"); $("idsEmail").focus();
   return true;
 }
 $("bIdsPlusTard").onclick = ()=>{ try{ localStorage.setItem(CLE_IDS, new Date().toDateString()); }catch(e){} $("idsFond").classList.add("cache"); focusTel(); };
+// Une seule case : identifiant OU adresse e-mail. Avec un « @ », le compte se connectera avec son e-mail (pas d'autre case) ;
+// sinon, case e-mail facultative (mot de passe oublié)
+const idsEstEmail = () => $("idsIdent").value.includes("@");
+function majIdsMode(){
+  const em = idsEstEmail();
+  $("idsEmailBloc").classList.toggle("cache", em);
+  $("idsIdentNote").textContent = em ? "📧 Vous vous connecterez avec cette adresse e-mail : vérifiez-la bien."
+    : "Un mot simple (ex. le nom du commerce, sans espace ni accent) ou votre adresse e-mail.";
+}
+$("idsIdent").addEventListener("input", majIdsMode);
 // L'adresse e-mail est facultative : la case « retapez » n'apparaît que si une adresse est tapée
 $("idsEmail").addEventListener("input", ()=> $("idsEmailBis").classList.toggle("cache", !$("idsEmail").value.trim() || $("idsEmail").value.trim().toLowerCase() === (sansEmail(SESSION && SESSION.email) ? "" : (SESSION.email || "").toLowerCase())));
 $("bIdsOk").onclick = ()=> occupe($("bIdsOk"), async ()=>{
-  const ident = nomIdentifiant($("idsIdent").value), e = $("idsEmail").value.trim(), m = $("idsMdp").value;
-  if (!IDENT_OK(ident)) return message("msgIds","Identifiant : de 3 à 30 lettres ou chiffres, sans espace ni accent (ex. terrine).","err");
+  const parEmail = idsEstEmail(), saisie = $("idsIdent").value.trim();
+  const ident = parEmail ? "" : nomIdentifiant(saisie), e = parEmail ? saisie : $("idsEmail").value.trim(), m = $("idsMdp").value;
+  if (parEmail && (!/^\S+@\S+\.\S+$/.test(e) || sansEmail(e))) return message("msgIds","Adresse e-mail incomplète : vérifiez-la.","err");
+  if (!parEmail && !IDENT_OK(ident)) return message("msgIds","Identifiant : de 3 à 30 lettres ou chiffres, sans espace ni accent (ex. terrine), ou votre adresse e-mail.","err");
   const faible = mdpFaible(m, [ident, e, SESSION && SESSION.commerce && SESSION.commerce.nom]);
   if (faible) return message("msgIds", faible, "err");
   if (e && (!/^\S+@\S+\.\S+$/.test(e) || sansEmail(e))) return message("msgIds","Adresse e-mail invalide (ou laissez la case vide).","err");
-  if (e && !$("idsEmailBis").classList.contains("cache") && e.toLowerCase() !== $("idsEmail2").value.trim().toLowerCase()) return message("msgIds","Les deux adresses e-mail ne sont pas identiques : vérifiez-les.","err");
+  if (!parEmail && e && !$("idsEmailBis").classList.contains("cache") && e.toLowerCase() !== $("idsEmail2").value.trim().toLowerCase()) return message("msgIds","Les deux adresses e-mail ne sont pas identiques : vérifiez-les.","err");
   try{
     const i = await API.mesPremiersIdentifiants(ident, e, m);
-    SESSION.identifiant = i || ident; SESSION.email = e ? e.toLowerCase() : SESSION.identifiant + SANS_EMAIL; SESSION.commerce.rappel_identifiants = false;
+    SESSION.identifiant = parEmail ? null : (i || ident); SESSION.email = e ? e.toLowerCase() : SESSION.identifiant + SANS_EMAIL; SESSION.commerce.rappel_identifiants = false;
     $("idsFond").classList.add("cache"); focusTel();
-    alerte(`✓ C'est fait : identifiant « ${SESSION.identifiant} » et mot de passe enregistrés. Notez-les bien !`);
+    alerte(`✓ C'est fait : vous vous connecterez avec « ${parEmail ? SESSION.email : SESSION.identifiant} » et votre mot de passe. Notez-les bien !`);
   }catch(err){ message("msgIds", err.message, "err"); }
 });
 $("idsMdp").addEventListener("keydown", e=>{ if (e.key === "Enter") $("bIdsOk").click(); });
