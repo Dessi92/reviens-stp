@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="76">
+<meta name="app-version" content="86">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -1195,8 +1195,8 @@
       <div id="smsPresInfo"></div>
     </div>
     <label for="smsExp">Nom de l'expéditeur (ce que le client voit à la place d'un numéro)</label>
-    <input id="smsExp" type="text" maxlength="11" placeholder="ex. Terrine">
-    <p class="note" style="margin-top:4px">11 lettres ou chiffres au plus, sans accent.</p>
+    <input id="smsExp" type="text" maxlength="11" placeholder="ex. Louise" autocapitalize="off" spellcheck="false">
+    <p class="note" id="smsExpNote" style="margin-top:4px"></p>
     <div id="smsAutoTotal" class="smsCompte"></div>
     <button class="btn principal" id="bSmsEnregistrer">Enregistrer</button>
     <div id="msgSms"></div>
@@ -1483,6 +1483,7 @@ function apiSupabase(sb){
     async smsPromo(texte){ return v(await sb.rpc("sms_promo", {p_texte:texte})); },
     async adminSmsListe(){ return v(await sb.rpc("admin_sms_liste")); },
     async adminSms(id, actif){ v(await sb.rpc("admin_sms", {p_id:id, p_active:actif})); },
+    async adminSmsExpediteur(id, nom){ return v(await sb.rpc("admin_sms_expediteur", {p_id:id, p_nom:nom || null})); },
     async adminSmsSolde(id, montant){ return Number(v(await sb.rpc("admin_sms_solde", {p_id:id, p_montant:montant}))); },
     async smsRecharger(){ throw new Error("Le paiement par carte arrive très bientôt. En attendant, écrivez au support 💬 pour recharger votre porte-monnaie SMS."); },
     async adminParrainValider(id, ok){ v(await sb.rpc("admin_parrainage_valider", {p_filleul:id, p_valide:!!ok})); },
@@ -1908,7 +1909,8 @@ function apiDemo(){
       sauver();
       return {nb_clients:dest.length, nb_sms:nb, envoye_le};
     },
-    async adminSmsListe(){ const e = await this.smsEtat(); return [{id:"demo", sms_active:!!D.commerce.sms_active, sms_solde:e.solde, sms_mois:e.utilises}]; },
+    async adminSmsListe(){ const e = await this.smsEtat(); return [{id:"demo", sms_active:!!D.commerce.sms_active, sms_solde:e.solde, sms_mois:e.utilises, sms_expediteur:D.commerce.sms_expediteur || null, expediteur_demande:(D.commerce.sms || {}).expediteur_demande || null}]; },
+    async adminSmsExpediteur(id, nom){ if (id !== "demo") throw new Error("Commerce d'exemple"); D.commerce.sms_expediteur = nom || null; if (SESSION && SESSION.commerce) SESSION.commerce.sms_expediteur = D.commerce.sms_expediteur; sauver(); return nom || SMS_EXPEDITEUR; },
     async smsRecharger(m){ D.commerce.sms_solde = Math.round(((D.commerce.sms_solde || 0) + m) * 1000) / 1000; (D.sms_recharges = D.sms_recharges || []).push({montant:m, mode:"carte", cree_le:new Date().toISOString()}); sauver(); },
     async adminSms(id, actif){ if (id !== "demo") throw new Error("Commerce d'exemple"); D.commerce.sms_active = actif; sauver(); },
     async adminSmsSolde(id, m){ if (id !== "demo") throw new Error("Commerce d'exemple"); D.commerce.sms_solde = Math.max(0, Math.round(((D.commerce.sms_solde || 0) + m) * 100) / 100); (D.sms_recharges = D.sms_recharges || []).push({montant:m, mode:"manuel", cree_le:new Date().toISOString()}); sauver(); return D.commerce.sms_solde; },
@@ -2008,18 +2010,33 @@ const smsParts = t => smsMesure(t).parts;
 // Le texte exact reçu par un client : nom, commerce, réduction, accents remplacés, STOP
 function smsTexte(modele, nomClient){
   const c = SESSION.commerce, nom = (nomClient || "").trim();
-  return smsNettoyer(String(modele || "").replace(/\s?\{nom\}/g, ()=> nom ? " " + nom : "").replace(/\{commerce\}/g, ()=> c.nom).replace(/\{remise\}/g, ()=> c.remise).trim()).replace(/\r/g, "") + SMS_STOP;
+  let t = smsNettoyer(String(modele || "").replace(/\s?\{nom\}/g, ()=> nom ? " " + nom : "").replace(/\{commerce\}/g, ()=> c.nom).replace(/\{remise\}/g, ()=> c.remise).trim()).replace(/\r/g, "");
+  // L'expéditeur est « ReviensSTP » pour tous : le nom du commerce est mis devant s'il n'est pas dans le message (même règle que la base)
+  const nc = smsNettoyer((c.nom || "").trim()).replace(/\r/g, "");
+  if (!c.sms_expediteur && nc && !t.toLowerCase().includes(nc.toLowerCase())) t = nc + " : " + t;
+  return t + SMS_STOP;
 }
+const SMS_EXPEDITEUR = "ReviensSTP";   // ID d'expéditeur commun, vérifié par Brevo le 24/11/2026
+// Expéditeur propre à un commerce : 3 à 11 lettres ou chiffres, sans espace ni accent (règle Brevo), au moins une lettre
+const EXP_OK = x => /^[A-Za-z0-9]{3,11}$/.test(x || "") && /[A-Za-z]/.test(x);
+const smsExpActuel = () => (SESSION && SESSION.commerce && SESSION.commerce.sms_expediteur) || SMS_EXPEDITEUR;
+// Nom proposé à partir du nom du commerce : « Maison Louise » → « Louise », « T-bone » → « Tbone »
 function smsExpediteur(nom){
-  const e = smsNettoyer(nom || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
-  const e11 = e.length <= 11 ? e : (e.slice(0, 12).match(/^(.*\S)\s/) || [, e.slice(0, 11)])[1].trim();
-  if (/[A-Za-z]/.test(e11)) return e11;
-  return "Reviens STP";
+  const mots = smsNettoyer(nom || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).filter(Boolean)
+    .map(m => m[0].toUpperCase() + m.slice(1));
+  const generiques = /^(maison|boucherie|boulangerie|charcuterie|patisserie|fromagerie|epicerie|traiteur|restaurant|cafe|bar|chez|la|le|les|l|au|aux|de|du|des|d)$/i;
+  for (let i = 0; i < mots.length; i++){
+    if (i && !generiques.test(mots[i-1])) break;
+    const e = mots.slice(i).join("");
+    if (EXP_OK(e)) return e;
+  }
+  const e = mots.join("").slice(0, 11);
+  return EXP_OK(e) ? e : "";
 }
 const SMS_PRESQUE_ROUE = "Bonjour{nom}, plus qu'un passage chez {commerce} et un cadeau ou une réduction est à gagner sur notre roue !";
 function smsReglages(){
   const s = SESSION.commerce.sms || {};
-  const r = {expediteur:s.expediteur || "", relance:{...SMS_DEFAUT.relance, ...(s.relance || {})}, presque:{...SMS_DEFAUT.presque, ...(s.presque || {})}};
+  const r = {expediteur_demande:s.expediteur_demande || "", relance:{...SMS_DEFAUT.relance, ...(s.relance || {})}, presque:{...SMS_DEFAUT.presque, ...(s.presque || {})}};
   // Roue des 100 points : pas de « réduction de X % » dans le texte proposé
   if (palierRoue() && r.presque.texte === SMS_DEFAUT.presque.texte) r.presque.texte = SMS_PRESQUE_ROUE;
   return r;
@@ -2066,7 +2083,7 @@ function smsLotsExemple(D){
 let SMS_ETAT = null, SMS_DEST = [], SMS_ADMIN = {};
 const SMS_TYPES = {promo:"📣 Promo", relance:"🤖 Vous nous manquez", presque:"🤖 Plus qu'un passage"};
 function smsBulle(texte){
-  const exp = smsExpediteur($("smsExp").value.trim() || SESSION.commerce.nom);
+  const exp = smsExpActuel();
   return `<div class="smsTel"><div class="smsExp">${echapper(exp)}</div><div class="smsBulle">${echapper(texte)}</div></div>`;
 }
 function smsInfoTexte(modele, nomExemple){
@@ -2168,14 +2185,16 @@ function smsPromoAttente(e){
 function lireSmsForm(){
   const nb = (id, def) => { const v = parseInt($(id).value, 10); return Number.isFinite(v) ? v : def; };
   return {
-    expediteur: $("smsExp").value.trim(),
+    expediteur_demande: $("smsExp").value.trim(),
     relance:{actif:$("smsRelActif").checked, jours:nb("smsRelJours", 30), texte:$("smsRelTexte").value.trim()},
     presque:{actif:$("smsPresActif").checked, jours:nb("smsPresJours", 14), texte:$("smsPresTexte").value.trim()},
   };
 }
 async function afficherSms(){
   const c = SESSION.commerce, r = smsReglages();
-  $("smsExp").value = r.expediteur || smsExpediteur(c.nom);
+  $("smsExp").value = r.expediteur_demande || c.sms_expediteur || "";
+  $("smsExp").placeholder = "ex. " + (smsExpediteur(c.nom) || "Louise");
+  majSmsExpNote();
   $("smsRelActif").checked = !!r.relance.actif; $("smsRelJours").value = r.relance.jours; $("smsRelTexte").value = r.relance.texte;
   $("smsPresActif").checked = !!r.presque.actif; $("smsPresJours").value = r.presque.jours; $("smsPresTexte").value = r.presque.texte;
   message("msgSms", ""); message("msgSmsPromo", "");
@@ -2189,7 +2208,7 @@ async function afficherSms(){
   $("smsPrixTxt").textContent = `${(SMS_PRIX * 100).toLocaleString("fr-FR", {maximumFractionDigits:1})} centimes`;
   RECH = null; $("smsRechAutre").value = ""; message("msgSmsRech", "");
   $("smsRechHisto").innerHTML = SMS_ETAT && (SMS_ETAT.recharges || []).length ? "Dernières recharges : " + SMS_ETAT.recharges.slice(0, 5)
-    .map(r=>`${dateCourte(r.cree_le)} ${Number(r.montant) > 0 ? "+" : ""}${eurosSms(Number(r.montant))}${r.mode === "manuel" ? " (support)" : ""}`).join(" · ") : "";
+    .map(r=>`${dateCourte(r.cree_le)} ${Number(r.montant) > 0 ? "+" : ""}${eurosSms(Number(r.montant))}${r.mode === "manuel" ? " (support)" : r.mode === "rembourse" ? " (SMS non partis, remboursés)" : ""}`).join(" · ") : "";
   const e = SMS_ETAT;
   $("smsBandeau").innerHTML = DEMO ? "🎬 <b>Démo</b> : aucun SMS n'est vraiment envoyé. Essayez d'écrire une promo pour voir ce que reçoit le client."
     : e && e.active ? "✅ <b>Service SMS actif.</b> Envois du lundi au samedi, de 10 h à 19 h, jamais les jours fériés."
@@ -2204,12 +2223,26 @@ async function afficherSms(){
       const rev = futur || recent ? "revenus en 7 j : en cours" : `<b>${l.revenus}</b> revenu${l.revenus > 1 ? "s" : ""} en 7 j${l.nb_clients ? ` (${Math.round(100*l.revenus/l.nb_clients)} %)` : ""}`;
       return `<div class="smsLot"><div class="t">${SMS_TYPES[l.type] || echapper(l.type)}<span>${quand}</span></div>
         <div class="m">${echapper(texte.length > 110 ? texte.slice(0, 107) + "…" : texte)}</div>
-        <div class="c">${pluriel(l.nb_clients, "client")} · ${l.nb_sms} SMS · ${rev}</div></div>`;
+        <div class="c">${pluriel(l.nb_clients, "client")} · ${l.nb_sms} SMS · ${rev}${l.non_envoyes ? ` · ${l.non_envoyes} non parti${l.non_envoyes > 1 ? "s" : ""} (remboursé${l.non_envoyes > 1 ? "s" : ""})` : ""}</div></div>`;
     }).join("") || `<p class="note">Aucun SMS envoyé pour l'instant.</p>`;
   }
   majSmsApercus();
 }
 for (const id of ["smsPromo","smsRelTexte","smsPresTexte","smsExp","smsRelJours","smsPresJours"]) $(id).addEventListener("input", majSmsApercus);
+$("smsExp").addEventListener("input", majSmsExpNote);
+// État de l'expéditeur : validé, demandé (en attente de Reviens STP) ou commun « ReviensSTP »
+function majSmsExpNote(){
+  const c = SESSION.commerce, v = $("smsExp").value.trim(), dem = (c.sms || {}).expediteur_demande || "", ok = c.sms_expediteur;
+  const regle = "3 à 11 lettres ou chiffres, sans espace ni accent.";
+  const attente = `vos SMS partent au nom de <b>« ${echapper(ok || SMS_EXPEDITEUR)} »</b>${ok ? "" : ", avec le nom de votre commerce au début du message s'il n'y est pas"}`;
+  let t;
+  if (v && !EXP_OK(v)) t = `<span class="att">${regle}</span>`;
+  else if (ok && (!v || v === ok)) t = `✅ Vos SMS arrivent au nom de <b>« ${echapper(ok)} »</b>.`;
+  else if (!v) t = `Vos SMS partent au nom de <b>« ${SMS_EXPEDITEUR} »</b>, avec le nom de votre commerce au début du message s'il n'y est pas. Vous pouvez demander votre propre nom ci-dessus (${regle.replace(".", "")}), puis « Enregistrer ».`;
+  else if (dem && v === dem) t = `⏳ <b>« ${echapper(dem)} »</b> demandé : Reviens STP le fait valider (en général en quelques minutes). En attendant, ${attente}.`;
+  else t = `${regle} Appuyez sur « Enregistrer » pour demander ce nom. En attendant, ${attente}.`;
+  $("smsExpNote").innerHTML = t;
+}
 for (const id of ["smsRelActif","smsPresActif"]) $(id).addEventListener("change", majSmsApercus);
 for (const z of document.querySelectorAll(".smsTags")) for (const b of z.querySelectorAll("button")) b.onclick = ()=>{
   const t = $(z.dataset.cible), a = t.selectionStart ?? t.value.length, f = t.selectionEnd ?? a, tag = b.dataset.tag;
@@ -2223,8 +2256,10 @@ $("bSmsEnregistrer").onclick = ()=> occupe($("bSmsEnregistrer"), async ()=>{
     if (!r[k].texte) return message("msgSms", `Écrivez le message ${nom}.`, "err");
     if (!(r[k].jours >= min && r[k].jours <= 365)) return message("msgSms", `${nom} : choisissez entre ${min} et 365 jours.`, "err");
   }
-  r.expediteur = smsExpediteur(r.expediteur || SESSION.commerce.nom); $("smsExp").value = r.expediteur;
-  try{ SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {sms:r}); message("msgSms", "✓ Relances enregistrées.", "ok"); majSmsApercus(); }
+  const exp = r.expediteur_demande;
+  if (exp && !EXP_OK(exp)) return message("msgSms", "Nom de l'expéditeur : 3 à 11 lettres ou chiffres, sans espace ni accent (ex. Louise, MLouise).", "err");
+  if (!exp || exp === SESSION.commerce.sms_expediteur) r.expediteur_demande = "";
+  try{ SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {sms:r}); message("msgSms", r.expediteur_demande ? `✓ Enregistré. Nom d'expéditeur « ${r.expediteur_demande} » demandé.` : "✓ Relances enregistrées.", "ok"); majSmsExpNote(); majSmsApercus(); }
   catch(e){ message("msgSms", e.message, "err"); }
 });
 $("bSmsPromo").onclick = ()=>{
@@ -2242,7 +2277,8 @@ $("bSmsValider").onclick = ()=> occupe($("bSmsValider"), async ()=>{
     const r = await API.smsPromo($("smsPromo").value.trim());
     $("smsFond").classList.add("cache"); $("smsPromo").value = "";
     await afficherSms();
-    message("msgSmsPromo", `✓ ${r.nb_sms} SMS ${DEMO ? "enregistrés (démo : rien n'est vraiment envoyé)" : "prêts"} pour ${pluriel(r.nb_clients, "client")}, envoi ${creneauFr(new Date(r.envoye_le))}.`, "ok");
+    const s = r.nb_sms > 1 ? "s" : "";
+    message("msgSmsPromo", `✓ ${r.nb_sms} SMS ${DEMO ? `enregistré${s} (démo : rien n'est vraiment envoyé)` : `prêt${s}`} pour ${pluriel(r.nb_clients, "client")}, envoi ${creneauFr(new Date(r.envoye_le))}.`, "ok");
   }catch(e){ $("smsFond").classList.add("cache"); message("msgSmsPromo", e.message, "err"); }
 });
 
@@ -3714,7 +3750,8 @@ async function afficherGerant(){
   try{ for (const c of await API.adminSmsListe()) SMS_ADMIN[c.id] = c; }catch(e){}
   for (const sp of $("gListe").querySelectorAll("[data-smsinfo]")){
     const x = SMS_ADMIN[sp.dataset.smsinfo];
-    sp.textContent = x ? `📱 SMS ${x.sms_active ? "actifs" : "coupés"} · ${x.sms_mois} ce mois · porte-monnaie ${eurosSms(Number(x.sms_solde) || 0)}` : "";
+    sp.textContent = x ? `📱 SMS ${x.sms_active ? "actifs" : "coupés"} · ${x.sms_mois} ce mois · porte-monnaie ${eurosSms(Number(x.sms_solde) || 0)} · expéditeur « ${x.sms_expediteur || SMS_EXPEDITEUR} »`
+      + (x.expediteur_demande && x.expediteur_demande !== x.sms_expediteur ? ` · ⏳ demande « ${x.expediteur_demande} » à valider` : "") : "";
   }
   PALIER_ADMIN = {};
   try{ for (const c of await API.adminPalierListe()) PALIER_ADMIN[c.id] = !!c.palier_roue; }catch(e){}
@@ -4640,9 +4677,21 @@ async function actionCommerce(b){
       }
     } else if (b.dataset.sms){
       const etat = SMS_ADMIN[x.id] || {sms_active:false, sms_solde:0};
-      const r = prompt(`SMS de « ${x.commerce} » : ${etat.sms_active ? "actifs" : "coupés"}, porte-monnaie ${eurosSms(Number(etat.sms_solde) || 0)}.\n\nTapez :\n  A pour ${etat.sms_active ? "couper" : "activer"} les SMS\n  un montant en euros à ajouter (payé en liquide, geste commercial), ex. 20\n  un montant négatif pour en retirer, ex. -5`);
+      const dem = etat.expediteur_demande && etat.expediteur_demande !== etat.sms_expediteur ? etat.expediteur_demande : "";
+      const r = prompt(`SMS de « ${x.commerce} » : ${etat.sms_active ? "actifs" : "coupés"}, porte-monnaie ${eurosSms(Number(etat.sms_solde) || 0)}, expéditeur « ${etat.sms_expediteur || SMS_EXPEDITEUR} »${dem ? `, demande « ${dem} »` : ""}.\n\nTapez :\n  A pour ${etat.sms_active ? "couper" : "activer"} les SMS\n  un montant en euros à ajouter (payé en liquide, geste commercial), ex. 20\n  un montant négatif pour en retirer, ex. -5\n  E pour valider un nom d'expéditeur (APRÈS l'avoir fait vérifier dans Brevo)${etat.sms_expediteur ? `\n  R pour revenir à « ${SMS_EXPEDITEUR} »` : ""}`);
       if (r === null || !r.trim()) return;
-      if (r.trim().toUpperCase() === "A"){
+      const rc = r.trim().toUpperCase();
+      if (rc === "E" || (rc === "R" && etat.sms_expediteur)){
+        let nom = null;
+        if (rc === "E"){
+          nom = prompt(`Nom d'expéditeur de « ${x.commerce} », tel qu'il est « Vérifié » dans Brevo (Paramètres → ID d'expéditeur SMS) :`, dem || etat.sms_expediteur || "");
+          if (nom === null || !nom.trim()) return;
+          if (!EXP_OK(nom.trim())) return alert("Rien n'a changé : 3 à 11 lettres ou chiffres, sans espace ni accent.");
+        }
+        const n = await API.adminSmsExpediteur(x.id, nom && nom.trim());
+        if (SMS_ADMIN[x.id]) SMS_ADMIN[x.id].sms_expediteur = nom ? nom.trim() : null;
+        alerte(`📱 ${x.commerce} : SMS envoyés au nom de « ${n} »`);
+      } else if (rc === "A"){
         await API.adminSms(x.id, !etat.sms_active);
         alerte(!etat.sms_active ? `📱 SMS activés pour ${x.commerce}` : `SMS coupés pour ${x.commerce}`);
       } else {
