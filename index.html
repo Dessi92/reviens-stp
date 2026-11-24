@@ -587,6 +587,9 @@
     <p class="note" style="margin-top:4px" id="idsIdentNote">Un mot simple (ex. le nom du commerce, sans espace ni accent) ou votre adresse e-mail.</p>
     <label for="idsMdp">Mot de passe (8 caractères minimum, avec au moins une lettre et un chiffre)</label>
     <div class="mdpLigne"><input id="idsMdp" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false"><button type="button" class="mdpVoir" data-voir="idsMdp" aria-label="Afficher le mot de passe">👁</button></div>
+    <label for="idsTel">Téléphone portable du commerce</label>
+    <input id="idsTel" type="tel" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78">
+    <p class="note" style="margin-top:4px">Pour vous joindre et vous aider si le mot de passe est oublié. Jamais transmis à personne.</p>
     <div id="idsEmailBloc"><label for="idsEmail">Adresse e-mail <span class="note">(facultatif, en cas de mot de passe oublié)</span></label>
     <input id="idsEmail" type="email" autocomplete="email" placeholder="contact@moncommerce.fr">
     <div id="idsEmailBis" class="cache"><label for="idsEmail2">Retapez l'adresse e-mail</label>
@@ -1446,7 +1449,9 @@ function apiSupabase(sb){
     async nouveauMdp(mdp){ v(await sb.auth.updateUser({password:mdp})); },
     async nouvelEmail(email){ v(await sb.auth.updateUser({email}, {emailRedirectTo: adresseApp()})); },
     async mesIdentifiants(email, mdp){ v(await sb.rpc("mes_identifiants", {p_email: email, p_mdp: mdp})); await sb.auth.refreshSession().catch(()=>{}); },
-    async mesPremiersIdentifiants(ident, email, mdp){ const i = v(await sb.rpc("mes_premiers_identifiants", {p_identifiant: ident, p_email: email || "", p_mdp: mdp})); await sb.auth.refreshSession().catch(()=>{}); return i; },
+    async mesPremiersIdentifiants(ident, email, mdp, tel){ const i = v(await sb.rpc("mes_premiers_identifiants", {p_identifiant: ident, p_email: email || "", p_mdp: mdp, p_tel: tel})); await sb.auth.refreshSession().catch(()=>{}); return i; },
+    async telephonePartage(){ return !!v(await sb.rpc("mon_telephone_partage")); },
+    async adminMdpProvisoire(id){ const r = v(await sb.rpc("admin_mdp_provisoire", {p_id: id})); return Array.isArray(r) ? r[0] : r; },
     async changerIdentifiant(ident){ const i = v(await sb.rpc("changer_identifiant", {p_identifiant: ident})); await sb.auth.refreshSession().catch(()=>{}); return i; },
     async adminIdentifiants(){ return v(await sb.rpc("admin_identifiants")); },
     async adminRappelIdentifiants(id, oui){ v(await sb.rpc("admin_rappel_identifiants", {p_id: id, p_oui: !!oui})); },
@@ -1676,8 +1681,12 @@ function apiDemo(){
     async nouvelEmail(email){ D.email = email; sauver(); },
     async mesIdentifiants(email, mdp){ if (!D.commerce.rappel_identifiants) throw new Error("Rien à changer sur ce compte"); D.email = email.trim().toLowerCase(); D.mdp = mdp; D.commerce.rappel_identifiants = false; sauver(); },
     async verifierMdp(email, mdp){ if (D.mdp && mdp !== D.mdp) throw new Error("Mot de passe actuel incorrect."); },
-    async mesPremiersIdentifiants(ident, email, mdp){
+    async telephonePartage(){ return D.commerce.telephone === "0600000088"; },
+    async adminMdpProvisoire(id){ if (id === "demo"){ D.mdp = "Clef4821KM"; D.commerce.rappel_identifiants = true; sauver(); }
+      return {mot_de_passe:"Clef4821KM", connexion:id === "demo" ? (D.identifiant || D.email) : "boulangerie"}; },
+    async mesPremiersIdentifiants(ident, email, mdp, tel){
       if (!D.commerce.rappel_identifiants) throw new Error("Rien à changer sur ce compte");
+      if (tel) D.commerce.telephone = tel;
       if (ident === "pris") throw new Error("Cet identifiant est déjà pris : choisissez-en un autre");
       if (!ident && !email) throw new Error("Tapez un identifiant ou une adresse e-mail");
       D.identifiant = ident || null; D.email = email ? email.trim().toLowerCase() : ident + SANS_EMAIL; D.mdp = mdp; D.commerce.rappel_identifiants = false; sauver(); return ident || D.email; },
@@ -2263,6 +2272,10 @@ function proposerIdentifiants(){
   try{ if (localStorage.getItem(CLE_IDS) === new Date().toDateString()) return false; }catch(e){}
   $("idsIdent").value = SESSION.identifiant || nomIdentifiant(SESSION.commerce.nom || "").replace(/[^a-z0-9._-]/g, "").slice(0, 30);
   majIdsMode();
+  // Téléphone : celui du commerce, sauf si c'est un numéro mis aussi dans d'autres comptes (celui de Reviens STP à l'installation)
+  $("idsTel").value = "";
+  const tel = SESSION.commerce.telephone;
+  if (tel) API.telephonePartage().then(partage => { if (!partage && !$("idsTel").value) $("idsTel").value = joli(tel); }).catch(()=>{});
   $("idsEmail").value = sansEmail(SESSION.email) ? "" : (SESSION.email || ""); $("idsMdp").value = ""; message("msgIds","");
   $("idsEmail2").value = ""; $("idsMdp").type = "password"; $("idsEmailBis").classList.add("cache");
   $("idsFond").classList.remove("cache"); $("idsEmail").focus();
@@ -2290,8 +2303,11 @@ $("bIdsOk").onclick = ()=> occupe($("bIdsOk"), async ()=>{
   if (faible) return message("msgIds", faible, "err");
   if (e && (!/^\S+@\S+\.\S+$/.test(e) || sansEmail(e))) return message("msgIds","Adresse e-mail invalide (ou laissez la case vide).","err");
   if (!parEmail && e && !$("idsEmailBis").classList.contains("cache") && e.toLowerCase() !== $("idsEmail2").value.trim().toLowerCase()) return message("msgIds","Les deux adresses e-mail ne sont pas identiques : vérifiez-les.","err");
+  const tel = normaliser($("idsTel").value);
+  if (!TEL_OK(tel)) return message("msgIds","Téléphone portable du commerce : 06 ou 07, 10 chiffres.","err");
   try{
-    const i = await API.mesPremiersIdentifiants(ident, e, m);
+    const i = await API.mesPremiersIdentifiants(ident, e, m, tel);
+    SESSION.commerce.telephone = tel;
     SESSION.identifiant = parEmail ? null : (i || ident); SESSION.email = e ? e.toLowerCase() : SESSION.identifiant + SANS_EMAIL; SESSION.commerce.rappel_identifiants = false;
     $("idsFond").classList.add("cache"); focusTel();
     alerte(`✓ C'est fait : vous vous connecterez avec « ${parEmail ? SESSION.email : SESSION.identifiant} » et votre mot de passe. Notez-les bien !`);
@@ -2614,7 +2630,7 @@ $("bConnexion").onclick = ()=> occupe($("bConnexion"), async ()=>{
 $("cxMdp").addEventListener("keydown", e=>{ if (e.key==="Enter") $("bConnexion").click(); });
 $("bOubli").onclick = async ()=>{
   const email = identifiant($("cxEmail").value);
-  if (sansEmail(email)) return message("msgConnexion","Tapez ci-dessus l'adresse e-mail de votre compte (pas l'identifiant). Pas encore d'e-mail ? Contactez Reviens STP.","info");
+  if (sansEmail(email)) return message("msgConnexion","Compte avec une adresse e-mail : tapez-la ci-dessus, un lien vous sera envoyé. Pas d'e-mail sur ce compte ? Contactez Reviens STP : on vous donne un mot de passe provisoire par téléphone.","info");
   if (!/^\S+@\S+\.\S+$/.test(email)) return message("msgConnexion","Écrivez d'abord votre adresse e-mail ci-dessus.","info");
   try{ await API.oubli(email); message("msgConnexion","Si un compte existe, un e-mail pour changer le mot de passe vient d'être envoyé.","ok"); }
   catch(e){ message("msgConnexion", e.message, "err"); }
@@ -4591,11 +4607,21 @@ async function actionCommerce(b){
   if (b.dataset.contrat) return ouvrirContratAdmin(x);
   if (b.dataset.ident){
     const k = IDENT_ADMIN[x.id] || {}, deja = !!k.rappel_identifiants;
-    const q = deja ? `« ${x.commerce} » doit déjà choisir ses identifiants à la prochaine ouverture.\n\nAnnuler cette demande ?`
-      : `À la prochaine ouverture de l'appli, « ${x.commerce} » devra choisir son identifiant et son mot de passe (fenêtre obligatoire, à faire avec lui).\n\nIdentifiant actuel : ${k.identifiant || "aucun (e-mail)"}.\n\nContinuer ?`;
-    if (!confirm(q)) return;
-    try{ await API.adminRappelIdentifiants(x.id, !deja); alerte(deja ? "🔑 Demande annulée." : `🔑 ${x.commerce} choisira ses identifiants à la prochaine ouverture.`); afficherGerant(); }
-    catch(e){ alert(e.message); }
+    const choix = prompt(`🔑 Identifiants de « ${x.commerce} » (connexion : ${k.identifiant || "par e-mail"})${deja ? ", à choisir à la prochaine ouverture" : ""}.\n\n`
+      + `1 = ${deja ? "annuler la demande de nouveaux identifiants" : "lui faire choisir de nouveaux identifiants à la prochaine ouverture"}\n`
+      + `2 = mot de passe oublié : lui donner un mot de passe provisoire (à dicter au téléphone)\n\nTapez 1 ou 2 :`);
+    if (choix === null || !choix.trim()) return;
+    try{
+      if (choix.trim() === "1"){
+        await API.adminRappelIdentifiants(x.id, !deja);
+        alerte(deja ? "🔑 Demande annulée." : `🔑 ${x.commerce} choisira ses identifiants à la prochaine ouverture.`);
+      } else if (choix.trim() === "2"){
+        if (!confirm(`Donner un mot de passe provisoire à « ${x.commerce} » ?\n\nSon mot de passe actuel ne marchera plus. Les tablettes déjà connectées restent connectées.`)) return;
+        const r = await API.adminMdpProvisoire(x.id);
+        alert(`🔑 Mot de passe provisoire de « ${x.commerce} » :\n\n${r.mot_de_passe}\n\nÀ dicter au téléphone. Il se connecte avec « ${r.connexion} » et ce mot de passe, puis choisit son nouveau mot de passe dans la fenêtre qui s'ouvre.\n\nCe mot de passe n'est affiché qu'une seule fois : notez-le.`);
+      } else return alert("Tapez 1 ou 2.");
+      afficherGerant();
+    }catch(e){ alert(e.message); }
     return;
   }
   try{
