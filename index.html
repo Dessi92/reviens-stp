@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="88">
+<meta name="app-version" content="89">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -99,6 +99,27 @@
   .smsTags button{border:1px solid var(--bord);background:var(--carte);color:var(--texte);border-radius:99px;padding:4px 10px;font-size:13px;cursor:pointer}
   .smsBloc{border:1px solid var(--bord);border-radius:14px;padding:12px;margin:12px 0;background:#fff}
   .smsBloc .case{margin-top:0}
+  .cible{border:1px solid var(--bord);border-radius:14px;padding:12px;margin:12px 0;background:#fff}
+  .cibleTete{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:16px}
+  .cible .lien{border:0;background:none;color:var(--accent);font-size:14px;cursor:pointer;padding:4px;text-decoration:underline}
+  .cibleChips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+  .cibleChips button{border:1px solid var(--bord);background:var(--carte);color:var(--texte);border-radius:99px;padding:6px 12px;font-size:14px;cursor:pointer}
+  .cibleChips button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .cibleFiltres{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;font-size:13px;color:var(--doux)}
+  .cibleFiltres input,.cibleFiltres select,.cibleRegl input,.cibleRegl select{width:100%;font-size:15px;padding:6px 8px;border:1px solid var(--bord);border-radius:8px;background:#fff;color:var(--texte);font-family:inherit;margin-top:2px}
+  .cible .duo{display:flex;gap:4px}
+  .cibleRegl{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;font-size:13px;color:var(--doux);border-top:1px solid var(--bord);border-bottom:1px solid var(--bord);padding:10px 0;margin:10px 0}
+  .cibleBarre{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;font-size:14px;flex-wrap:wrap}
+  .cibleBarre label{display:flex;gap:8px;align-items:center;cursor:pointer}
+  .cibleListe{max-height:380px;overflow-y:auto;border-top:1px solid var(--bord);margin-top:6px;user-select:none;-webkit-user-select:none}
+  .cibleLigne{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--bord);cursor:pointer}
+  .cibleLigne .cCase{width:24px;height:24px;border-radius:6px;border:2px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;touch-action:none}
+  .cibleLigne.sel .cCase{background:var(--accent);border-color:var(--accent)}
+  .cibleLigne.non{cursor:default;color:var(--doux)}
+  .cibleLigne.non .cCase{background:var(--gris);border-style:dashed}
+  .cibleLigne .qui{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cibleLigne .det{font-size:12px;color:var(--doux)}
+  .cibleLigne .pts{font-size:13px;color:var(--doux);white-space:nowrap}
   .smsAvis{border:2px solid var(--or, #d4a017);border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.4;margin:0 0 12px;background:var(--orclair)}
   .smsAvis p{margin:6px 0}.smsAvis ul{margin:6px 0;padding-left:20px}
   .smsBandeau{border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.4;margin:0 0 12px;background:var(--orclair)}
@@ -1182,9 +1203,31 @@
   </div>
   <div class="carte">
     <h2>📣 Envoyer une promo</h2>
-    <p class="note" style="margin-top:-6px">Un SMS à tous les clients qui ont accepté les SMS. Idéal pour une offre du week-end, un nouveau produit, une fermeture…</p>
+    <p class="note" style="margin-top:-6px">Un SMS aux clients que vous choisissez (tous, ou seulement certains). Idéal pour une offre du week-end, un nouveau produit, une fermeture…</p>
     <textarea id="smsPromo" maxlength="400" placeholder="ex. Ce week-end chez {commerce} : -10 % sur les terrines maison !"></textarea>
     <div class="smsTags" data-cible="smsPromo"><button data-tag="{nom}">+ nom du client</button><button data-tag="{commerce}">+ nom du commerce</button></div>
+    <div class="cible" id="cible">
+      <div class="cibleTete"><b>👥 À qui envoyer ?</b><button type="button" class="lien" id="bCibleRegl">⚙️ Régler les raccourcis</button></div>
+      <div class="cibleRegl cache" id="cibleRegl">
+        <label>« Fidèles » : au moins
+          <span class="duo"><input type="number" id="reglFidN" min="0.5" max="50" step="0.5"><select id="reglFidPar"><option value="semaine">passage(s) par semaine</option><option value="mois">passage(s) par mois</option></select></span></label>
+        <label>« Nouveaux » : inscrits il y a moins de (jours)<input type="number" id="reglNouvJ" min="1" max="365" step="1"></label>
+        <label>« Absents » : pas venus depuis au moins (jours)<input type="number" id="reglAbsJ" min="1" max="365" step="1"></label>
+        <label>« Proches d'une récompense » : il leur manque au plus (points)<input type="number" id="reglProcheP" min="1" max="10000" step="1"></label>
+        <div><button type="button" class="btn principal" id="bCibleReglOk" style="margin-top:4px;font-size:15px;padding:10px">Enregistrer les raccourcis</button><div id="msgCibleRegl"></div></div>
+      </div>
+      <input type="text" id="cibleQ" inputmode="search" autocomplete="off" placeholder="🔎 Rechercher un nom ou un numéro" style="margin-top:10px;width:100%">
+      <div class="cibleChips" id="cibleChips"></div>
+      <div class="cibleFiltres">
+        <label>Dernière visite il y a au moins<span class="duo"><input type="number" id="cibleVisite" min="0" step="1" placeholder="0"><span style="align-self:center">jours</span></span></label>
+        <label>Points, au moins<input type="number" id="ciblePts" min="0" step="1" placeholder="0"></label>
+        <label>Passages, au moins<span class="duo"><input type="number" id="cibleFreq" min="0" step="0.5" placeholder="0"><select id="cibleFreqPar"><option value="mois">/ mois</option><option value="semaine">/ semaine</option></select></span></label>
+        <label>Trier par<select id="cibleTri"><option value="visite">Dernière visite (récente)</option><option value="absence">Absence (la plus longue)</option><option value="points">Points</option><option value="freq">Passages par mois</option><option value="nouveau">Inscription (récente)</option><option value="nom">Nom</option></select></label>
+      </div>
+      <div class="cibleBarre"><label><input type="checkbox" id="cibleTout"> <span id="cibleToutTxt">Tout cocher</span></label><span id="cibleNb" class="note" style="margin:0"></span><button type="button" class="lien" id="cibleVider">Tout décocher</button></div>
+      <div class="cibleListe" id="cibleListe"></div>
+      <p class="note" style="margin:6px 0 0">Astuce : posez le doigt sur une case et glissez vers le haut ou le bas pour cocher plusieurs clients d'un coup.</p>
+    </div>
     <div id="smsPromoInfo"></div>
     <button class="btn principal" id="bSmsPromo">Envoyer</button>
     <div id="msgSmsPromo"></div>
@@ -1220,7 +1263,7 @@
     <div id="smsHisto"></div>
     <p class="note">« Revenus en 7 j » : clients passés en caisse dans les 7 jours qui suivent le SMS. Certains seraient venus de toute façon : c'est un repère, pas une preuve.</p>
   </div>
-  <p class="note" style="text-align:center">Environ 8 centimes le SMS (le prix exact est affiché avant chaque recharge et chaque envoi), payés avec votre porte-monnaie SMS (recharge de 10 € minimum). Un client reçoit au plus 2 SMS par mois de votre commerce, et une promo part au plus une fois par semaine. Seuls les clients qui ont accepté les SMS les reçoivent. « STOP » est ajouté à chaque message pour se désinscrire. Pas d'envoi le dimanche, les jours fériés, ni avant 10 h ou après 19 h. Les accents comme ê ou ç sont remplacés (é, è, à restent) pour qu'un message tienne dans un seul SMS.</p>
+  <p class="note" style="text-align:center">Environ 8 centimes le SMS (le prix exact est affiché avant chaque recharge et chaque envoi), payés avec votre porte-monnaie SMS (recharge de 10 € minimum). Un client reçoit au plus 2 SMS par mois de votre commerce (promos et envois automatiques compris). Seuls les clients qui ont accepté les SMS les reçoivent. « STOP » est ajouté à chaque message pour se désinscrire. Pas d'envoi le dimanche, les jours fériés, ni avant 10 h ou après 19 h. Les accents comme ê ou ç sont remplacés (é, è, à restent) pour qu'un message tienne dans un seul SMS.</p>
 </main>
 
 <main id="ecranSupport" class="cache">
@@ -1494,7 +1537,7 @@ function apiSupabase(sb){
     async adminParrainages(){ return v(await sb.rpc("admin_parrainages")); },
     async adminContacts(){ return v(await sb.rpc("admin_contacts")); },
     async smsEtat(){ return v(await sb.rpc("sms_etat")); },
-    async smsPromo(texte){ return v(await sb.rpc("sms_promo", {p_texte:texte})); },
+    async smsPromo(texte, ids){ return v(await sb.rpc("sms_promo", {p_texte:texte, p_clients:ids || null})); },
     async adminSmsListe(){ return v(await sb.rpc("admin_sms_liste")); },
     async adminSms(id, actif){ v(await sb.rpc("admin_sms", {p_id:id, p_active:actif})); },
     async adminSmsExpediteur(id, nom){ return v(await sb.rpc("admin_sms_expediteur", {p_id:id, p_nom:nom || null})); },
@@ -1920,11 +1963,11 @@ function apiDemo(){
         lots: lots.slice().sort((a,b)=>new Date(b.cree_le)-new Date(a.cree_le)).slice(0,20)
           .map(l=>({type:l.type, texte:l.texte, cree_le:l.cree_le, envoye_le:l.envoye_le, statut:l.statut, nb_clients:l.nb_clients, nb_sms:l.nb_sms, revenus:revenus(l)}))};
     },
-    async smsPromo(texte){
-      const co = D.commerce, e = await this.smsEtat(), pl = new Set(e.plafond);
-      if (smsPromoAttente(e)) throw new Error(`Une promo par semaine au plus : prochaine promo possible ${smsPromoAttente(e)}.`);
-      const dest = D.clients.filter(c=>c.accord_sms && !pl.has(c.id));
-      if (!dest.length) throw new Error("Aucun client à prévenir pour l'instant.");
+    async smsPromo(texte, ids){
+      const co = D.commerce, e = await this.smsEtat(), pl = new Set(e.plafond), choix = ids ? new Set(ids) : null;
+      if (ids && !ids.length) throw new Error("Choisissez au moins un client.");
+      const dest = D.clients.filter(c=>c.accord_sms && !pl.has(c.id) && (!choix || choix.has(c.id)));
+      if (!dest.length) throw new Error("Aucun de ces clients ne peut recevoir de SMS (pas d'accord SMS, ou déjà 2 SMS ce mois-ci).");
       const nb = dest.reduce((t,c)=>t + smsParts(smsTexte(texte, c.nom)), 0);
       const cout = Math.round(nb * SMS_PRIX * 1000) / 1000;
       if (cout > e.solde + 1e-9) throw new Error(`Cette promo coûte ${eurosSms(cout)}, votre porte-monnaie SMS contient ${eurosSms(e.solde)}. Rechargez-le pour l'envoyer.`);
@@ -2014,7 +2057,6 @@ let SMS_PRIX = 0.08;                   // prix compté par SMS (8 centimes, comm
 const RECH_MAX = 500;                  // recharge maximum par carte (vérifié aussi par la base)
 const RECH_MIN = 10;                   // recharge minimum du porte-monnaie SMS (frais de carte)
 const SMS_MAX_CLIENT = 2;              // un client reçoit au plus 2 SMS par mois de ce commerce
-const PROMO_JOURS = 7;                 // une promo par semaine au plus
 const eurosSms = n => n.toLocaleString("fr-FR", {minimumFractionDigits:2, maximumFractionDigits:2}) + " €";
 const SMS_STOP = "\nSTOP au 36xxx";    // mention de désinscription ajoutée à chaque SMS (numéro donné par le service SMS)
 const SMS_DEFAUT = {
@@ -2107,7 +2149,7 @@ function smsLotsExemple(D){
     {type:"relance", texte:SMS_DEFAUT.relance.texte, cree_le:j(4), envoye_le:j(4), statut:"demo", nb_clients:relClients.length, nb_sms:relClients.length, clients:relClients.map(c=>c.id)},
   ];
 }
-let SMS_ETAT = null, SMS_DEST = [], SMS_ADMIN = {};
+let SMS_ETAT = null, SMS_DEST = [], SMS_TOUS = [], SMS_ADMIN = {};
 const SMS_TYPES = {promo:"📣 Promo", relance:"🤖 Vous nous manquez", presque:"🤖 Plus qu'un passage"};
 function smsBulle(texte){
   const exp = smsExpActuel();
@@ -2133,17 +2175,15 @@ function majSmsApercus(){
   const nomEx = nomExemple(), e = SMS_ETAT || {utilises:0, solde:0, active:false};
   // Promo
   const promo = $("smsPromo").value.trim(), dest = smsDestPromo(), n = dest.length, saut = SMS_DEST.length - n;
-  const attente = smsPromoAttente(e);
   if (promo){
     const i = smsInfoTexte(promo, nomEx), total = dest.reduce((t,c)=>t + smsParts(smsTexte(promo, c.nom)), 0);
     $("smsPromoInfo").innerHTML = smsBulle(i.texte) + i.html + `<div class="smsCompte">Envoyé à <b>${pluriel(n, "client")}</b> · <b>${total} SMS</b>, soit <b>${eurosSms(total * SMS_PRIX)}</b>`
       + ` · envoi <b>${creneauFr(prochainCreneau())}</b>`
       + (saut ? `<br>${pluriel(saut, "client")} déjà prévenu${saut > 1 ? "s" : ""} ${SMS_MAX_CLIENT} fois ce mois-ci : ${saut > 1 ? "ils ne recevront" : "il ne recevra"} pas ce SMS.` : "")
       + (total * SMS_PRIX > e.solde + 1e-9 ? `<br><span class="att">Votre porte-monnaie contient ${eurosSms(e.solde)} : rechargez-le ci-dessus pour envoyer cette promo.</span>` : "") + `</div>`;
-    $("bSmsPromo").textContent = `Envoyer à ${pluriel(n, "client")}`;
-  } else { $("smsPromoInfo").innerHTML = ""; $("bSmsPromo").textContent = "Envoyer"; }
-  if (attente) $("smsPromoInfo").innerHTML += `<div class="smsCompte"><span class="att">Une promo par semaine au plus, pour ne pas lasser vos clients : prochaine promo possible ${attente}.</span></div>`;
-  $("bSmsPromo").disabled = !promo || !n || !!attente || (!DEMO && !e.active);
+    $("bSmsPromo").textContent = n ? `Envoyer à ${pluriel(n, "client")}` : "Cochez des clients ci-dessus";
+  } else { $("smsPromoInfo").innerHTML = ""; $("bSmsPromo").textContent = n ? `Écrivez votre promo (${pluriel(n, "client")} choisi${n > 1 ? "s" : ""})` : "Écrivez votre promo et cochez des clients"; }
+  $("bSmsPromo").disabled = !promo || !n || (!DEMO && !e.active);
   majRecharge();
   // Automatiques
   const r = lireSmsForm();
@@ -2222,12 +2262,9 @@ $("bSmsRecharger").onclick = ()=> occupe($("bSmsRecharger"), async ()=>{
     message("msgSmsRech", `✓ ${eurosSms(m)} ajoutés : ${nbSmsFr(m)} de plus.`, "ok");
   }catch(err){ message("msgSmsRech", err.message, "err"); }
 });
-const smsDestPromo = ()=>{ const pl = new Set((SMS_ETAT && SMS_ETAT.plafond) || []); return SMS_DEST.filter(c=>!pl.has(c.id)); };
-function smsPromoAttente(e){
-  if (!e || !e.derniere_promo) return "";
-  const d = new Date(new Date(e.derniere_promo).getTime() + PROMO_JOURS*864e5);
-  return d > Date.now() ? "le " + d.toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"long"}) : "";
-}
+// Destinataires de la promo = clients COCHÉS qui ont accepté les SMS et n'ont pas déjà reçu 2 SMS ce mois-ci
+const smsPlafond = ()=> new Set((SMS_ETAT && SMS_ETAT.plafond) || []);
+const smsDestPromo = ()=>{ const pl = smsPlafond(); return SMS_DEST.filter(c=>!pl.has(c.id) && CIBLE.sel.has(c.id)); };
 function lireSmsForm(){
   const nb = (id, def) => { const v = parseInt($(id).value, 10); return Number.isFinite(v) ? v : def; };
   return {...(SESSION.commerce.sms || {}),
@@ -2248,7 +2285,9 @@ async function afficherSms(){
   let liste;
   try{ [SMS_ETAT, liste] = await Promise.all([API.smsEtat(), API.liste()]); }
   catch(e){ SMS_ETAT = null; liste = []; $("smsChiffres").innerHTML = `<p class="note">${echapper(e.message)}</p>`; }
-  SMS_DEST = (liste || []).filter(x=>x.accord_sms);
+  SMS_TOUS = liste || []; SMS_DEST = SMS_TOUS.filter(x=>x.accord_sms);
+  { const ok = new Set(SMS_DEST.map(c=>c.id)); for (const id of [...CIBLE.sel]) if (!ok.has(id)) CIBLE.sel.delete(id); }
+  majCibleRegl(); majCible();
   if (SMS_ETAT && SMS_ETAT.prix) SMS_PRIX = Number(SMS_ETAT.prix);
   if (SMS_ETAT) SMS_ETAT.solde = Number(SMS_ETAT.solde) || 0;
   $("smsPrixTxt").textContent = `${(SMS_PRIX * 100).toLocaleString("fr-FR", {maximumFractionDigits:1})} centimes`;
@@ -2320,6 +2359,108 @@ $("bSmsEnregistrer").onclick = ()=> occupe($("bSmsEnregistrer"), async ()=>{
   try{ SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {sms:r}); message("msgSms", r.expediteur_demande ? `✓ Enregistré. Nom d'expéditeur « ${r.expediteur_demande} » demandé.` : "✓ Relances enregistrées.", "ok"); majSmsExpNote(); majSmsApercus(); }
   catch(e){ message("msgSms", e.message, "err"); }
 });
+// ---------- Ciblage de la promo (25/11/2026) : recherche, raccourcis réglables par le commerce, filtres, tri,
+// cases à cocher (glisser le doigt sur les cases pour en cocher plusieurs). Seuls les clients cochés reçoivent la promo.
+const CIBLE = {sel:new Set(), chip:"tous"};
+const CIBLE_DEFAUT = {fid_n:2, fid_par:"mois", nouv_j:30, abs_j:30, proche_p:20};
+function cibleRegl(){
+  const perso = (SESSION.commerce.sms || {}).cibles || {}, r = {...CIBLE_DEFAUT, ...perso};
+  if (!perso.proche_p && SESSION.commerce.points_par_passage) r.proche_p = Number(SESSION.commerce.points_par_passage) * 2;
+  return r;
+}
+// Passages par mois (ou par semaine) depuis l'inscription ; au moins 30 jours (7 jours) comptés, pour ne pas gonfler les nouveaux
+function cibleFreq(c, par){
+  const d = jAvant(c.cree_le), j = Math.max(par === "semaine" ? 7 : 30, d === Infinity ? 30 : d);
+  return (Number(c.visites) || 0) / j * (par === "semaine" ? 7 : 30);
+}
+const cibleSeuil = ()=> Number(SESSION.commerce.seuil) || 100;
+const nbFr = x => Number(x).toLocaleString("fr-FR", {maximumFractionDigits:1});
+const CIBLE_CHIPS = [
+  ["tous", ()=>"Tous", ()=>true],
+  ["absents", r=>`Absents depuis ${r.abs_j} j`, (c, r)=>jAvant(c.derniere_visite) >= r.abs_j],
+  ["fideles", r=>`Fidèles (${nbFr(r.fid_n)}+ / ${r.fid_par})`, (c, r)=>cibleFreq(c, r.fid_par) >= r.fid_n - 1e-9],
+  ["proches", r=>`Proches d'une récompense (≤ ${r.proche_p} pts)`, (c, r)=>{ const s = cibleSeuil(), p = Number(c.points) || 0; return p < s && s - p <= r.proche_p; }],
+  ["nouveaux", r=>`Nouveaux (< ${r.nouv_j} j)`, (c, r)=>jAvant(c.cree_le) < r.nouv_j],
+  ["coches", ()=>"✓ Cochés", c=>CIBLE.sel.has(c.id)],
+];
+const telEspaces = t => String(t || "").replace(/(\d\d)(?=\d)/g, "$1 ");
+const cibleNom = c => (c.nom || "").trim() || telEspaces(c.telephone);
+function cibleVisibles(){
+  const r = cibleRegl(), q = $("cibleQ").value.trim().toLowerCase(), qn = q.replace(/\D/g, "");
+  const ch = (CIBLE_CHIPS.find(x=>x[0] === CIBLE.chip) || CIBLE_CHIPS[0])[2];
+  const vis = Number($("cibleVisite").value) || 0, pts = Number($("ciblePts").value) || 0;
+  const fq = Number($("cibleFreq").value) || 0, fqPar = $("cibleFreqPar").value, tri = $("cibleTri").value;
+  const l = SMS_TOUS.filter(c => (!q || (c.nom || "").toLowerCase().includes(q) || (qn.length >= 2 && String(c.telephone || "").includes(qn)))
+    && ch(c, r) && (!vis || jAvant(c.derniere_visite) >= vis) && (!pts || (Number(c.points) || 0) >= pts) && (!fq || cibleFreq(c, fqPar) >= fq - 1e-9));
+  const t = x => x ? new Date(x).getTime() : 0;
+  const f = {visite:(a,b)=>t(b.derniere_visite)-t(a.derniere_visite), absence:(a,b)=>t(a.derniere_visite)-t(b.derniere_visite),
+    points:(a,b)=>(Number(b.points)||0)-(Number(a.points)||0), freq:(a,b)=>cibleFreq(b,"mois")-cibleFreq(a,"mois"),
+    nouveau:(a,b)=>t(b.cree_le)-t(a.cree_le), nom:(a,b)=>cibleNom(a).localeCompare(cibleNom(b), "fr")}[tri];
+  return l.sort(f || (()=>0));
+}
+const cibleOk = (c, pl) => c.accord_sms && !pl.has(c.id);
+function majCible(){
+  if (!SESSION) return;
+  const r = cibleRegl(), pl = smsPlafond();
+  $("cibleChips").innerHTML = CIBLE_CHIPS.map(([k, lib]) => `<button type="button" data-k="${k}" class="${k === CIBLE.chip ? "on" : ""}">${echapper(lib(r))}</button>`).join("");
+  const l = cibleVisibles(), ok = l.filter(c=>cibleOk(c, pl));
+  const jours = x => { const j = jAvant(x); return j === Infinity ? "jamais venu" : j < 1 ? "venu aujourd'hui" : `venu il y a ${Math.floor(j)} j`; };
+  $("cibleListe").innerHTML = l.length ? l.map(c => {
+    const bon = cibleOk(c, pl), s = bon && CIBLE.sel.has(c.id);
+    const det = !c.accord_sms ? "n'a pas accepté les SMS" : pl.has(c.id) ? `déjà ${SMS_MAX_CLIENT} SMS ce mois-ci`
+      : `${jours(c.derniere_visite)} · ${nbFr(cibleFreq(c, "mois"))} passage(s)/mois`;
+    return `<div class="cibleLigne${s ? " sel" : ""}${bon ? "" : " non"}" data-id="${c.id}" data-ok="${bon ? 1 : 0}"><div class="cCase">${s ? "✓" : ""}</div>`
+      + `<div style="min-width:0"><div class="qui">${echapper(cibleNom(c))}</div><div class="det">${det}</div></div><div class="pts">${Number(c.points) || 0} pts</div></div>`;
+  }).join("") : `<p class="note" style="padding:10px 2px">Aucun client ne correspond à ces critères.</p>`;
+  const n = CIBLE.sel.size;
+  $("cibleNb").textContent = `${pluriel(ok.length, "client")} affiché${ok.length > 1 ? "s" : ""} · ${n} coché${n > 1 ? "s" : ""}`;
+  $("cibleTout").checked = ok.length > 0 && ok.every(c=>CIBLE.sel.has(c.id));
+  $("cibleToutTxt").textContent = ok.length ? `Tout cocher (${ok.length})` : "Tout cocher";
+  majSmsApercus();
+}
+function cibleCocher(ligne, val){
+  if (!ligne || ligne.dataset.ok !== "1") return false;
+  const id = Number(ligne.dataset.id);
+  if (val) CIBLE.sel.add(id); else CIBLE.sel.delete(id);
+  ligne.classList.toggle("sel", val); ligne.querySelector(".cCase").textContent = val ? "✓" : "";
+  return true;
+}
+let CIBLE_GLISSE = null;
+$("cibleListe").addEventListener("pointerdown", e=>{
+  const l = e.target.closest(".cibleLigne");
+  if (!l || l.dataset.ok !== "1") return;
+  const val = !CIBLE.sel.has(Number(l.dataset.id));
+  cibleCocher(l, val);
+  if (e.target.closest(".cCase")){ CIBLE_GLISSE = val; try{ $("cibleListe").setPointerCapture(e.pointerId); }catch(_){} e.preventDefault(); }
+  else majCible();
+});
+$("cibleListe").addEventListener("pointermove", e=>{
+  if (CIBLE_GLISSE === null) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY), l = el && el.closest(".cibleLigne");
+  if (l && CIBLE.sel.has(Number(l.dataset.id)) !== CIBLE_GLISSE) cibleCocher(l, CIBLE_GLISSE);
+  const b = $("cibleListe").getBoundingClientRect();     // la liste défile toute seule quand le doigt arrive au bord
+  if (e.clientY > b.bottom - 30) $("cibleListe").scrollTop += 12; else if (e.clientY < b.top + 30) $("cibleListe").scrollTop -= 12;
+});
+for (const ev of ["pointerup", "pointercancel"]) $("cibleListe").addEventListener(ev, ()=>{ if (CIBLE_GLISSE !== null){ CIBLE_GLISSE = null; majCible(); } });
+$("cibleChips").onclick = e=>{ const b = e.target.closest("button"); if (!b) return; CIBLE.chip = b.dataset.k; majCible(); };
+for (const id of ["cibleQ", "cibleVisite", "ciblePts", "cibleFreq", "cibleFreqPar", "cibleTri"]) $(id).addEventListener("input", majCible);
+$("cibleTout").onchange = ()=>{ const pl = smsPlafond(), oui = $("cibleTout").checked; for (const c of cibleVisibles()) if (cibleOk(c, pl)) oui ? CIBLE.sel.add(c.id) : CIBLE.sel.delete(c.id); majCible(); };
+$("cibleVider").onclick = ()=>{ CIBLE.sel.clear(); majCible(); };
+function majCibleRegl(){
+  const r = cibleRegl();
+  $("reglFidN").value = r.fid_n; $("reglFidPar").value = r.fid_par; $("reglNouvJ").value = r.nouv_j; $("reglAbsJ").value = r.abs_j; $("reglProcheP").value = r.proche_p;
+}
+$("bCibleRegl").onclick = ()=>{ $("cibleRegl").classList.toggle("cache"); majCibleRegl(); message("msgCibleRegl", ""); };
+$("bCibleReglOk").onclick = ()=> occupe($("bCibleReglOk"), async ()=>{
+  const n = id => Math.round(Number($(id).value));
+  const r = {fid_n:Math.round(Number($("reglFidN").value) * 2) / 2, fid_par:$("reglFidPar").value, nouv_j:n("reglNouvJ"), abs_j:n("reglAbsJ"), proche_p:n("reglProcheP")};
+  if (!(r.fid_n > 0 && r.fid_n <= 50 && r.nouv_j >= 1 && r.nouv_j <= 365 && r.abs_j >= 1 && r.abs_j <= 365 && r.proche_p >= 1))
+    return message("msgCibleRegl", "Vérifiez les nombres : au moins 1 dans chaque case (0,5 possible pour les fidèles).", "err");
+  try{
+    SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {sms:{...(SESSION.commerce.sms || {}), cibles:r}});
+    message("msgCibleRegl", "✓ Raccourcis enregistrés.", "ok"); majCible();
+  }catch(e){ message("msgCibleRegl", e.message, "err"); }
+});
 $("bSmsPromo").onclick = ()=>{
   const t = $("smsPromo").value.trim();
   if (!t) return;
@@ -2332,8 +2473,8 @@ $("bSmsAnnuler").onclick = ()=> $("smsFond").classList.add("cache");
 $("smsFond").onclick = e=>{ if (e.target === $("smsFond")) $("smsFond").classList.add("cache"); };
 $("bSmsValider").onclick = ()=> occupe($("bSmsValider"), async ()=>{
   try{
-    const r = await API.smsPromo($("smsPromo").value.trim());
-    $("smsFond").classList.add("cache"); $("smsPromo").value = "";
+    const r = await API.smsPromo($("smsPromo").value.trim(), smsDestPromo().map(c=>c.id));
+    $("smsFond").classList.add("cache"); $("smsPromo").value = ""; CIBLE.sel.clear();
     await afficherSms();
     const s = r.nb_sms > 1 ? "s" : "";
     message("msgSmsPromo", `✓ ${r.nb_sms} SMS ${DEMO ? `enregistré${s} (démo : rien n'est vraiment envoyé)` : `prêt${s}`} pour ${pluriel(r.nb_clients, "client")}, envoi ${creneauFr(new Date(r.envoye_le))}.`, "ok");
