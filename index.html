@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="89">
+<meta name="app-version" content="90">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -99,27 +99,43 @@
   .smsTags button{border:1px solid var(--bord);background:var(--carte);color:var(--texte);border-radius:99px;padding:4px 10px;font-size:13px;cursor:pointer}
   .smsBloc{border:1px solid var(--bord);border-radius:14px;padding:12px;margin:12px 0;background:#fff}
   .smsBloc .case{margin-top:0}
-  .cible{border:1px solid var(--bord);border-radius:14px;padding:12px;margin:12px 0;background:#fff}
-  .cibleTete{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:16px}
-  .cible .lien{border:0;background:none;color:var(--accent);font-size:14px;cursor:pointer;padding:4px;text-decoration:underline}
-  .cibleChips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
-  .cibleChips button{border:1px solid var(--bord);background:var(--carte);color:var(--texte);border-radius:99px;padding:6px 12px;font-size:14px;cursor:pointer}
-  .cibleChips button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-  .cibleFiltres{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;font-size:13px;color:var(--doux)}
-  .cibleFiltres input,.cibleFiltres select,.cibleRegl input,.cibleRegl select{width:100%;font-size:15px;padding:6px 8px;border:1px solid var(--bord);border-radius:8px;background:#fff;color:var(--texte);font-family:inherit;margin-top:2px}
-  .cible .duo{display:flex;gap:4px}
-  .cibleRegl{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;font-size:13px;color:var(--doux);border-top:1px solid var(--bord);border-bottom:1px solid var(--bord);padding:10px 0;margin:10px 0}
-  .cibleBarre{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;font-size:14px;flex-wrap:wrap}
-  .cibleBarre label{display:flex;gap:8px;align-items:center;cursor:pointer}
-  .cibleListe{max-height:380px;overflow-y:auto;border-top:1px solid var(--bord);margin-top:6px;user-select:none;-webkit-user-select:none}
-  .cibleLigne{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--bord);cursor:pointer}
-  .cibleLigne .cCase{width:24px;height:24px;border-radius:6px;border:2px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;touch-action:none}
+  .cible{border:1px solid var(--bord);border-radius:14px;padding:14px;margin:14px 0;background:#fff}
+  .cibleTete{display:flex;align-items:center;gap:10px;font-size:18px;margin-bottom:10px}
+  .cNum{flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .cible .lien{border:0;background:none;color:var(--accent);font-size:16px;cursor:pointer;padding:6px 2px;text-decoration:underline}
+  #cibleQ{width:100%;font-size:18px;padding:12px 14px}
+  .cibleSous{font-size:14px;color:var(--doux);margin:12px 0 6px}
+  .cibleChips{display:flex;gap:8px;flex-wrap:wrap}
+  .cibleChips button{border:2px solid var(--bord);background:#fff;color:var(--texte);border-radius:99px;padding:9px 15px;font-size:16px;cursor:pointer;font-family:inherit}
+  .cibleChips button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  .cibleDetails{margin-top:12px;border:1px solid var(--bord);border-radius:12px;background:var(--carte)}
+  .cibleDetails summary{cursor:pointer;padding:12px 14px;font-size:16px;font-weight:600;list-style-position:inside}
+  .cibleFiltres,.cibleRegl{display:flex;flex-direction:column;gap:12px;padding:4px 14px 14px}
+  .cibleFiltres label,.cibleRegl label{display:flex;flex-direction:column;gap:4px;font-size:15px;color:var(--texte);font-weight:400;margin:0}
+  .cible .duo{display:flex;gap:8px;align-items:center}
+  .cible .duo em{font-style:normal;font-size:15px;color:var(--doux)}
+  .cibleFiltres input,.cibleFiltres select,.cibleRegl input,.cibleRegl select{font-size:17px;padding:9px 10px;border:2px solid var(--bord);border-radius:10px;background:#fff;color:var(--texte);font-family:inherit;margin:0}
+  .cible .duo input{width:90px;flex:none}
+  .cible .duo select{flex:1}
+  .cibleBarre{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .cibleToutLab{display:flex;gap:10px;align-items:center;cursor:pointer;font-size:17px;font-weight:600}
+  .cibleToutLab input{width:22px;height:22px}
+  .cibleNb{font-size:15px;color:var(--doux);margin:6px 0 4px}
+  .cibleNb b{color:var(--texte);font-size:17px}
+  .cibleListe{max-height:420px;overflow-y:auto;border:1px solid var(--bord);border-radius:12px;user-select:none;-webkit-user-select:none}
+  .cibleLigne{display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px 10px;border-bottom:1px solid var(--bord);cursor:pointer}
+  .cibleLigne:last-child{border-bottom:0}
+  .cibleLigne.sel{background:var(--orclair)}
+  .cibleLigne .cCase{width:30px;height:30px;border-radius:8px;border:2px solid #b8aa98;background:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;touch-action:none}
   .cibleLigne.sel .cCase{background:var(--accent);border-color:var(--accent)}
-  .cibleLigne.non{cursor:default;color:var(--doux)}
-  .cibleLigne.non .cCase{background:var(--gris);border-style:dashed}
-  .cibleLigne .qui{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .cibleLigne .det{font-size:12px;color:var(--doux)}
-  .cibleLigne .pts{font-size:13px;color:var(--doux);white-space:nowrap}
+  .cibleLigne.non{cursor:default}
+  .cibleLigne.non .qui{color:var(--doux)}
+  .cibleLigne.non .cCase{background:var(--gris);border-color:var(--gris)}
+  .cibleLigne .qui{font-size:18px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cibleLigne .det{font-size:14px;color:var(--doux);margin-top:2px}
+  .cibleLigne .det .att{color:#a15c00}
+  .cibleLigne .pts{font-size:15px;font-weight:700;background:var(--gris);border-radius:99px;padding:4px 10px;white-space:nowrap}
+  .cibleAstuce{font-size:14px;color:var(--doux);margin:8px 0 0}
   .smsAvis{border:2px solid var(--or, #d4a017);border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.4;margin:0 0 12px;background:var(--orclair)}
   .smsAvis p{margin:6px 0}.smsAvis ul{margin:6px 0;padding-left:20px}
   .smsBandeau{border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.4;margin:0 0 12px;background:var(--orclair)}
@@ -1204,30 +1220,42 @@
   <div class="carte">
     <h2>📣 Envoyer une promo</h2>
     <p class="note" style="margin-top:-6px">Un SMS aux clients que vous choisissez (tous, ou seulement certains). Idéal pour une offre du week-end, un nouveau produit, une fermeture…</p>
+    <div class="cibleTete" style="margin:4px 0 8px"><span class="cNum">1</span><b>Écrivez votre message</b></div>
     <textarea id="smsPromo" maxlength="400" placeholder="ex. Ce week-end chez {commerce} : -10 % sur les terrines maison !"></textarea>
     <div class="smsTags" data-cible="smsPromo"><button data-tag="{nom}">+ nom du client</button><button data-tag="{commerce}">+ nom du commerce</button></div>
     <div class="cible" id="cible">
-      <div class="cibleTete"><b>👥 À qui envoyer ?</b><button type="button" class="lien" id="bCibleRegl">⚙️ Régler les raccourcis</button></div>
-      <div class="cibleRegl cache" id="cibleRegl">
-        <label>« Fidèles » : au moins
-          <span class="duo"><input type="number" id="reglFidN" min="0.5" max="50" step="0.5"><select id="reglFidPar"><option value="semaine">passage(s) par semaine</option><option value="mois">passage(s) par mois</option></select></span></label>
-        <label>« Nouveaux » : inscrits il y a moins de (jours)<input type="number" id="reglNouvJ" min="1" max="365" step="1"></label>
-        <label>« Absents » : pas venus depuis au moins (jours)<input type="number" id="reglAbsJ" min="1" max="365" step="1"></label>
-        <label>« Proches d'une récompense » : il leur manque au plus (points)<input type="number" id="reglProcheP" min="1" max="10000" step="1"></label>
-        <div><button type="button" class="btn principal" id="bCibleReglOk" style="margin-top:4px;font-size:15px;padding:10px">Enregistrer les raccourcis</button><div id="msgCibleRegl"></div></div>
-      </div>
-      <input type="text" id="cibleQ" inputmode="search" autocomplete="off" placeholder="🔎 Rechercher un nom ou un numéro" style="margin-top:10px;width:100%">
+      <div class="cibleTete"><span class="cNum">2</span><b>Choisissez les clients</b></div>
+      <input type="text" id="cibleQ" inputmode="search" autocomplete="off" placeholder="🔎 Chercher un client (nom ou numéro)">
+      <div class="cibleSous">Raccourcis</div>
       <div class="cibleChips" id="cibleChips"></div>
-      <div class="cibleFiltres">
-        <label>Dernière visite il y a au moins<span class="duo"><input type="number" id="cibleVisite" min="0" step="1" placeholder="0"><span style="align-self:center">jours</span></span></label>
-        <label>Points, au moins<input type="number" id="ciblePts" min="0" step="1" placeholder="0"></label>
-        <label>Passages, au moins<span class="duo"><input type="number" id="cibleFreq" min="0" step="0.5" placeholder="0"><select id="cibleFreqPar"><option value="mois">/ mois</option><option value="semaine">/ semaine</option></select></span></label>
-        <label>Trier par<select id="cibleTri"><option value="visite">Dernière visite (récente)</option><option value="absence">Absence (la plus longue)</option><option value="points">Points</option><option value="freq">Passages par mois</option><option value="nouveau">Inscription (récente)</option><option value="nom">Nom</option></select></label>
+      <details class="cibleDetails" id="cibleFiltresBloc">
+        <summary>🎚️ Plus de filtres et tri</summary>
+        <div class="cibleFiltres">
+          <label><span>Pas venus depuis au moins</span><span class="duo"><input type="number" id="cibleVisite" min="0" step="1" placeholder="0"><em>jours</em></span></label>
+          <label><span>Au moins</span><span class="duo"><input type="number" id="ciblePts" min="0" step="1" placeholder="0"><em>points</em></span></label>
+          <label><span>Au moins</span><span class="duo"><input type="number" id="cibleFreq" min="0" step="0.5" placeholder="0"><select id="cibleFreqPar"><option value="mois">passages par mois</option><option value="semaine">passages par semaine</option></select></span></label>
+          <label><span>Trier par</span><select id="cibleTri"><option value="visite">Venus le plus récemment</option><option value="absence">Absents depuis le plus longtemps</option><option value="points">Le plus de points</option><option value="freq">Les plus fidèles</option><option value="nouveau">Inscrits le plus récemment</option><option value="nom">Nom (A → Z)</option></select></label>
+        </div>
+      </details>
+      <details class="cibleDetails" id="cibleReglBloc">
+        <summary id="bCibleRegl">⚙️ Régler les raccourcis</summary>
+        <div class="cibleRegl" id="cibleRegl">
+          <label><span>« Fidèles » : au moins</span><span class="duo"><input type="number" id="reglFidN" min="0.5" max="50" step="0.5"><select id="reglFidPar"><option value="semaine">passages par semaine</option><option value="mois">passages par mois</option></select></span></label>
+          <label><span>« Nouveaux » : inscrits depuis moins de</span><span class="duo"><input type="number" id="reglNouvJ" min="1" max="365" step="1"><em>jours</em></span></label>
+          <label><span>« Absents » : pas venus depuis au moins</span><span class="duo"><input type="number" id="reglAbsJ" min="1" max="365" step="1"><em>jours</em></span></label>
+          <label><span>« Proches d'une récompense » : il leur manque au plus</span><span class="duo"><input type="number" id="reglProcheP" min="1" max="10000" step="1"><em>points</em></span></label>
+          <button type="button" class="btn principal" id="bCibleReglOk" style="font-size:16px;padding:11px">Enregistrer les raccourcis</button><div id="msgCibleRegl"></div>
+        </div>
+      </details>
+      <div class="cibleBarre">
+        <label class="cibleToutLab"><input type="checkbox" id="cibleTout"> <span id="cibleToutTxt">Tout cocher</span></label>
+        <button type="button" class="lien" id="cibleVider">Tout décocher</button>
       </div>
-      <div class="cibleBarre"><label><input type="checkbox" id="cibleTout"> <span id="cibleToutTxt">Tout cocher</span></label><span id="cibleNb" class="note" style="margin:0"></span><button type="button" class="lien" id="cibleVider">Tout décocher</button></div>
+      <div class="cibleNb" id="cibleNb"></div>
       <div class="cibleListe" id="cibleListe"></div>
-      <p class="note" style="margin:6px 0 0">Astuce : posez le doigt sur une case et glissez vers le haut ou le bas pour cocher plusieurs clients d'un coup.</p>
+      <p class="cibleAstuce">👆 Astuce : posez le doigt sur une case et glissez vers le bas pour cocher plusieurs clients d'un coup.</p>
     </div>
+    <div class="cibleTete" style="margin-top:14px"><span class="cNum">3</span><b>Vérifiez et envoyez</b></div>
     <div id="smsPromoInfo"></div>
     <button class="btn principal" id="bSmsPromo">Envoyer</button>
     <div id="msgSmsPromo"></div>
@@ -2376,12 +2404,12 @@ function cibleFreq(c, par){
 const cibleSeuil = ()=> Number(SESSION.commerce.seuil) || 100;
 const nbFr = x => Number(x).toLocaleString("fr-FR", {maximumFractionDigits:1});
 const CIBLE_CHIPS = [
-  ["tous", ()=>"Tous", ()=>true],
-  ["absents", r=>`Absents depuis ${r.abs_j} j`, (c, r)=>jAvant(c.derniere_visite) >= r.abs_j],
-  ["fideles", r=>`Fidèles (${nbFr(r.fid_n)}+ / ${r.fid_par})`, (c, r)=>cibleFreq(c, r.fid_par) >= r.fid_n - 1e-9],
-  ["proches", r=>`Proches d'une récompense (≤ ${r.proche_p} pts)`, (c, r)=>{ const s = cibleSeuil(), p = Number(c.points) || 0; return p < s && s - p <= r.proche_p; }],
-  ["nouveaux", r=>`Nouveaux (< ${r.nouv_j} j)`, (c, r)=>jAvant(c.cree_le) < r.nouv_j],
-  ["coches", ()=>"✓ Cochés", c=>CIBLE.sel.has(c.id)],
+  ["tous", ()=>"👥 Tous", ()=>true],
+  ["absents", r=>`😴 Absents (${r.abs_j} j et +)`, (c, r)=>jAvant(c.derniere_visite) >= r.abs_j],
+  ["fideles", r=>`⭐ Fidèles (${nbFr(r.fid_n)}+ par ${r.fid_par})`, (c, r)=>cibleFreq(c, r.fid_par) >= r.fid_n - 1e-9],
+  ["proches", r=>`🎁 Presque une récompense`, (c, r)=>{ const s = cibleSeuil(), p = Number(c.points) || 0; return p < s && s - p <= r.proche_p; }],
+  ["nouveaux", r=>`🌱 Nouveaux (moins de ${r.nouv_j} j)`, (c, r)=>jAvant(c.cree_le) < r.nouv_j],
+  ["coches", ()=>"✅ Seulement les cochés", c=>CIBLE.sel.has(c.id)],
 ];
 const telEspaces = t => String(t || "").replace(/(\d\d)(?=\d)/g, "$1 ");
 const cibleNom = c => (c.nom || "").trim() || telEspaces(c.telephone);
@@ -2404,16 +2432,16 @@ function majCible(){
   const r = cibleRegl(), pl = smsPlafond();
   $("cibleChips").innerHTML = CIBLE_CHIPS.map(([k, lib]) => `<button type="button" data-k="${k}" class="${k === CIBLE.chip ? "on" : ""}">${echapper(lib(r))}</button>`).join("");
   const l = cibleVisibles(), ok = l.filter(c=>cibleOk(c, pl));
-  const jours = x => { const j = jAvant(x); return j === Infinity ? "jamais venu" : j < 1 ? "venu aujourd'hui" : `venu il y a ${Math.floor(j)} j`; };
+  const jours = x => { const j = jAvant(x); return j === Infinity ? "Jamais venu" : j < 1 ? "Venu aujourd'hui" : j < 2 ? "Venu hier" : `Venu il y a ${Math.floor(j)} jours`; };
   $("cibleListe").innerHTML = l.length ? l.map(c => {
     const bon = cibleOk(c, pl), s = bon && CIBLE.sel.has(c.id);
-    const det = !c.accord_sms ? "n'a pas accepté les SMS" : pl.has(c.id) ? `déjà ${SMS_MAX_CLIENT} SMS ce mois-ci`
-      : `${jours(c.derniere_visite)} · ${nbFr(cibleFreq(c, "mois"))} passage(s)/mois`;
+    const det = !c.accord_sms ? `<span class="att">🚫 N'a pas accepté les SMS</span>` : pl.has(c.id) ? `<span class="att">⏸️ A déjà reçu ${SMS_MAX_CLIENT} SMS ce mois-ci</span>`
+      : `${jours(c.derniere_visite)} · ${nbFr(cibleFreq(c, "mois"))} passage${cibleFreq(c, "mois") >= 2 ? "s" : ""} par mois`;
     return `<div class="cibleLigne${s ? " sel" : ""}${bon ? "" : " non"}" data-id="${c.id}" data-ok="${bon ? 1 : 0}"><div class="cCase">${s ? "✓" : ""}</div>`
       + `<div style="min-width:0"><div class="qui">${echapper(cibleNom(c))}</div><div class="det">${det}</div></div><div class="pts">${Number(c.points) || 0} pts</div></div>`;
   }).join("") : `<p class="note" style="padding:10px 2px">Aucun client ne correspond à ces critères.</p>`;
-  const n = CIBLE.sel.size;
-  $("cibleNb").textContent = `${pluriel(ok.length, "client")} affiché${ok.length > 1 ? "s" : ""} · ${n} coché${n > 1 ? "s" : ""}`;
+  const n = smsDestPromo().length;
+  $("cibleNb").innerHTML = `<b>${n} client${n > 1 ? "s" : ""} coché${n > 1 ? "s" : ""}</b> · ${l.length} dans la liste ci-dessous`;
   $("cibleTout").checked = ok.length > 0 && ok.every(c=>CIBLE.sel.has(c.id));
   $("cibleToutTxt").textContent = ok.length ? `Tout cocher (${ok.length})` : "Tout cocher";
   majSmsApercus();
@@ -2450,7 +2478,7 @@ function majCibleRegl(){
   const r = cibleRegl();
   $("reglFidN").value = r.fid_n; $("reglFidPar").value = r.fid_par; $("reglNouvJ").value = r.nouv_j; $("reglAbsJ").value = r.abs_j; $("reglProcheP").value = r.proche_p;
 }
-$("bCibleRegl").onclick = ()=>{ $("cibleRegl").classList.toggle("cache"); majCibleRegl(); message("msgCibleRegl", ""); };
+$("cibleReglBloc").addEventListener("toggle", ()=>{ majCibleRegl(); message("msgCibleRegl", ""); });
 $("bCibleReglOk").onclick = ()=> occupe($("bCibleReglOk"), async ()=>{
   const n = id => Math.round(Number($(id).value));
   const r = {fid_n:Math.round(Number($("reglFidN").value) * 2) / 2, fid_par:$("reglFidPar").value, nouv_j:n("reglNouvJ"), abs_j:n("reglAbsJ"), proche_p:n("reglProcheP")};
