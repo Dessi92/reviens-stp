@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#9b2c2c">
-<meta name="app-version" content="90">
+<meta name="app-version" content="91">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Reviens STP">
 <link rel="manifest" href="manifest.json">
@@ -102,26 +102,32 @@
   .cible{border:1px solid var(--bord);border-radius:14px;padding:14px;margin:14px 0;background:#fff}
   .cibleTete{display:flex;align-items:center;gap:10px;font-size:18px;margin-bottom:10px}
   .cNum{flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .cibleGroupes{display:flex;flex-direction:column;gap:8px}
+  .cibleGroupes button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:2px solid var(--bord);background:#fff;color:var(--texte);border-radius:12px;padding:12px 14px;font-family:inherit;cursor:pointer}
+  .cibleGroupes .gLib{flex:1;min-width:0}
+  .cibleGroupes .gLib b{display:block;font-size:18px}
+  .cibleGroupes .gLib small{display:block;font-size:14px;color:var(--doux);margin-top:2px}
+  .cibleGroupes .gNb{font-size:20px;font-weight:700;min-width:36px;text-align:right}
+  .cibleGroupes button.on{border-color:var(--accent);background:var(--orclair)}
+  .cibleGroupes button.on .gLib b::before{content:"✓ ";color:var(--accent)}
+  .cibleGroupes button:disabled{opacity:.45;cursor:default}
+  #cibleMain{margin-top:12px}
   .cible .lien{border:0;background:none;color:var(--accent);font-size:16px;cursor:pointer;padding:6px 2px;text-decoration:underline}
   #cibleQ{width:100%;font-size:18px;padding:12px 14px}
-  .cibleSous{font-size:14px;color:var(--doux);margin:12px 0 6px}
-  .cibleChips{display:flex;gap:8px;flex-wrap:wrap}
-  .cibleChips button{border:2px solid var(--bord);background:#fff;color:var(--texte);border-radius:99px;padding:9px 15px;font-size:16px;cursor:pointer;font-family:inherit}
-  .cibleChips button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
   .cibleDetails{margin-top:12px;border:1px solid var(--bord);border-radius:12px;background:var(--carte)}
   .cibleDetails summary{cursor:pointer;padding:12px 14px;font-size:16px;font-weight:600;list-style-position:inside}
-  .cibleFiltres,.cibleRegl{display:flex;flex-direction:column;gap:12px;padding:4px 14px 14px}
-  .cibleFiltres label,.cibleRegl label{display:flex;flex-direction:column;gap:4px;font-size:15px;color:var(--texte);font-weight:400;margin:0}
-  .cible .duo{display:flex;gap:8px;align-items:center}
-  .cible .duo em{font-style:normal;font-size:15px;color:var(--doux)}
-  .cibleFiltres input,.cibleFiltres select,.cibleRegl input,.cibleRegl select{font-size:17px;padding:9px 10px;border:2px solid var(--bord);border-radius:10px;background:#fff;color:var(--texte);font-family:inherit;margin:0}
-  .cible .duo input{width:90px;flex:none}
-  .cible .duo select{flex:1}
-  .cibleBarre{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .cibleRegl{display:flex;flex-direction:column;gap:12px;padding:4px 14px 14px}
+  .cibleRegl label{display:flex;flex-direction:column;gap:4px;font-size:15px;color:var(--texte);font-weight:400;margin:0}
+  .cibleRegl .duo{display:flex;gap:8px;align-items:center}
+  .cibleRegl .duo em{font-style:normal;font-size:15px;color:var(--doux)}
+  .cibleRegl input,.cibleRegl select{font-size:17px;padding:9px 10px;border:2px solid var(--bord);border-radius:10px;background:#fff;color:var(--texte);font-family:inherit;margin:0}
+  .cibleRegl .duo input{width:90px;flex:none}
+  .cibleRegl .duo select{flex:1}
+  .cibleBarre{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0 8px;flex-wrap:wrap}
   .cibleToutLab{display:flex;gap:10px;align-items:center;cursor:pointer;font-size:17px;font-weight:600}
   .cibleToutLab input{width:22px;height:22px}
-  .cibleNb{font-size:15px;color:var(--doux);margin:6px 0 4px}
-  .cibleNb b{color:var(--texte);font-size:17px}
+  .cibleNb{font-size:17px;margin:12px 0 0}
+  .cibleNb b{color:var(--texte);font-size:18px}
   .cibleListe{max-height:420px;overflow-y:auto;border:1px solid var(--bord);border-radius:12px;user-select:none;-webkit-user-select:none}
   .cibleLigne{display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px 10px;border-bottom:1px solid var(--bord);cursor:pointer}
   .cibleLigne:last-child{border-bottom:0}
@@ -135,7 +141,6 @@
   .cibleLigne .det{font-size:14px;color:var(--doux);margin-top:2px}
   .cibleLigne .det .att{color:#a15c00}
   .cibleLigne .pts{font-size:15px;font-weight:700;background:var(--gris);border-radius:99px;padding:4px 10px;white-space:nowrap}
-  .cibleAstuce{font-size:14px;color:var(--doux);margin:8px 0 0}
   .smsAvis{border:2px solid var(--or, #d4a017);border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.4;margin:0 0 12px;background:var(--orclair)}
   .smsAvis p{margin:6px 0}.smsAvis ul{margin:6px 0;padding-left:20px}
   .smsBandeau{border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.4;margin:0 0 12px;background:var(--orclair)}
@@ -1224,36 +1229,17 @@
     <textarea id="smsPromo" maxlength="400" placeholder="ex. Ce week-end chez {commerce} : -10 % sur les terrines maison !"></textarea>
     <div class="smsTags" data-cible="smsPromo"><button data-tag="{nom}">+ nom du client</button><button data-tag="{commerce}">+ nom du commerce</button></div>
     <div class="cible" id="cible">
-      <div class="cibleTete"><span class="cNum">2</span><b>Choisissez les clients</b></div>
-      <input type="text" id="cibleQ" inputmode="search" autocomplete="off" placeholder="🔎 Chercher un client (nom ou numéro)">
-      <div class="cibleSous">Raccourcis</div>
-      <div class="cibleChips" id="cibleChips"></div>
-      <details class="cibleDetails" id="cibleFiltresBloc">
-        <summary>🎚️ Plus de filtres et tri</summary>
-        <div class="cibleFiltres">
-          <label><span>Pas venus depuis au moins</span><span class="duo"><input type="number" id="cibleVisite" min="0" step="1" placeholder="0"><em>jours</em></span></label>
-          <label><span>Au moins</span><span class="duo"><input type="number" id="ciblePts" min="0" step="1" placeholder="0"><em>points</em></span></label>
-          <label><span>Au moins</span><span class="duo"><input type="number" id="cibleFreq" min="0" step="0.5" placeholder="0"><select id="cibleFreqPar"><option value="mois">passages par mois</option><option value="semaine">passages par semaine</option></select></span></label>
-          <label><span>Trier par</span><select id="cibleTri"><option value="visite">Venus le plus récemment</option><option value="absence">Absents depuis le plus longtemps</option><option value="points">Le plus de points</option><option value="freq">Les plus fidèles</option><option value="nouveau">Inscrits le plus récemment</option><option value="nom">Nom (A → Z)</option></select></label>
+      <div class="cibleTete"><span class="cNum">2</span><b>À qui envoyer ?</b></div>
+      <div class="cibleGroupes" id="cibleGroupes"></div>
+      <div id="cibleMain" class="cache">
+        <input type="text" id="cibleQ" inputmode="search" autocomplete="off" placeholder="🔎 Chercher un client (nom ou numéro)">
+        <div class="cibleBarre">
+          <label class="cibleToutLab"><input type="checkbox" id="cibleTout"> <span id="cibleToutTxt">Tout cocher</span></label>
+          <button type="button" class="lien" id="cibleVider">Tout décocher</button>
         </div>
-      </details>
-      <details class="cibleDetails" id="cibleReglBloc">
-        <summary id="bCibleRegl">⚙️ Régler les raccourcis</summary>
-        <div class="cibleRegl" id="cibleRegl">
-          <label><span>« Fidèles » : au moins</span><span class="duo"><input type="number" id="reglFidN" min="0.5" max="50" step="0.5"><select id="reglFidPar"><option value="semaine">passages par semaine</option><option value="mois">passages par mois</option></select></span></label>
-          <label><span>« Nouveaux » : inscrits depuis moins de</span><span class="duo"><input type="number" id="reglNouvJ" min="1" max="365" step="1"><em>jours</em></span></label>
-          <label><span>« Absents » : pas venus depuis au moins</span><span class="duo"><input type="number" id="reglAbsJ" min="1" max="365" step="1"><em>jours</em></span></label>
-          <label><span>« Proches d'une récompense » : il leur manque au plus</span><span class="duo"><input type="number" id="reglProcheP" min="1" max="10000" step="1"><em>points</em></span></label>
-          <button type="button" class="btn principal" id="bCibleReglOk" style="font-size:16px;padding:11px">Enregistrer les raccourcis</button><div id="msgCibleRegl"></div>
-        </div>
-      </details>
-      <div class="cibleBarre">
-        <label class="cibleToutLab"><input type="checkbox" id="cibleTout"> <span id="cibleToutTxt">Tout cocher</span></label>
-        <button type="button" class="lien" id="cibleVider">Tout décocher</button>
+        <div class="cibleListe" id="cibleListe"></div>
       </div>
       <div class="cibleNb" id="cibleNb"></div>
-      <div class="cibleListe" id="cibleListe"></div>
-      <p class="cibleAstuce">👆 Astuce : posez le doigt sur une case et glissez vers le bas pour cocher plusieurs clients d'un coup.</p>
     </div>
     <div class="cibleTete" style="margin-top:14px"><span class="cNum">3</span><b>Vérifiez et envoyez</b></div>
     <div id="smsPromoInfo"></div>
@@ -1285,6 +1271,19 @@
     <div id="smsAutoTotal" class="smsCompte"></div>
     <button class="btn principal" id="bSmsEnregistrer">Enregistrer</button>
     <div id="msgSms"></div>
+  </div>
+  <div class="carte">
+    <details class="cibleDetails" id="cibleReglBloc" style="margin:0">
+      <summary>⚙️ Régler les groupes de clients (pour les promos)</summary>
+      <div class="cibleRegl" id="cibleRegl">
+        <p class="note" style="margin:0">Ces réglages décident qui est dans chaque groupe de « À qui envoyer ? ». On les règle une fois, puis on n'y touche plus.</p>
+        <label><span>« Fidèles » : au moins</span><span class="duo"><input type="number" id="reglFidN" min="0.5" max="50" step="0.5"><select id="reglFidPar"><option value="semaine">passages par semaine</option><option value="mois">passages par mois</option></select></span></label>
+        <label><span>« Nouveaux » : inscrits depuis moins de</span><span class="duo"><input type="number" id="reglNouvJ" min="1" max="365" step="1"><em>jours</em></span></label>
+        <label><span>« Absents » : pas venus depuis au moins</span><span class="duo"><input type="number" id="reglAbsJ" min="1" max="365" step="1"><em>jours</em></span></label>
+        <label><span>« Proches d'une récompense » : il leur manque au plus</span><span class="duo"><input type="number" id="reglProcheP" min="1" max="10000" step="1"><em>points</em></span></label>
+        <button type="button" class="btn principal" id="bCibleReglOk" style="font-size:16px;padding:11px">Enregistrer les groupes</button><div id="msgCibleRegl"></div>
+      </div>
+    </details>
   </div>
   <div class="carte">
     <h2>📊 Derniers envois</h2>
@@ -2209,8 +2208,8 @@ function majSmsApercus(){
       + ` · envoi <b>${creneauFr(prochainCreneau())}</b>`
       + (saut ? `<br>${pluriel(saut, "client")} déjà prévenu${saut > 1 ? "s" : ""} ${SMS_MAX_CLIENT} fois ce mois-ci : ${saut > 1 ? "ils ne recevront" : "il ne recevra"} pas ce SMS.` : "")
       + (total * SMS_PRIX > e.solde + 1e-9 ? `<br><span class="att">Votre porte-monnaie contient ${eurosSms(e.solde)} : rechargez-le ci-dessus pour envoyer cette promo.</span>` : "") + `</div>`;
-    $("bSmsPromo").textContent = n ? `Envoyer à ${pluriel(n, "client")}` : "Cochez des clients ci-dessus";
-  } else { $("smsPromoInfo").innerHTML = ""; $("bSmsPromo").textContent = n ? `Écrivez votre promo (${pluriel(n, "client")} choisi${n > 1 ? "s" : ""})` : "Écrivez votre promo et cochez des clients"; }
+    $("bSmsPromo").textContent = n ? `Envoyer à ${pluriel(n, "client")}` : "Choisissez à qui envoyer (étape 2)";
+  } else { $("smsPromoInfo").innerHTML = ""; $("bSmsPromo").textContent = n ? `Écrivez votre promo (${pluriel(n, "client")} choisi${n > 1 ? "s" : ""})` : "Écrivez votre promo et choisissez à qui l'envoyer"; }
   $("bSmsPromo").disabled = !promo || !n || (!DEMO && !e.active);
   majRecharge();
   // Automatiques
@@ -2389,7 +2388,7 @@ $("bSmsEnregistrer").onclick = ()=> occupe($("bSmsEnregistrer"), async ()=>{
 });
 // ---------- Ciblage de la promo (25/11/2026) : recherche, raccourcis réglables par le commerce, filtres, tri,
 // cases à cocher (glisser le doigt sur les cases pour en cocher plusieurs). Seuls les clients cochés reçoivent la promo.
-const CIBLE = {sel:new Set(), chip:"tous"};
+const CIBLE = {sel:new Set(), groupe:null};
 const CIBLE_DEFAUT = {fid_n:2, fid_par:"mois", nouv_j:30, abs_j:30, proche_p:20};
 function cibleRegl(){
   const perso = (SESSION.commerce.sms || {}).cibles || {}, r = {...CIBLE_DEFAUT, ...perso};
@@ -2403,35 +2402,43 @@ function cibleFreq(c, par){
 }
 const cibleSeuil = ()=> Number(SESSION.commerce.seuil) || 100;
 const nbFr = x => Number(x).toLocaleString("fr-FR", {maximumFractionDigits:1});
-const CIBLE_CHIPS = [
-  ["tous", ()=>"👥 Tous", ()=>true],
-  ["absents", r=>`😴 Absents (${r.abs_j} j et +)`, (c, r)=>jAvant(c.derniere_visite) >= r.abs_j],
-  ["fideles", r=>`⭐ Fidèles (${nbFr(r.fid_n)}+ par ${r.fid_par})`, (c, r)=>cibleFreq(c, r.fid_par) >= r.fid_n - 1e-9],
-  ["proches", r=>`🎁 Presque une récompense`, (c, r)=>{ const s = cibleSeuil(), p = Number(c.points) || 0; return p < s && s - p <= r.proche_p; }],
-  ["nouveaux", r=>`🌱 Nouveaux (moins de ${r.nouv_j} j)`, (c, r)=>jAvant(c.cree_le) < r.nouv_j],
-  ["coches", ()=>"✅ Seulement les cochés", c=>CIBLE.sel.has(c.id)],
+// Les groupes de « À qui envoyer ? » : un appui choisit tout le groupe. « Je choisis moi-même » ouvre la recherche et les cases.
+const CIBLE_GROUPES = [
+  ["tous", "👥 Tous mes clients", ()=>"Tous ceux qui ont accepté les SMS", ()=>true],
+  ["absents", "😴 Ceux qui ne viennent plus", r=>`Pas venus depuis ${r.abs_j} jours ou plus`, (c, r)=>jAvant(c.derniere_visite) >= r.abs_j],
+  ["fideles", "⭐ Mes clients fidèles", r=>`Au moins ${nbFr(r.fid_n)} passage${r.fid_n >= 2 ? "s" : ""} par ${r.fid_par}`, (c, r)=>cibleFreq(c, r.fid_par) >= r.fid_n - 1e-9],
+  ["nouveaux", "🌱 Les nouveaux clients", r=>`Inscrits depuis moins de ${r.nouv_j} jours`, (c, r)=>jAvant(c.cree_le) < r.nouv_j],
+  ["proches", "🎁 Presque une récompense", r=>`Il leur manque ${r.proche_p} points ou moins`, (c, r)=>{ const s = cibleSeuil(), p = Number(c.points) || 0; return p < s && s - p <= r.proche_p; }],
+  ["moi", "✋ Je choisis moi-même", ()=>"Chercher et cocher des clients un par un", null],
 ];
 const telEspaces = t => String(t || "").replace(/(\d\d)(?=\d)/g, "$1 ");
 const cibleNom = c => (c.nom || "").trim() || telEspaces(c.telephone);
+// Liste de « Je choisis moi-même » : recherche par nom ou numéro, les derniers venus en haut
 function cibleVisibles(){
-  const r = cibleRegl(), q = $("cibleQ").value.trim().toLowerCase(), qn = q.replace(/\D/g, "");
-  const ch = (CIBLE_CHIPS.find(x=>x[0] === CIBLE.chip) || CIBLE_CHIPS[0])[2];
-  const vis = Number($("cibleVisite").value) || 0, pts = Number($("ciblePts").value) || 0;
-  const fq = Number($("cibleFreq").value) || 0, fqPar = $("cibleFreqPar").value, tri = $("cibleTri").value;
-  const l = SMS_TOUS.filter(c => (!q || (c.nom || "").toLowerCase().includes(q) || (qn.length >= 2 && String(c.telephone || "").includes(qn)))
-    && ch(c, r) && (!vis || jAvant(c.derniere_visite) >= vis) && (!pts || (Number(c.points) || 0) >= pts) && (!fq || cibleFreq(c, fqPar) >= fq - 1e-9));
+  const q = $("cibleQ").value.trim().toLowerCase(), qn = q.replace(/\D/g, "");
   const t = x => x ? new Date(x).getTime() : 0;
-  const f = {visite:(a,b)=>t(b.derniere_visite)-t(a.derniere_visite), absence:(a,b)=>t(a.derniere_visite)-t(b.derniere_visite),
-    points:(a,b)=>(Number(b.points)||0)-(Number(a.points)||0), freq:(a,b)=>cibleFreq(b,"mois")-cibleFreq(a,"mois"),
-    nouveau:(a,b)=>t(b.cree_le)-t(a.cree_le), nom:(a,b)=>cibleNom(a).localeCompare(cibleNom(b), "fr")}[tri];
-  return l.sort(f || (()=>0));
+  return SMS_TOUS.filter(c => !q || (c.nom || "").toLowerCase().includes(q) || (qn.length >= 2 && String(c.telephone || "").includes(qn)))
+    .sort((a, b)=>t(b.derniere_visite) - t(a.derniere_visite));
 }
 const cibleOk = (c, pl) => c.accord_sms && !pl.has(c.id);
+// Clients d'un groupe qui peuvent vraiment recevoir le SMS
+function cibleGroupe(k){
+  const g = CIBLE_GROUPES.find(x=>x[0] === k);
+  if (!g || !g[3]) return [];
+  const r = cibleRegl(), pl = smsPlafond();
+  return SMS_TOUS.filter(c=>cibleOk(c, pl) && g[3](c, r));
+}
 function majCible(){
   if (!SESSION) return;
-  const r = cibleRegl(), pl = smsPlafond();
-  $("cibleChips").innerHTML = CIBLE_CHIPS.map(([k, lib]) => `<button type="button" data-k="${k}" class="${k === CIBLE.chip ? "on" : ""}">${echapper(lib(r))}</button>`).join("");
-  const l = cibleVisibles(), ok = l.filter(c=>cibleOk(c, pl));
+  const r = cibleRegl(), pl = smsPlafond(), g = CIBLE.groupe;
+  if (g && g !== "moi") CIBLE.sel = new Set(cibleGroupe(g).map(c=>c.id));
+  $("cibleGroupes").innerHTML = CIBLE_GROUPES.map(([k, lib, sous, f]) => {
+    const nb = f ? cibleGroupe(k).length : null;
+    return `<button type="button" data-k="${k}" class="${k === g ? "on" : ""}"${nb === 0 ? " disabled" : ""}><span class="gLib"><b>${echapper(lib)}</b><small>${echapper(sous(r))}</small></span>`
+      + (nb === null ? "" : `<span class="gNb">${nb}</span>`) + `</button>`;
+  }).join("");
+  $("cibleMain").classList.toggle("cache", g !== "moi");
+  const l = g === "moi" ? cibleVisibles() : [], ok = l.filter(c=>cibleOk(c, pl));
   const jours = x => { const j = jAvant(x); return j === Infinity ? "Jamais venu" : j < 1 ? "Venu aujourd'hui" : j < 2 ? "Venu hier" : `Venu il y a ${Math.floor(j)} jours`; };
   $("cibleListe").innerHTML = l.length ? l.map(c => {
     const bon = cibleOk(c, pl), s = bon && CIBLE.sel.has(c.id);
@@ -2439,9 +2446,11 @@ function majCible(){
       : `${jours(c.derniere_visite)} · ${nbFr(cibleFreq(c, "mois"))} passage${cibleFreq(c, "mois") >= 2 ? "s" : ""} par mois`;
     return `<div class="cibleLigne${s ? " sel" : ""}${bon ? "" : " non"}" data-id="${c.id}" data-ok="${bon ? 1 : 0}"><div class="cCase">${s ? "✓" : ""}</div>`
       + `<div style="min-width:0"><div class="qui">${echapper(cibleNom(c))}</div><div class="det">${det}</div></div><div class="pts">${Number(c.points) || 0} pts</div></div>`;
-  }).join("") : `<p class="note" style="padding:10px 2px">Aucun client ne correspond à ces critères.</p>`;
+  }).join("") : `<p class="note" style="padding:10px">Aucun client ne correspond à cette recherche.</p>`;
   const n = smsDestPromo().length;
-  $("cibleNb").innerHTML = `<b>${n} client${n > 1 ? "s" : ""} coché${n > 1 ? "s" : ""}</b> · ${l.length} dans la liste ci-dessous`;
+  $("cibleNb").innerHTML = !g ? `<span class="note">Touchez un groupe ci-dessus.</span>`
+    : n ? `<b>✓ ${n} client${n > 1 ? "s" : ""} choisi${n > 1 ? "s" : ""}</b>`
+    : `<span class="note">${g === "moi" ? "Cochez les clients à prévenir." : "Personne dans ce groupe pour l'instant."}</span>`;
   $("cibleTout").checked = ok.length > 0 && ok.every(c=>CIBLE.sel.has(c.id));
   $("cibleToutTxt").textContent = ok.length ? `Tout cocher (${ok.length})` : "Tout cocher";
   majSmsApercus();
@@ -2470,8 +2479,13 @@ $("cibleListe").addEventListener("pointermove", e=>{
   if (e.clientY > b.bottom - 30) $("cibleListe").scrollTop += 12; else if (e.clientY < b.top + 30) $("cibleListe").scrollTop -= 12;
 });
 for (const ev of ["pointerup", "pointercancel"]) $("cibleListe").addEventListener(ev, ()=>{ if (CIBLE_GLISSE !== null){ CIBLE_GLISSE = null; majCible(); } });
-$("cibleChips").onclick = e=>{ const b = e.target.closest("button"); if (!b) return; CIBLE.chip = b.dataset.k; majCible(); };
-for (const id of ["cibleQ", "cibleVisite", "ciblePts", "cibleFreq", "cibleFreqPar", "cibleTri"]) $(id).addEventListener("input", majCible);
+$("cibleGroupes").onclick = e=>{
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  CIBLE.groupe = b.dataset.k;
+  if (CIBLE.groupe === "moi"){ CIBLE.sel.clear(); $("cibleQ").value = ""; }
+  majCible();
+};
+$("cibleQ").addEventListener("input", majCible);
 $("cibleTout").onchange = ()=>{ const pl = smsPlafond(), oui = $("cibleTout").checked; for (const c of cibleVisibles()) if (cibleOk(c, pl)) oui ? CIBLE.sel.add(c.id) : CIBLE.sel.delete(c.id); majCible(); };
 $("cibleVider").onclick = ()=>{ CIBLE.sel.clear(); majCible(); };
 function majCibleRegl(){
@@ -2486,7 +2500,7 @@ $("bCibleReglOk").onclick = ()=> occupe($("bCibleReglOk"), async ()=>{
     return message("msgCibleRegl", "Vérifiez les nombres : au moins 1 dans chaque case (0,5 possible pour les fidèles).", "err");
   try{
     SESSION.commerce = await API.majCommerce(SESSION.commerce.id, {sms:{...(SESSION.commerce.sms || {}), cibles:r}});
-    message("msgCibleRegl", "✓ Raccourcis enregistrés.", "ok"); majCible();
+    message("msgCibleRegl", "✓ Groupes enregistrés.", "ok"); majCible();
   }catch(e){ message("msgCibleRegl", e.message, "err"); }
 });
 $("bSmsPromo").onclick = ()=>{
@@ -2502,7 +2516,7 @@ $("smsFond").onclick = e=>{ if (e.target === $("smsFond")) $("smsFond").classLis
 $("bSmsValider").onclick = ()=> occupe($("bSmsValider"), async ()=>{
   try{
     const r = await API.smsPromo($("smsPromo").value.trim(), smsDestPromo().map(c=>c.id));
-    $("smsFond").classList.add("cache"); $("smsPromo").value = ""; CIBLE.sel.clear();
+    $("smsFond").classList.add("cache"); $("smsPromo").value = ""; CIBLE.sel.clear(); CIBLE.groupe = null;
     await afficherSms();
     const s = r.nb_sms > 1 ? "s" : "";
     message("msgSmsPromo", `✓ ${r.nb_sms} SMS ${DEMO ? `enregistré${s} (démo : rien n'est vraiment envoyé)` : `prêt${s}`} pour ${pluriel(r.nb_clients, "client")}, envoi ${creneauFr(new Date(r.envoye_le))}.`, "ok");
